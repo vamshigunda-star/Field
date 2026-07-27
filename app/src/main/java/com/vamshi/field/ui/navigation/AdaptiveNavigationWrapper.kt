@@ -1,6 +1,7 @@
 package com.vamshi.field.ui.navigation
 
 import android.app.Activity
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,7 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -38,8 +40,22 @@ fun AdaptiveNavigationWrapper(
     navController: NavController,
     content: @Composable (Modifier) -> Unit
 ) {
-    val context = LocalContext.current as Activity
-    val windowSizeClass = calculateWindowSizeClass(context)
+    val context = LocalContext.current
+    val activity = remember(context) {
+        var c = context
+        while (c is android.content.ContextWrapper) {
+            if (c is Activity) break
+            c = c.baseContext
+        }
+        c as? Activity
+    }
+
+    if (activity == null) {
+        content(Modifier)
+        return
+    }
+
+    val windowSizeClass = calculateWindowSizeClass(activity)
     val useNavRail = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
 
     val items = listOf(
@@ -56,7 +72,10 @@ fun AdaptiveNavigationWrapper(
     // Check if the current route is one of the main tabs
     val isMainTab = items.any { it.route == currentRoute }
 
+    Log.d("AdaptiveNavigationWrapper", "isMainTab: $isMainTab, currentRoute: $currentRoute")
+
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         bottomBar = {
             if (isMainTab && !useNavRail) {
                 Surface(

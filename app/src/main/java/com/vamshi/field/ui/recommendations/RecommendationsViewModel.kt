@@ -24,7 +24,7 @@ data class RecommendationsUiState(
 )
 
 sealed interface RecommendationsAction {
-    data class OnSelectCategory(val category: RecommendationCategory) : RecommendationsAction
+    data class OnToggleCategory(val category: RecommendationCategory) : RecommendationsAction
     data object OnApplyAndContinue : RecommendationsAction
     data object OnNavigateBack : RecommendationsAction
     data object OnDismissError : RecommendationsAction
@@ -46,13 +46,19 @@ class RecommendationsViewModel @Inject constructor(
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoading = false) } }
                 .collect { categories ->
                     // Re-resolve by id so a reseed that renames/removes a category can't
-                    // leave a stale selection (or stale description text) on screen.
+                    // leave a stale selection (or stale description text) on screen. Otherwise
+                    // seed only on first arrival — don't reopen a section the coach collapsed.
                     val previousId = _uiState.value.selectedCategory?.id
-                    val selected = categories.firstOrNull { it.id == previousId } ?: categories.firstOrNull()
+                    val hasSeeded = testsJob != null
+                    val selected = when {
+                        previousId != null -> categories.firstOrNull { it.id == previousId }
+                        !hasSeeded -> categories.firstOrNull()
+                        else -> null
+                    }
                     _uiState.update {
                         it.copy(categories = categories, selectedCategory = selected, isLoading = false)
                     }
-                    if (selected != null && (selected.id != previousId || testsJob == null)) {
+                    if (selected != null && selected.id != previousId) {
                         loadRecommendedTests(selected.id)
                     }
                 }
@@ -61,9 +67,15 @@ class RecommendationsViewModel @Inject constructor(
 
     fun onAction(action: RecommendationsAction) {
         when (action) {
-            is RecommendationsAction.OnSelectCategory -> {
-                _uiState.update { it.copy(selectedCategory = action.category) }
-                loadRecommendedTests(action.category.id)
+            is RecommendationsAction.OnToggleCategory -> {
+                val collapsing = _uiState.value.selectedCategory?.id == action.category.id
+                testsJob?.cancel()
+                if (collapsing) {
+                    _uiState.update { it.copy(selectedCategory = null, recommendedTests = emptyList()) }
+                } else {
+                    _uiState.update { it.copy(selectedCategory = action.category) }
+                    loadRecommendedTests(action.category.id)
+                }
             }
             is RecommendationsAction.OnDismissError -> _uiState.update { it.copy(errorMessage = null) }
             is RecommendationsAction.OnApplyAndContinue -> Unit // navigation-only, handled by the Screen

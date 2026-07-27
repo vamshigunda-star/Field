@@ -43,8 +43,8 @@ import com.vamshi.field.data.local.entities.testing.TestingEventEntity
         RecommendationCategoryEntity::class,
         RecommendationTestCrossRef::class
     ],
-    version = 12,
-    exportSchema = false
+    version = 13,
+    exportSchema = true
 )
 @ColumnTypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -57,6 +57,34 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recommendationDao(): RecommendationDao
 
     companion object {
+        /**
+         * Migration 12 → 13: Adds `source` to the three catalog tables.
+         *
+         * Before this, the CSV re-import ran an unscoped `DELETE FROM norm_references`
+         * (see the old `StandardsDao.replaceAllNorms`), so bumping `KEY_DATA_SEEDED` in
+         * [com.vamshi.field.data.seed.SeedDataManager] would silently destroy any norms a
+         * coach authored in-app. `source` lets the importer delete only rows it owns.
+         *
+         * Every row that exists at migration time came from the seeder, so `DEFAULT 'SEED'`
+         * *is* the backfill — no separate UPDATE pass is needed.
+         *
+         * The DEFAULT clauses are mandatory (SQLite cannot add a NOT NULL column to a
+         * non-empty table without one) and follow [MIGRATION_5_6]. Room records no
+         * `defaultValue` for these fields — a Kotlin default is invisible to it — and
+         * TableInfo comparison treats a null schema-side default as "don't care", so the
+         * clause does not break schema validation. `MigrationTest` asserts this.
+         *
+         * No index on `source`: fitness_tests has ~40 rows and norm_references ~72, so an
+         * index would cost more on write than it saves on read. The absence is deliberate.
+         */
+        val MIGRATION_12_13 = object : androidx.room3.migration.Migration(12, 13) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE fitness_tests ADD COLUMN source TEXT NOT NULL DEFAULT 'SEED'")
+                connection.execSQL("ALTER TABLE test_categories ADD COLUMN source TEXT NOT NULL DEFAULT 'SEED'")
+                connection.execSQL("ALTER TABLE norm_references ADD COLUMN source TEXT NOT NULL DEFAULT 'SEED'")
+            }
+        }
+
         /**
          * Migration 11 → 12: Adds the nullable `description` column to `test_categories`.
          *

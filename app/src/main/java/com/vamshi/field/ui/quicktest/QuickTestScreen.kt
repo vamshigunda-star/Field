@@ -37,8 +37,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -54,11 +52,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -71,7 +66,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -82,7 +76,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.ui.components.AppTopBar
+import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.components.testing.TestInputSwitcher
+import com.vamshi.field.ui.components.testing.TestSelectionRow
 import com.vamshi.field.ui.theme.NavyPrimary
 import com.vamshi.field.ui.theme.PerformanceGreen
 import com.vamshi.field.ui.theme.PerformanceGreenText
@@ -429,103 +425,29 @@ private fun SetupStep(
             )
         }
 
-        if (uiState.categories.isNotEmpty()) {
-            item {
-                ScrollableTabRow(
-                    selectedTabIndex = uiState.selectedCategoryIndex,
-                    edgePadding = 0.dp,
-                    containerColor = Color.Transparent,
-                    divider = {},
-                    indicator = { tabPositions ->
-                        if (uiState.selectedCategoryIndex < tabPositions.size) {
-                            androidx.compose.material3.TabRowDefaults.SecondaryIndicator(
-                                modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.selectedCategoryIndex]),
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                ) {
-                    uiState.categories.forEachIndexed { index, category ->
-                        Tab(
-                            selected = index == uiState.selectedCategoryIndex,
-                            onClick = { onAction(QuickTestAction.OnSelectCategory(index)) },
-                            text = { 
-                                val isSelected = index == uiState.selectedCategoryIndex
-                                Surface(
-                                    shape = RoundedCornerShape(24.dp),
-                                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        category.name,
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                                    )
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-        }
+        uiState.categories.forEach { category ->
+            val isExpanded = category.id == uiState.expandedCategoryId
+            val categoryTests = uiState.allTests.filter { it.categoryId == category.id }
+            val selectedCount = categoryTests.count { it.id in uiState.selectedTestIds }
 
-        items(uiState.availableTests) { test ->
-            val isSelected = test.id in uiState.selectedTestIds
-            Surface(
-                onClick = { onAction(QuickTestAction.OnToggleTest(test.id)) },
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(2.dp, RoundedCornerShape(16.dp))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Checkbox(
-                        checked = isSelected,
-                        onCheckedChange = { onAction(QuickTestAction.OnToggleTest(test.id)) },
-                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+            item(key = "category_${category.id}") {
+                CategoryAccordionHeader(
+                    name = category.name,
+                    selectedCount = selectedCount,
+                    totalCount = categoryTests.size,
+                    isExpanded = isExpanded,
+                    onClick = { onAction(QuickTestAction.OnToggleCategoryExpanded(category.id)) }
+                )
+            }
+
+            if (isExpanded) {
+                items(categoryTests, key = { it.id }) { test ->
+                    TestSelectionRow(
+                        test = test,
+                        isSelected = test.id in uiState.selectedTestIds,
+                        onToggle = { onAction(QuickTestAction.OnToggleTest(test.id)) }
                     )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            test.name, 
-                            style = MaterialTheme.typography.titleMedium, 
-                            fontWeight = FontWeight.Bold
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                test.unit,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            val badgeColor = if (test.isHigherBetter) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
-                            val textColor = if (test.isHigherBetter) Color(0xFF2E7D32) else Color(0xFFC62828)
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = badgeColor
-                            ) {
-                                Text(
-                                    if (test.isHigherBetter) "Higher is Better" else "Lower is Better",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
         }

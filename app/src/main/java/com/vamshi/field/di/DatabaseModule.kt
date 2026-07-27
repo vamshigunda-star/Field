@@ -2,6 +2,7 @@ package com.vamshi.field.di
 
 import android.content.Context
 import androidx.room3.Room
+import androidx.sqlite.driver.AndroidSQLiteDriver
 import com.vamshi.field.data.AppDatabase
 import com.vamshi.field.data.local.daos.auth.UserDao
 import com.vamshi.field.data.local.daos.people.PeopleDao
@@ -37,8 +38,10 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_8_9,
                 AppDatabase.MIGRATION_9_10,
                 AppDatabase.MIGRATION_10_11,
-                AppDatabase.MIGRATION_11_12
+                AppDatabase.MIGRATION_11_12,
+                AppDatabase.MIGRATION_12_13
             )
+            .setDriver(AndroidSQLiteDriver())
             .build()
     }
 

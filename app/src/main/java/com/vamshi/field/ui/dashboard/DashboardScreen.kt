@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -63,6 +64,7 @@ fun DashboardScreen(
     onNavigateToRoster: () -> Unit,
     onNavigateToTestLibrary: () -> Unit,
     onNavigateToRecommendations: () -> Unit,
+    onNavigateToNewTest: () -> Unit,
     onNavigateToCreateEvent: () -> Unit,
     onNavigateToQuickTest: () -> Unit,
     onNavigateToIndividualTest: () -> Unit,
@@ -93,6 +95,7 @@ fun DashboardScreen(
                 DashboardAction.OnRosterClick -> onNavigateToRoster()
                 DashboardAction.OnTestLibraryClick -> onNavigateToTestLibrary()
                 DashboardAction.OnRecommendationsClick -> onNavigateToRecommendations()
+                DashboardAction.OnNewTestClick -> onNavigateToNewTest()
                 is DashboardAction.OnEventClick -> onNavigateToTestingGrid(it.eventId, it.groupId)
                 is DashboardAction.OnPickLeaderboardEvent -> {
                     viewModel.onAction(DashboardAction.OnDismissLeaderboardPicker)
@@ -156,7 +159,7 @@ fun DashboardContent(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 PrimaryActionCard(
                     title = "Individual Test",
-                    subtitle = "Test a registered athlete with analytics",
+                    subtitle = "Test a registered athlete for analytics",
                     icon = Icons.Default.Person,
                     accentColor = SportBlue,
                     accentContainerColor = BlueIconBg,
@@ -218,6 +221,15 @@ fun DashboardContent(
                     tint = SportBlue,
                     iconBg = BlueIconBg,
                     onClick = { onAction(DashboardAction.OnRecommendationsClick) }
+                )
+            }
+            item {
+                QuickActionCard(
+                    icon = Icons.Default.AddCircleOutline,
+                    label = "New Test",
+                    tint = SportOrange,
+                    iconBg = PeachIconBg,
+                    onClick = { onAction(DashboardAction.OnNewTestClick) }
                 )
             }
 
@@ -777,7 +789,7 @@ fun EmptyState(
 @Preview
 @Composable
 private fun DashboardContentPreview() {
-    AlearningTheme {
+    FieldTheme {
         DashboardContent(
             uiState = DashboardUiState(
                 activeAthletes = 25,

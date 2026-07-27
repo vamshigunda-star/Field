@@ -152,7 +152,7 @@ fun AthleteDashboardContent(
                         Text(data?.athlete?.fullName ?: "Athlete", style = MaterialTheme.typography.titleLarge)
                         if (data != null) {
                             val ind = data.athlete
-                            val grp = data.groups.firstOrNull()?.name?.let { " · $it" } ?: ""
+                            val grp = data.groups.firstOrNull()?.name?.let { " ï¿½ $it" } ?: ""
                             
                             val avg = data.athleteSessionAvgPctile
                             val cls = when {
@@ -165,7 +165,7 @@ fun AthleteDashboardContent(
                             val testCountText = "${data.sessionTestCount} Test${if (data.sessionTestCount == 1) "" else "s"}"
 
                             Text(
-                                "${ind.currentAge}y · ${ind.sex.name.lowercase().replaceFirstChar { it.uppercase() }}$grp · $healthText · $testCountText",
+                                "${ind.currentAge}y ï¿½ ${ind.sex.name.lowercase().replaceFirstChar { it.uppercase() }}$grp ï¿½ $healthText ï¿½ $testCountText",
                                 style = MaterialTheme.typography.labelSmall, color = AppTopBarSubtitleColor
                             )
                         }
@@ -229,8 +229,15 @@ fun AthleteBody(
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     
     val context = LocalContext.current
-    val windowSizeClass = calculateWindowSizeClass(context as Activity)
-    val collapsedCount = if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact) 1 else 2
+    val activity = remember(context) {
+        var c = context
+        while (c is android.content.ContextWrapper) {
+            if (c is Activity) break
+            c = c.baseContext
+        }
+        c as? Activity
+    }
+    val collapsedCount = if (activity == null || calculateWindowSizeClass(activity).widthSizeClass == WindowWidthSizeClass.Compact) 1 else 2
 
     LazyColumn(
         state = listState,
@@ -392,7 +399,7 @@ fun TestBreakdownRow(tile: AthleteTestTile, onClick: () -> Unit) {
                     text = tile.latestResult?.let {
                         val s = if (it.rawScore % 1.0 == 0.0) it.rawScore.toInt().toString() else String.format("%.1f", it.rawScore)
                         "$s ${tile.test.unit}"
-                    } ?: "—",
+                    } ?: "ï¿½",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.primary
@@ -425,7 +432,7 @@ fun FlagListRow(flag: AthleteFlag, onClick: () -> Unit) {
                 if (flag.type == FlagType.MISSING_DATA && flag.testNames.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
                     flag.testNames.forEach { name ->
-                        Text("• $name", style = MaterialTheme.typography.labelSmall, color = SportOrangeVariant)
+                        Text("ï¿½ $name", style = MaterialTheme.typography.labelSmall, color = SportOrangeVariant)
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
@@ -621,7 +628,7 @@ fun PerTestHeader(testCount: Int, collapsedCount: Int, expanded: Boolean, onTogg
                 val subtitle = if (expanded) {
                     "Showing all $testCount tests recorded"
                 } else {
-                    "Showing $collapsedCount test${if (collapsedCount == 1) "" else "s"} preview • $testCount tests recorded"
+                    "Showing $collapsedCount test${if (collapsedCount == 1) "" else "s"} preview ï¿½ $testCount tests recorded"
                 }
                 Text(
                     text = subtitle,

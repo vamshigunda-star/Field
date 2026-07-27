@@ -9,5 +9,6 @@ data class TestCategory(
     val name: String,
     val description: String? = null,
     val sortOrder: Int = 0,
-    val radarAxis: RadarAxis? = null
+    val radarAxis: RadarAxis? = null,
+    val source: TestSource = TestSource.USER
 )

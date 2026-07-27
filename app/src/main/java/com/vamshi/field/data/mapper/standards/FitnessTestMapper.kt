@@ -5,6 +5,7 @@ import com.vamshi.field.domain.model.standards.FitnessTest
 import com.vamshi.field.domain.model.standards.InterpretationStrategy
 import com.vamshi.field.domain.model.standards.TimingMode
 import com.vamshi.field.domain.model.standards.InputParadigm
+import com.vamshi.field.domain.model.standards.TestSource
 
 fun FitnessTestEntity.toDomain(): FitnessTest {
     return FitnessTest(
@@ -24,7 +25,8 @@ fun FitnessTestEntity.toDomain(): FitnessTest {
             InterpretationStrategy.valueOf(this.interpretationStrategy)
         } catch (_: Exception) { InterpretationStrategy.NORM_LOOKUP },
         calculationConfig = this.calculationConfig,
-        youtubeId = this.youtubeId
+        youtubeId = this.youtubeId,
+        source = TestSource.from(this.source)
     )
 }
 
@@ -49,6 +51,9 @@ fun FitnessTest.toEntity(
         youtubeId = this.youtubeId,
         createdAt = createdAt,
         updatedAt = System.currentTimeMillis(),
-        isDeleted = false
+        // NOTE: this resets isDeleted. Archiving goes through StandardsDao.archiveUserTest,
+        // never through an upsert, so an archived test is never resurrected by a round trip.
+        isDeleted = false,
+        source = this.source.name
     )
 }

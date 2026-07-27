@@ -3,6 +3,7 @@ package com.vamshi.field.data.repository
 import android.content.Context
 import com.vamshi.field.data.AppDatabase
 import com.vamshi.field.domain.model.backup.*
+import com.vamshi.field.domain.model.standards.TestSource
 import com.vamshi.field.domain.repository.BackupRepository
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
@@ -64,8 +65,51 @@ class BackupRepositoryImpl @Inject constructor(
                 )
             }
 
+            // Coach-authored catalog only — seeded tests/categories/norms are reproduced
+            // from assets on every install and must not be carried in the backup.
+            val customCategories = backupDao.getUserCategories().map {
+                BackupTestCategory(it.id, it.name, it.description, it.sortOrder, it.radarAxis)
+            }
+            val customTests = backupDao.getUserTests().map {
+                BackupFitnessTest(
+                    id = it.id,
+                    categoryId = it.categoryId,
+                    name = it.name,
+                    unit = it.unit,
+                    isHigherBetter = it.isHigherBetter,
+                    description = it.description,
+                    timingMode = it.timingMode,
+                    inputParadigm = it.inputParadigm,
+                    athletesPerHeat = it.athletesPerHeat,
+                    trialsPerAthlete = it.trialsPerAthlete,
+                    validMin = it.validMin,
+                    validMax = it.validMax,
+                    interpretationStrategy = it.interpretationStrategy,
+                    calculationConfig = it.calculationConfig,
+                    youtubeId = it.youtubeId,
+                    isDeleted = it.isDeleted
+                )
+            }
+            val customNorms = backupDao.getUserNorms().map {
+                BackupNormReference(
+                    id = it.id,
+                    testId = it.testId,
+                    variant = it.variant,
+                    sex = it.sex.name,
+                    ageMin = it.ageMin,
+                    ageMax = it.ageMax,
+                    minScore = it.minScore,
+                    maxScore = it.maxScore,
+                    percentile = it.percentile,
+                    classification = it.classification
+                )
+            }
+
             val payload = BackupPayload(
-                individuals, groups, groupMembers, testingEvents, eventTests, testResults, users
+                individuals, groups, groupMembers, testingEvents, eventTests, testResults, users,
+                customCategories = customCategories,
+                customTests = customTests,
+                customNorms = customNorms
             )
 
             // Serialize to local cache
@@ -170,6 +214,55 @@ class BackupRepositoryImpl @Inject constructor(
             )
         }
 
+        // Rebuilt with source = USER so a restored custom test stays editable and, more
+        // importantly, stays out of reach of the CSV importer's source-scoped deletes.
+        val customCategoryEntities = payload.customCategories.orEmpty().map {
+            com.vamshi.field.data.local.entities.standards.TestCategoryEntity(
+                id = it.id,
+                name = it.name,
+                description = it.description,
+                sortOrder = it.sortOrder,
+                radarAxis = it.radarAxis,
+                source = TestSource.USER.name
+            )
+        }
+        val customTestEntities = payload.customTests.orEmpty().map {
+            com.vamshi.field.data.local.entities.standards.FitnessTestEntity(
+                id = it.id,
+                categoryId = it.categoryId,
+                name = it.name,
+                unit = it.unit,
+                isHigherBetter = it.isHigherBetter,
+                description = it.description,
+                timingMode = it.timingMode,
+                inputParadigm = it.inputParadigm,
+                athletesPerHeat = it.athletesPerHeat,
+                trialsPerAthlete = it.trialsPerAthlete,
+                validMin = it.validMin,
+                validMax = it.validMax,
+                interpretationStrategy = it.interpretationStrategy,
+                calculationConfig = it.calculationConfig,
+                youtubeId = it.youtubeId,
+                isDeleted = it.isDeleted,
+                source = TestSource.USER.name
+            )
+        }
+        val customNormEntities = payload.customNorms.orEmpty().map {
+            com.vamshi.field.data.local.entities.standards.NormReferenceEntity(
+                id = it.id,
+                testId = it.testId,
+                variant = it.variant,
+                sex = com.vamshi.field.domain.model.people.BiologicalSex.valueOf(it.sex),
+                ageMin = it.ageMin,
+                ageMax = it.ageMax,
+                minScore = it.minScore,
+                maxScore = it.maxScore,
+                percentile = it.percentile,
+                classification = it.classification,
+                source = TestSource.USER.name
+            )
+        }
+
         backupDao.restoreAllData(
             users = userEntities,
             individuals = indEntities,
@@ -177,7 +270,10 @@ class BackupRepositoryImpl @Inject constructor(
             groupMembers = gmEntities,
             events = teEntities,
             eventTests = etEntities,
-            results = trEntities
+            results = trEntities,
+            customCategories = customCategoryEntities,
+            customTests = customTestEntities,
+            customNorms = customNormEntities
         )
     }
 

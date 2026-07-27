@@ -12,6 +12,13 @@ kotlin {
     jvmToolchain(11)
 }
 
+// Room schema JSONs, one per DB version, committed to the repo. These are the
+// inputs MigrationTestHelper needs to assert a migration produces the schema Room
+// expects — without them, migrations are only ever verified by running the app.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 
 android {
     namespace = "com.vamshi.field"
@@ -49,6 +56,10 @@ android {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
+    // Ship the exported schema JSONs into the androidTest APK so MigrationTestHelper
+    // can read the "before" and "after" schemas for each migration under test.
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+
     packaging {
         resources {
             excludes += "META-INF/INDEX.LIST"
@@ -58,6 +69,22 @@ android {
 }
 
 dependencies {
+    constraints {
+        // room3-testing's MigrationTestHelper deserializes the exported schema JSON with
+        // kotlinx-serialization-json 1.8.1, but AGP's consistent resolution pins the
+        // androidTest classpath to whatever the app runtime classpath resolved — and a
+        // production transitive was holding serialization-core at 1.6.3. The 1.8.1
+        // generated serializers then call into the 1.6.3 core and every migration test
+        // dies with AbstractMethodError on GeneratedSerializer.typeParametersSerializers().
+        //
+        // This is a constraint, not a dependency: it raises a version already on the
+        // classpath rather than adding anything new. Remove it once a prod dependency
+        // pulls serialization >= 1.8.1 on its own.
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1") {
+            because("align serialization-core with the json 1.8.1 that room3-testing requires")
+        }
+    }
+
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -93,6 +120,7 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.hilt.android.testing)
+    androidTestImplementation(libs.androidx.room.testing)
     kspAndroidTest(libs.hilt.android.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

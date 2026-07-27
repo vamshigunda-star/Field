@@ -48,5 +48,8 @@ data class NormReferenceEntity(
 
     // Sync Metadata
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+
+    /** "SEED" or "USER" — see [FitnessTestEntity.source]. */
+    val source: String = "USER"
 )

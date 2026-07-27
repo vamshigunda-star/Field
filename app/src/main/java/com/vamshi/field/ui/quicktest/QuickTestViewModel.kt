@@ -12,6 +12,7 @@ import com.vamshi.field.domain.usecase.standards.GetTestLibraryUseCase
 import com.vamshi.field.domain.usecase.testing.CreateEventUseCase
 import com.vamshi.field.domain.usecase.testing.RecordTestResultUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,8 +49,8 @@ data class QuickTestUiState(
     val guestSex: BiologicalSex = BiologicalSex.UNSPECIFIED,
     val guestAge: String = "",
     val categories: List<TestCategory> = emptyList(),
-    val selectedCategoryIndex: Int = 0,
-    val availableTests: List<FitnessTest> = emptyList(),
+    val allTests: List<FitnessTest> = emptyList(),
+    val expandedCategoryId: String? = null, // accordion: id of the single open category section, null = all collapsed
     val selectedTestIds: Set<String> = emptySet(),
     val selectedTests: List<FitnessTest> = emptyList(),
     val recordedResults: List<RecordedTestResult> = emptyList(),
@@ -68,7 +69,7 @@ sealed interface QuickTestAction {
     data class OnSelectAthlete(val athlete: Individual?) : QuickTestAction
     data class OnSetGuestSex(val sex: BiologicalSex) : QuickTestAction
     data class OnSetGuestAge(val age: String) : QuickTestAction
-    data class OnSelectCategory(val index: Int) : QuickTestAction
+    data class OnToggleCategoryExpanded(val categoryId: String) : QuickTestAction
     data class OnToggleTest(val testId: String) : QuickTestAction
     data object OnConfirmSetup : QuickTestAction
     data class OnSaveScore(val testId: String, val rawScore: Double) : QuickTestAction
@@ -115,11 +116,16 @@ class QuickTestViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                // Load Categories
-                getTestLibrary.getCategories().collect { categories ->
-                    _uiState.update { it.copy(categories = categories) }
-                    if (categories.isNotEmpty()) {
-                        loadTests(categories.first().id)
+                combine(getTestLibrary.getCategories(), getTestLibrary.getAllTests()) { categories, tests ->
+                    categories to tests
+                }.collect { (categories, tests) ->
+                    _uiState.update { state ->
+                        state.copy(
+                            categories = categories,
+                            allTests = tests,
+                            // seed only on first arrival; don't collapse a category the coach already opened
+                            expandedCategoryId = state.expandedCategoryId ?: categories.firstOrNull()?.id
+                        )
                     }
                 }
             } catch (e: Exception) {
@@ -170,10 +176,10 @@ class QuickTestViewModel @Inject constructor(
             }
             is QuickTestAction.OnSetGuestSex -> _uiState.update { it.copy(guestSex = action.sex) }
             is QuickTestAction.OnSetGuestAge -> _uiState.update { it.copy(guestAge = action.age) }
-            is QuickTestAction.OnSelectCategory -> {
-                val category = _uiState.value.categories.getOrNull(action.index) ?: return
-                _uiState.update { it.copy(selectedCategoryIndex = action.index) }
-                loadTests(category.id)
+            is QuickTestAction.OnToggleCategoryExpanded -> {
+                _uiState.update {
+                    it.copy(expandedCategoryId = if (it.expandedCategoryId == action.categoryId) null else action.categoryId)
+                }
             }
             is QuickTestAction.OnToggleTest -> {
                 val current = _uiState.value.selectedTestIds
@@ -239,35 +245,14 @@ class QuickTestViewModel @Inject constructor(
         }
     }
 
-    private fun loadTests(categoryId: String) {
-        viewModelScope.launch {
-            getTestLibrary.getTestsByCategory(categoryId)
-                .catch { e -> _uiState.update { it.copy(errorMessage = e.message) } }
-                .collect { tests ->
-                    _uiState.update { it.copy(availableTests = tests) }
-                }
-        }
-    }
-
     private fun confirmSetupAndProceed() {
         val state = _uiState.value
-        viewModelScope.launch {
-            try {
-                val allTests = mutableListOf<FitnessTest>()
-                for (category in state.categories) {
-                    val tests = getTestLibrary.getTestsByCategory(category.id).first()
-                    allTests.addAll(tests.filter { it.id in state.selectedTestIds })
-                }
-                _uiState.update {
-                    it.copy(
-                        selectedTests = allTests,
-                        step = QuickTestStep.ENTER_SCORES,
-                        isGuest = !state.requireRegisteredAthlete && state.selectedAthlete == null
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(errorMessage = e.message) }
-            }
+        _uiState.update {
+            it.copy(
+                selectedTests = state.allTests.filter { test -> test.id in state.selectedTestIds },
+                step = QuickTestStep.ENTER_SCORES,
+                isGuest = !state.requireRegisteredAthlete && state.selectedAthlete == null
+            )
         }
     }
 

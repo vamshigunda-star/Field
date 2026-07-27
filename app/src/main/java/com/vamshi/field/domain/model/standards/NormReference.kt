@@ -12,5 +12,6 @@ data class NormReference(
     val minScore: Double,
     val maxScore: Double,
     val percentile: Int,
-    val classification: String? = null
+    val classification: String? = null,
+    val source: TestSource = TestSource.USER
 )

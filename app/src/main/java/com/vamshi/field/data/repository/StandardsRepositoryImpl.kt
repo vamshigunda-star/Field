@@ -7,6 +7,7 @@ import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.domain.model.standards.FitnessTest
 import com.vamshi.field.domain.model.standards.NormReference
 import com.vamshi.field.domain.model.standards.TestCategory
+import com.vamshi.field.domain.model.standards.TestSource
 import com.vamshi.field.domain.repository.StandardsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -52,7 +53,44 @@ class StandardsRepositoryImpl @Inject constructor(
         tests.forEach { dao.insertTest(it.toEntity()) }
     }
 
-    override suspend fun replaceAllNorms(norms: List<NormReference>) {
-        dao.replaceAllNorms(norms.map { it.toEntity() })
+    override suspend fun replaceSeedNorms(norms: List<NormReference>) {
+        dao.replaceSeedNorms(norms.map { it.toEntity() })
+    }
+
+    // --- CUSTOM TESTS ---
+    override fun getCustomTests(): Flow<List<FitnessTest>> {
+        // getAllTests() already excludes archived rows, so this is just the source filter.
+        return dao.getAllTests().map { list ->
+            list.map { it.toDomain() }.filter { it.source == TestSource.USER }
+        }
+    }
+
+    override suspend fun isTestNameTaken(name: String, excludeTestId: String?): Boolean {
+        // The DAO compares against a non-null column, so "" is a safe stand-in for "exclude
+        // nothing" — no row can have an empty primary key.
+        return dao.countTestsNamed(name, excludeTestId.orEmpty()) > 0
+    }
+
+    override suspend fun saveCustomTest(test: FitnessTest, norms: List<NormReference>) {
+        dao.saveUserTestWithNorms(
+            test = test.toEntity(),
+            norms = norms.map { it.toEntity() }
+        )
+    }
+
+    override suspend fun getNormsForTest(testId: String): List<NormReference> {
+        return dao.getNormsForTest(testId).map { it.toDomain() }
+    }
+
+    override suspend fun countResultsForTest(testId: String): Int {
+        return dao.countResultsForTest(testId)
+    }
+
+    override suspend fun archiveCustomTest(testId: String) {
+        dao.archiveUserTest(testId, System.currentTimeMillis())
+    }
+
+    override suspend fun deleteCustomTest(testId: String) {
+        dao.deleteUserTest(testId)
     }
 }

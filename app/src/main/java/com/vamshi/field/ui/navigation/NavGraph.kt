@@ -1,5 +1,6 @@
 package com.vamshi.field.ui.navigation
 
+import android.util.Log
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -28,6 +29,7 @@ import com.vamshi.field.ui.auth.AuthGateViewModel
 import com.vamshi.field.ui.auth.onboarding.OnboardingScreen
 import com.vamshi.field.ui.auth.restore.RestoreBackupScreen
 import com.vamshi.field.ui.auth.unlock.UnlockScreen
+import com.vamshi.field.ui.customtest.CustomTestScreen
 import com.vamshi.field.ui.dashboard.DashboardScreen
 import com.vamshi.field.ui.groupoverview.GroupOverviewScreen
 import com.vamshi.field.ui.leaderboard.LeaderboardScreen
@@ -50,11 +52,17 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
     // While the auth gate is resolving, show a full-screen spinner so we never
     // briefly flash the wrong destination.
     if (authGateState == AuthGateState.Loading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Log.d("ALearningNavGraph", "Auth gate is loading...")
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
             CircularProgressIndicator()
         }
         return
     }
+
+    Log.d("ALearningNavGraph", "Auth gate resolved: $authGateState")
 
     val startDestination = when (authGateState) {
         AuthGateState.Authenticated -> Screen.Dashboard.route
@@ -123,6 +131,7 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                 onNavigateToTestLibrary = { navController.navigate(Screen.TestLibrary.route) },
                 onNavigateToCreateEvent = { navController.navigate(Screen.CreateEvent.createRoute()) },
                 onNavigateToRecommendations = { navController.navigate(Screen.Recommendations.route) },
+                onNavigateToNewTest = { navController.navigate(Screen.CustomTest.createRoute()) },
                 onNavigateToQuickTest = { navController.navigate(Screen.QuickTest.createRoute()) },
                 onNavigateToIndividualTest = { navController.navigate(Screen.QuickTest.createRoute(mode = "individual")) },
                 onNavigateToTestingGrid = { eventId, groupId ->
@@ -158,7 +167,31 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
 
         composable(Screen.TestLibrary.route) {
 
-            TestLibraryScreen(onNavigateBack = { navController.popBackStack() })
+            TestLibraryScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEditTest = { testId ->
+                    navController.navigate(Screen.CustomTest.createRoute(testId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.CustomTest.route,
+            arguments = listOf(
+                navArgument("testId") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
+        ) {
+            CustomTestScreen(
+                onNavigateBack = { navController.popBackStack() },
+                // The new test is already in the catalog by now, so drop the coach into the
+                // library to see it rather than back onto the dashboard with no feedback.
+                onTestSaved = {
+                    navController.navigate(Screen.TestLibrary.route) {
+                        popUpTo(Screen.CustomTest.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            )
         }
 
         composable(Screen.Recommendations.route) {

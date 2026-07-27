@@ -13,6 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -32,14 +34,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.standards.FitnessTest
+import com.vamshi.field.domain.model.standards.TestSource
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.CategoryDescription
-import com.vamshi.field.ui.components.CategorySelector
+import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.components.video.TestVideoPreview
 
 @Composable
 fun TestLibraryScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToEditTest: (testId: String) -> Unit = {},
     viewModel: TestLibraryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -49,6 +53,7 @@ fun TestLibraryScreen(
         onAction = { action ->
             when (action) {
                 is TestLibraryAction.OnNavigateBack -> onNavigateBack()
+                is TestLibraryAction.OnEditTest -> onNavigateToEditTest(action.testId)
                 else -> viewModel.onAction(action)
             }
         }
@@ -92,6 +97,66 @@ fun TestLibraryContent(
             }
         }
     }
+
+    uiState.deleteDialog?.let { dialog ->
+        DeleteTestDialog(dialog = dialog, onAction = onAction)
+    }
+
+    if (uiState.snackbarMessage != null) {
+        Snackbar(
+            modifier = Modifier.padding(16.dp),
+            action = {
+                TextButton(onClick = { onAction(TestLibraryAction.OnDismissSnackbar) }) {
+                    Text("OK")
+                }
+            }
+        ) {
+            Text(uiState.snackbarMessage)
+        }
+    }
+}
+
+/**
+ * Copy states plainly what confirming does. With results attached the row can't be hard
+ * deleted (test_results holds a RESTRICT foreign key), so it archives: history stays,
+ * the test leaves the library and event setup.
+ */
+@Composable
+private fun DeleteTestDialog(
+    dialog: DeleteTestDialogState,
+    onAction: (TestLibraryAction) -> Unit
+) {
+    val archiving = dialog.resultCount > 0
+    AlertDialog(
+        onDismissRequest = { onAction(TestLibraryAction.OnDismissDeleteDialog) },
+        title = { Text(if (archiving) "Archive this test?" else "Delete this test?") },
+        text = {
+            Text(
+                if (archiving) {
+                    val results = "${dialog.resultCount} recorded " +
+                        if (dialog.resultCount == 1) "result" else "results"
+                    "\"${dialog.testName}\" has $results. Archiving keeps that history in " +
+                        "reports but removes the test from the library and new events."
+                } else {
+                    "\"${dialog.testName}\" has no recorded results and will be removed " +
+                        "permanently, along with its performance bands."
+                }
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onAction(TestLibraryAction.OnConfirmDeleteTest) }) {
+                Text(
+                    if (archiving) "Archive" else "Delete",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onAction(TestLibraryAction.OnDismissDeleteDialog) }) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
@@ -169,54 +234,58 @@ private fun TestLibraryBody(
         navigator = navigator,
         listPane = {
             AnimatedPane {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    CategorySelector(
-                        categories = uiState.categories,
-                        selected = uiState.selectedCategory,
-                        onSelect = { category ->
-                            onAction(TestLibraryAction.OnSelectCategory(category))
-                            if (navigator.canNavigateBack()) {
-                                navigator.navigateBack()
-                            }
-                        },
-                        label = { it.name },
-                        key = { it.id }
-                    )
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    uiState.categories.forEach { category ->
+                        val isExpanded = category.id == uiState.expandedCategoryId
+                        val categoryTests = uiState.allTests.filter { it.categoryId == category.id }
+                        val filteredTests = if (uiState.searchQuery.isBlank()) {
+                            categoryTests
+                        } else {
+                            categoryTests.filter { it.name.contains(uiState.searchQuery, ignoreCase = true) }
+                        }
 
-                    CategoryDescription(
-                        description = uiState.selectedCategory?.description
-                    )
-
-                    OutlinedTextField(
-                        value = uiState.searchQuery,
-                        onValueChange = { onAction(TestLibraryAction.OnSearchQueryChanged(it)) },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        placeholder = { Text("Search tests...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                        shape = RoundedCornerShape(20.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary
-                        ),
-                        singleLine = true
-                    )
-
-                    val filteredTests = remember(uiState.testsForCategory, uiState.searchQuery) {
-                        uiState.filteredTests
-                    }
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(filteredTests, key = { it.id }) { test ->
-                            TestListCard(
-                                test = test,
-                                categoryName = uiState.selectedCategory?.name ?: "",
-                                onClick = { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, test.id) }
+                        item(key = "category_${category.id}") {
+                            CategoryAccordionHeader(
+                                name = category.name,
+                                totalCount = categoryTests.size,
+                                isExpanded = isExpanded,
+                                onClick = { onAction(TestLibraryAction.OnToggleCategoryExpanded(category.id)) }
                             )
+                        }
+
+                        if (isExpanded) {
+                            item(key = "description_${category.id}") {
+                                Column {
+                                    CategoryDescription(description = category.description)
+                                    OutlinedTextField(
+                                        value = uiState.searchQuery,
+                                        onValueChange = { onAction(TestLibraryAction.OnSearchQueryChanged(it)) },
+                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                        placeholder = { Text("Search tests...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                        shape = RoundedCornerShape(20.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                            focusedBorderColor = MaterialTheme.colorScheme.primary
+                                        ),
+                                        singleLine = true
+                                    )
+                                }
+                            }
+                            items(filteredTests, key = { it.id }) { test ->
+                                TestListCard(
+                                    test = test,
+                                    categoryName = category.name,
+                                    onClick = { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, test.id) },
+                                    modifier = Modifier.padding(top = 12.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -225,11 +294,11 @@ private fun TestLibraryBody(
         detailPane = {
             AnimatedPane {
                 val testId = navigator.currentDestination?.content as? String
-                val selectedTest = remember(testId, uiState.testsForCategory) {
-                    uiState.testsForCategory.find { it.id == testId }
+                val selectedTest = remember(testId, uiState.allTests) {
+                    uiState.allTests.find { it.id == testId }
                 }
                 if (selectedTest != null) {
-                    TestDetailPane(test = selectedTest)
+                    TestDetailPane(test = selectedTest, onAction = onAction)
                 } else {
                     EmptyDetailPane()
                 }
@@ -239,9 +308,9 @@ private fun TestLibraryBody(
 }
 
 @Composable
-private fun TestListCard(test: FitnessTest, categoryName: String, onClick: () -> Unit) {
+private fun TestListCard(test: FitnessTest, categoryName: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
@@ -254,12 +323,21 @@ private fun TestListCard(test: FitnessTest, categoryName: String, onClick: () ->
             )
 
             Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    test.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        test.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (test.source == TestSource.USER) {
+                        CustomBadge()
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -305,20 +383,72 @@ private fun TestListCard(test: FitnessTest, categoryName: String, onClick: () ->
     }
 }
 
+/** Small tinted chip marking a coach-authored test in lists and the detail pane. */
 @Composable
-private fun TestDetailPane(test: FitnessTest) {
+private fun CustomBadge() {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+    ) {
+        Text(
+            "Custom",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+@Composable
+private fun TestDetailPane(test: FitnessTest, onAction: (TestLibraryAction) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text(
-            text = test.name,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = test.name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (test.source == TestSource.USER) {
+                CustomBadge()
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Seeded tests are read-only; only coach-authored tests can be edited or removed.
+        if (test.source == TestSource.USER) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = { onAction(TestLibraryAction.OnEditTest(test.id)) },
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Edit")
+                }
+                OutlinedButton(
+                    onClick = { onAction(TestLibraryAction.OnRequestDeleteTest(test.id)) },
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Remove")
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         test.description?.let { desc ->
             Text(

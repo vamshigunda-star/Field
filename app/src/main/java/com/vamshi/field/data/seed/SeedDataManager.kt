@@ -38,6 +38,12 @@ class SeedDataManager @Inject constructor(
         // coach-created events/results/athletes/groups are never touched. Catalog rows
         // removed from the CSVs are left in the DB (existing results may reference them).
         private const val KEY_DATA_SEEDED = "data_seeded_csv_v14" // Bumped for corrected tests.csv youtube_ids
+
+        // Everything this class writes to the catalog is stamped SEED so the re-import
+        // above can scope its deletes and leave coach-authored rows alone. The entity
+        // default is USER, so omitting this on a new call site is safe-but-wrong: the
+        // row survives reseeds but shows up in the UI as a custom test.
+        private const val SEED_SOURCE = "SEED"
     }
 
     suspend fun seedIfNeeded() {
@@ -65,7 +71,8 @@ class SeedDataManager @Inject constructor(
                     // text applies consistently.
                     description = row["description"]?.trim()?.ifEmpty { null },
                     sortOrder = row["sortOrder"]?.toIntOrNull() ?: 0,
-                    radarAxis = row["radarAxis"]
+                    radarAxis = row["radarAxis"],
+                    source = SEED_SOURCE
                 )
             }
 
@@ -95,7 +102,8 @@ class SeedDataManager @Inject constructor(
                     validMax = row["validMax"]?.toDoubleOrNull(),
                     interpretationStrategy = row["interpretationStrategy"] ?: "NORM_LOOKUP",
                     calculationConfig = row["calculationConfig"],
-                    youtubeId = validatedYoutubeId
+                    youtubeId = validatedYoutubeId,
+                    source = SEED_SOURCE
                 )
             }
 
@@ -109,7 +117,8 @@ class SeedDataManager @Inject constructor(
                     minScore = row["minScore"]?.toDoubleOrNull() ?: 0.0,
                     maxScore = row["maxScore"]?.toDoubleOrNull() ?: 999.0,
                     percentile = row["percentile"]?.toIntOrNull() ?: 0,
-                    classification = row["classification"]
+                    classification = row["classification"],
+                    source = SEED_SOURCE
                 )
             }
 

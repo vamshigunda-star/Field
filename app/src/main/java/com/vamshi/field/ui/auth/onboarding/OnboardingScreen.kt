@@ -50,14 +50,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.ui.auth.components.AuthErrorBanner
 import com.vamshi.field.ui.theme.AquaCyan
 import com.vamshi.field.ui.theme.NavyVariant
+import com.vamshi.field.ui.theme.FieldTheme
+import androidx.compose.ui.tooling.preview.Preview
 
-/**
- * Entry point for a device with zero coach accounts. Replaces the old 6-field SignUpScreen.
- *
- * A deliberate one-time brand moment: a gradient hero (~38% of screen height) above a
- * white, rounded-top card holding the form. Distinct from the quiet white [com.vamshi.field.ui.auth.unlock.UnlockScreen]
- * that a returning coach sees on every subsequent launch.
- */
 @Composable
 fun OnboardingScreen(
     onOnboardingSuccess: () -> Unit,
@@ -255,5 +250,17 @@ private fun OnboardingHero(modifier: Modifier = Modifier) {
                 textAlign = TextAlign.Center
             )
         }
+    }
+}
+
+@Preview
+@Composable
+private fun OnboardingContentPreview() {
+    FieldTheme {
+        OnboardingContent(
+            uiState = OnboardingUiState(),
+            onAction = {},
+            onNavigateToRestore = {}
+        )
     }
 }

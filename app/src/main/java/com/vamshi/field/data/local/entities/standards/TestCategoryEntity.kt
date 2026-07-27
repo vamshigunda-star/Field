@@ -17,5 +17,8 @@ data class TestCategoryEntity(
     // Sync Metadata
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+
+    /** "SEED" or "USER" — see [FitnessTestEntity.source]. */
+    val source: String = "USER"
 )

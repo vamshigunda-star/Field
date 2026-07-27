@@ -45,6 +45,12 @@ sealed class Screen(val route: String) {
     }
 
     data object TestsHub : Screen("tests_hub")
+
+    /** Custom Test Builder. No `testId` = create; with one = edit that coach-authored test. */
+    data object CustomTest : Screen("custom_test?testId={testId}") {
+        fun createRoute(testId: String? = null): String =
+            "custom_test" + if (testId != null) "?testId=$testId" else ""
+    }
     
     // Reports & Results layer
     data object GroupOverview : Screen("group/{groupId}") {

@@ -24,7 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.standards.FitnessTest
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.CategoryDescription
-import com.vamshi.field.ui.components.CategorySelector
+import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.components.video.TestVideoPreview
 
 @Composable
@@ -39,7 +39,7 @@ fun RecommendationsScreen(
         uiState = uiState,
         onAction = { action ->
             when (action) {
-                is RecommendationsAction.OnNavigateBack -> onNavigateBack()
+        is RecommendationsAction.OnNavigateBack -> onNavigateBack()
                 is RecommendationsAction.OnApplyAndContinue -> {
                     uiState.selectedCategory?.let { onApplyAndContinue(it.id) }
                 }
@@ -156,25 +156,24 @@ private fun ErrorState(message: String, modifier: Modifier = Modifier, onDismiss
 }
 
 @Composable
-private fun EmptyRecommendationsState(categoryName: String?) {
-    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                Icons.Default.Inbox,
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                "No recommended tests for ${categoryName ?: "this category"} yet.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-        }
+private fun EmptyRecommendationsState(categoryName: String?, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(
+            Icons.Default.Inbox,
+            contentDescription = null,
+            modifier = Modifier.size(56.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            "No recommended tests for ${categoryName ?: "this category"} yet.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -184,31 +183,41 @@ private fun RecommendationsBody(
     onAction: (RecommendationsAction) -> Unit,
     padding: PaddingValues
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            top = padding.calculateTopPadding() + 16.dp,
+            end = 16.dp,
+            bottom = padding.calculateBottomPadding() + 16.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        CategorySelector(
-            categories = uiState.categories,
-            selected = uiState.selectedCategory,
-            onSelect = { category -> onAction(RecommendationsAction.OnSelectCategory(category)) },
-            label = { it.name },
-            key = { it.id }
-        )
+        uiState.categories.forEach { category ->
+            val isExpanded = category.id == uiState.selectedCategory?.id
 
-        CategoryDescription(description = uiState.selectedCategory?.description)
+            item(key = "category_${category.id}") {
+                CategoryAccordionHeader(
+                    name = category.name,
+                    totalCount = uiState.recommendedTests.size.takeIf { isExpanded },
+                    isExpanded = isExpanded,
+                    onClick = { onAction(RecommendationsAction.OnToggleCategory(category)) },
+                    subtitle = "Tap to view recommended tests".takeIf { !isExpanded }
+                )
+            }
 
-        if (uiState.recommendedTests.isEmpty()) {
-            EmptyRecommendationsState(uiState.selectedCategory?.name)
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(uiState.recommendedTests, key = { it.id }) { test ->
-                    RecommendedTestPreviewCard(test = test)
+            if (isExpanded) {
+                item(key = "description_${category.id}") {
+                    CategoryDescription(description = category.description)
+                }
+                if (uiState.recommendedTests.isEmpty()) {
+                    item(key = "empty_${category.id}") {
+                        EmptyRecommendationsState(category.name)
+                    }
+                } else {
+                    items(uiState.recommendedTests, key = { it.id }) { test ->
+                        RecommendedTestPreviewCard(test = test, modifier = Modifier.padding(top = 8.dp))
+                    }
                 }
             }
         }
@@ -216,9 +225,9 @@ private fun RecommendationsBody(
 }
 
 @Composable
-private fun RecommendedTestPreviewCard(test: FitnessTest) {
+private fun RecommendedTestPreviewCard(test: FitnessTest, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
@@ -227,40 +236,42 @@ private fun RecommendedTestPreviewCard(test: FitnessTest) {
         Column {
             TestVideoPreview(
                 youtubeId = test.youtubeId,
-                testName = test.name
+                testName = test.name,
+                height = 200.dp
             )
 
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     test.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
                     text = test.unit,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         if (test.isHigherBetter) Icons.AutoMirrored.Filled.TrendingUp
                         else Icons.AutoMirrored.Filled.TrendingDown,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                        modifier = Modifier.size(16.dp)
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         if (test.isHigherBetter) "Higher is better" else "Lower is better",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

@@ -1,5 +1,6 @@
 package com.vamshi.field.ui.auth
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vamshi.field.domain.repository.AuthRepository
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
@@ -41,16 +43,34 @@ class AuthGateViewModel @Inject constructor(
     val state: StateFlow<AuthGateState> = _state.asStateFlow()
 
     init {
+        Log.e("AuthGateViewModel", "Init started")
         viewModelScope.launch {
-            val currentId = sessionManager.currentUserIdOnce()
-            val state = if (currentId != null) {
-                AuthGateState.Authenticated
-            } else {
-                val count = authRepository.userCount()
-                if (count == 0) AuthGateState.UnauthenticatedNoUsers
-                else AuthGateState.UnauthenticatedHasUsers
+            try {
+                Log.e("AuthGateViewModel", "Resolving auth state...")
+                val result = withTimeoutOrNull(5000) {
+                    val currentId = sessionManager.currentUserIdOnce()
+                    Log.e("AuthGateViewModel", "currentUserIdOnce: $currentId")
+                    if (currentId != null) {
+                        AuthGateState.Authenticated
+                    } else {
+                        val count = authRepository.userCount()
+                        Log.e("AuthGateViewModel", "userCount: $count")
+                        if (count == 0) AuthGateState.UnauthenticatedNoUsers
+                        else AuthGateState.UnauthenticatedHasUsers
+                    }
+                }
+                
+                if (result == null) {
+                    Log.w("AuthGateViewModel", "Auth resolution timed out. Falling back to UnauthenticatedNoUsers.")
+                    _state.value = AuthGateState.UnauthenticatedNoUsers
+                } else {
+                    Log.e("AuthGateViewModel", "Resolved to: $result")
+                    _state.value = result
+                }
+            } catch (e: Exception) {
+                Log.e("AuthGateViewModel", "Error resolving auth state", e)
+                _state.value = AuthGateState.UnauthenticatedNoUsers
             }
-            _state.value = state
         }
     }
 }

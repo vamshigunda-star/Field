@@ -51,5 +51,12 @@ data class FitnessTestEntity(
     val updatedAt: Long = System.currentTimeMillis(),
     val isDeleted: Boolean = false,
 
-    val youtubeId: String? = null
+    val youtubeId: String? = null,
+
+    // "SEED" (came from assets/tests.csv) or "USER" (authored in-app).
+    // Scopes the CSV re-import so it can only delete rows it owns — see
+    // StandardsDao.replaceSeedNorms. Defaults to USER so a call site that forgets
+    // to set it fails safe (row is never bulk-deleted) rather than being wiped on
+    // the next seed-key bump.
+    val source: String = "USER"
 )
