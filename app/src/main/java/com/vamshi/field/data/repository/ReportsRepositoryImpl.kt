@@ -376,16 +376,15 @@ class ReportsRepositoryImpl @Inject constructor(
         }.sortedBy { it.test.name }
 
         // Outstanding tests = tests for athlete's age/sex with norms but no result yet (full history)
-        val outstanding = computeOutstandingTests(athlete)
+        val outstanding = computeOutstandingTests(athlete, ::cachedExpectedTests)
 
         // Flags scoped to this athlete's groups (latest session each), excluding MISSING_DATA —
         // we replace it with a history-aware version below so it clears once the athlete
         // completes the outstanding tests in any session.
         val flags = mutableListOf<AthleteFlag>()
         for (g in groups) {
-            val members = people.getIndividualsInGroup(g.id).first()
-            flags += computeGroupFlags(g, members)
-                .filter { it.individualId == athleteId && it.type != FlagType.MISSING_DATA }
+            flags += computeSingleAthleteFlags(g, athlete)
+                .filter { it.type != FlagType.MISSING_DATA }
         }
 
         if (outstanding.isNotEmpty()) {
@@ -504,6 +503,54 @@ class ReportsRepositoryImpl @Inject constructor(
             groupName = groupName,
             testCount = tests.size,
             athleteTestedCount = results.map { it.individualId }.distinct().size
+        )
+    }
+
+    private val expectedTestsCache = java.util.concurrent.ConcurrentHashMap<Pair<BiologicalSex, Int>, List<FitnessTest>>()
+
+    private suspend fun cachedExpectedTests(athlete: Individual): List<FitnessTest> =
+        expectedTestsCache.getOrPut(athlete.sex to athlete.currentAge) {
+            expectedTestsForAthlete(athlete)
+        }
+
+    private suspend fun computeSingleAthleteFlags(
+        group: Group,
+        athlete: Individual
+    ): List<AthleteFlag> {
+        val sessions = testing.getEventsForGroup(group.id).first()
+        val latest = sessions.firstOrNull() ?: return emptyList()
+        val latestResults = testing.getEventResults(latest.id).first()
+            .filter { it.individualId == athlete.id }
+            .groupBy { it.testId }
+            .map { (_, list) -> list.maxBy { it.createdAt } }
+
+        if (latestResults.isEmpty()) {
+            return listOf(
+                AthleteFlag(
+                    individualId = athlete.id,
+                    athleteName = athlete.fullName,
+                    groupId = group.id,
+                    groupName = group.name,
+                    type = FlagType.ABSENT,
+                    message = "Did not test in latest session"
+                )
+            )
+        }
+
+        val prevMap = mutableMapOf<Pair<String, String>, TestResult>()
+        for (r in latestResults) {
+            val hist = testing.getHistoryForTest(athlete.id, r.testId).first()
+            val prev = hist.filter { it.createdAt < latest.date }.maxByOrNull { it.createdAt } ?: continue
+            prevMap[athlete.id to r.testId] = prev
+        }
+
+        return getAthleteFlags(
+            groupId = group.id,
+            groupName = group.name,
+            latestSessionResults = latestResults,
+            previousSessionResultsByAthleteAndTest = prevMap,
+            athletesInGroup = listOf(athlete.id to athlete.fullName),
+            expectedTestsByAthlete = emptyMap()
         )
     }
 

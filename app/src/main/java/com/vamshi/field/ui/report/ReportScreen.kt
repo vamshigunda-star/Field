@@ -88,6 +88,7 @@ fun ReportScreen(
     onNavigateToTest: (String, String) -> Unit = { _, _ -> },
     onNavigateToAiCoach: (String?) -> Unit = {},
     onStartQuickTest: (String, List<String>) -> Unit = { _, _ -> },
+    onResumeTesting: (String, String?, String?, List<String>?) -> Unit = { _, _, _, _ -> },
     viewModel: ReportsHubViewModel = hiltViewModel(),
     aiCoachViewModel: AiCoachViewModel = hiltViewModel()
 ) {
@@ -169,7 +170,9 @@ fun ReportScreen(
                         else -> viewModel.onAction(action)
                     }
                 },
+                onNavigateToAthlete = onNavigateToAthlete,
                 onNavigateToTest = onNavigateToTest,
+                onResumeTesting = onResumeTesting,
                 modifier = Modifier.fillMaxSize()
             )
             
@@ -251,7 +254,9 @@ private fun ReportsHubContent(
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
     onAction: (ReportsHubAction) -> Unit,
+    onNavigateToAthlete: (String) -> Unit,
     onNavigateToTest: (String, String) -> Unit,
+    onResumeTesting: (String, String?, String?, List<String>?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tabTitles = listOf("Athlete Profile", "Event Report")
@@ -274,7 +279,12 @@ private fun ReportsHubContent(
 
         when (selectedTab) {
             0 -> AthleteProfileTab(uiState = uiState, onAction = onAction, onNavigateToTest = onNavigateToTest)
-            1 -> EventReportTab(uiState = uiState, onAction = onAction)
+            1 -> EventReportTab(
+                uiState = uiState,
+                onAction = onAction,
+                onNavigateToAthlete = onNavigateToAthlete,
+                onResumeTesting = onResumeTesting
+            )
         }
     }
 }
@@ -341,14 +351,10 @@ private fun AthleteProfileTab(
                 onAction = { action ->
                     when (action) {
                         is com.vamshi.field.ui.athlete.AthleteDashboardAction.OnStartQuickTest -> {
-                            uiState.selectedAthleteId?.let { athleteId ->
-                                onAction(ReportsHubAction.OnStartQuickTest(athleteId, action.testIds))
-                            }
+                            onAction(ReportsHubAction.OnStartQuickTest(uiState.selectedAthleteId, action.testIds))
                         }
                         is com.vamshi.field.ui.athlete.AthleteDashboardAction.OnNavigateToTest -> {
-                            uiState.selectedAthleteId?.let { athleteId ->
-                                onNavigateToTest(athleteId, action.testId)
-                            }
+                            onNavigateToTest(uiState.selectedAthleteId, action.testId)
                         }
                         else -> {}
                     }
@@ -373,7 +379,9 @@ private fun AthleteProfileTab(
 @Composable
 private fun EventReportTab(
     uiState: ReportsHubUiState,
-    onAction: (ReportsHubAction) -> Unit
+    onAction: (ReportsHubAction) -> Unit,
+    onNavigateToAthlete: (String) -> Unit,
+    onResumeTesting: (String, String?, String?, List<String>?) -> Unit
 ) {
     val data = uiState.homeData
 
@@ -430,7 +438,16 @@ private fun EventReportTab(
                     when (sessionAction) {
                         is com.vamshi.field.ui.session.SessionReportAction.OnSelectTest -> onAction(ReportsHubAction.SelectEventTest(sessionAction.testId))
                         is com.vamshi.field.ui.session.SessionReportAction.OnOpenSwitcher -> onAction(ReportsHubAction.OnOpenSwitcher)
-                        else -> {} // ignore other actions
+                        is com.vamshi.field.ui.session.SessionReportAction.OnNavigateToAthlete -> onNavigateToAthlete(sessionAction.individualId)
+                        is com.vamshi.field.ui.session.SessionReportAction.OnResumeTesting -> {
+                            val eventId = uiState.selectedEventId
+                            val groupId = uiState.selectedEventGroupId ?: uiState.eventData?.group?.id
+                            val allRows = uiState.eventData?.leaderboardByTest?.values?.flatten().orEmpty() + uiState.eventData?.absentByTest?.values?.flatten().orEmpty()
+                            val athleteId = allRows.firstOrNull()?.individualId
+                            val testIds = uiState.eventData?.tests?.map { it.id }
+                            onResumeTesting(eventId, groupId, athleteId, testIds)
+                        }
+                        else -> {}
                     }
                 },
                 headerContent = {

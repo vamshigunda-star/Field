@@ -1,80 +1,78 @@
-id,categoryId,name,unit,isHigherBetter,description,timingMode,inputParadigm,athletesPerHeat,trialsPerAthlete,validMin,validMax,interpretationStrategy,calculationConfig,youtube_id
-test_push_up,cat_muscular_strength,Push-Up Test,reps,TRUE,Perform as many correct push-ups as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,pKZ-lkKKMws
-test_wall_sit,cat_muscular_strength,Wall Sit Test,seconds,TRUE,Hold a seated position against a wall.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,mDdLC-yKudY
-test_1rm_squat,cat_muscular_strength,1RM Squat,barbell,TRUE,Find the maximum weight lifted for one squat repetition.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,hscOjLrW60c
-test_push_up,cat_muscular_strength,Push-Up Test,reps,TRUE,"Perform as many push-ups as possible within a set time, usually 1 minute.",INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,pKZ-lkKKMws
-test_pull_up,cat_muscular_strength,Pull-Up Test,reps,TRUE,Perform as many pull-ups as possible using an overhand grip.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,eDP_OOhMTZ4
-test_flexed_arm_hang,cat_muscular_strength,Flexed Arm Hang,seconds,TRUE,Hold the chin above the pull-up bar for as long as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,GA5SN4VfjsE
-test_single_leg_squat,cat_muscular_strength,Single-Leg Squat Test,reps,TRUE,"Perform squats on one leg to assess lower-body strength, balance, and control.",INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,3TyKayJDsK0
-test_hollow_hold,cat_muscular_strength,Hollow Hold Test,seconds,TRUE,Hold a hollow-body position on the floor to assess core strength and stability.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,YHBp6fvXYcI
-test_side_plank_hold,cat_muscular_endurance,Side Plank Hold,seconds,TRUE,Hold a side plank position as long as possible to assess lateral core endurance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,fzLeV8X0Gb8
-test_curl_up,cat_muscular_endurance,Curl-Up Test,reps,TRUE,Perform controlled curl-ups continuously to assess abdominal endurance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,d78qT9DUjsk
-test_push_up_test_1_min,cat_muscular_endurance,Push-Up Test (1 Min),reps,TRUE,Complete as many push-ups as possible in one minute.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,pKZ-lkKKMws
-test_bodyweight_squat,cat_muscular_endurance,Bodyweight Squat Test,reps,TRUE,Perform as many bodyweight squats as possible within the test period.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,-5LhNSMBrEs
-test_sit_up,cat_muscular_endurance,Sit-Up Test,reps,TRUE,Perform as many sit-ups as possible to assess core endurance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,H8apFXZI500
-test_plank_hold,cat_muscular_endurance,Plank Hold,seconds,TRUE,Maintain a plank position for as long as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,0G_OI6oVzLA
-test_burpee_test,cat_muscular_endurance,"Burpee Test,",reps,TRUE,Perform as many burpees as possible within a set time.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,gYiE_2BtSTg
-test_wall_sit,cat_muscular_endurance,Wall Sit Test,seconds,TRUE,Hold a seated position against a wall to assess lower-body endurance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,mDdLC-yKudY
-test_cooper_12_min_run,cat_cardio,Cooper 12-Min Run,distance,TRUE,Cover the greatest distance possible in 12 minutes.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,LoUCCvpxGMQ
-test_yo_yo,cat_cardio,Yo-Yo Test,level,TRUE,Run repeated shuttles at increasing speeds with short recovery periods.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,t00yk-Fi_2Y
-test_shuttle_run,cat_cardio,Shuttle Run Test,time,TRUE,Run repeatedly between markers to assess aerobic fitness.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,8xEPRtiG7yk
-test_rockport_walk,cat_cardio,Rockport Walk Test,time,TRUE,Walk one mile as fast as possible to estimate aerobic fitness.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,xxTJtHE1sEs
-test_600m_run,cat_cardio,600m Run,time,TRUE,Complete 600 meters in the shortest possible time.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,asAk6jnqnXg
-test_1_km_run,cat_cardio,1 km Run,time,TRUE,Complete 1 kilometer in the shortest possible time.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,v4mLpDrHzyU
-test_1_5_km_run,cat_cardio,1.5 km Run,time,TRUE,Complete 1.5 kilometers in the shortest possible time.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,v4mLpDrHzyU
-test_beep,cat_cardio,Beep Test,level,TRUE,Run 20m shuttles at increasing speeds until exhaustion.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,v4mLpDrHzyU
-test_40m_sprint,cat_speed,40m Sprint,seconds,FALSE,Sprint 40 meters as quickly as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,v4mLpDrHzyU
-test_flying_sprint,cat_speed,Flying Sprint,seconds,FALSE,Measure maximum sprint speed after a running start.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,JWYtCTA6nX8
-test_5m_sprint,cat_speed,5m Sprint,seconds,FALSE,Sprint 5 meters to assess acceleration.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,v4mLpDrHzyU
-test_10m_sprint,cat_speed,10m Sprint,seconds,FALSE,Sprint 10 meters to assess initial acceleration.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,v4mLpDrHzyU
-test_20m_sprint,cat_speed,20m Sprint,seconds,FALSE,Sprint 20 meters to assess acceleration and speed.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,v4mLpDrHzyU
-test_30m_sprint,cat_speed,30m Sprint,seconds,FALSE,Sprint 30 meters to assess sprint performance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,v4mLpDrHzyU
-test_50_m_sprint,cat_speed,50 m Sprint,seconds,FALSE,Sprint 50 meters as fast as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,v4mLpDrHzyU
-test_100_m_sprint,cat_speed,100 m Sprint,seconds,FALSE,Sprint 100 meters as fast as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,v4mLpDrHzyU
-test_t,cat_agility,T-Test,seconds,FALSE,"Sprint, shuffle, and backpedal through a T-shaped course.",INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,xqJUYPVSxG4
-test_illinois_agility,cat_agility,Illinois Agility Test,seconds,FALSE,Navigate a cone course as quickly as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,k9CYW5NRMAk
-test_hexagon,cat_agility,Hexagon Test,seconds,FALSE,Jump in and out of a hexagon pattern to assess agility.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,q9X6DRGgG-8
-test_ladder_drill,cat_agility,Ladder Drill Test,seconds,FALSE,Move through a ladder pattern quickly and accurately.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,fXpsPyo-vlw
-test_ball_chase,cat_agility,Ball Chase Test,seconds,FALSE,Chase and retrieve a moving ball as quickly as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,mMYypSKXogY
-test_semo_agility,cat_agility,SEMO Agility Test,seconds,FALSE,Complete a standardized agility course involving multiple direction changes.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,AtDSjL2vcXg
-test_5_10_5_shuttle_run,cat_agility,5-10-5 Shuttle Run,seconds,FALSE,Sprint and change direction rapidly over short distances.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,v4mLpDrHzyU
-test_zig_zag_run,cat_agility,Zig-Zag Run,seconds,FALSE,Run through a zig-zag cone pattern as quickly as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,cujiUxOWBQo
-test_seated_medicine_ball_throw,cat_power,Seated Medicine Ball Throw,,TRUE,Throw a medicine ball from a seated position to assess upper-body power.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,vj80bmsb-5w
-test_overhead_ball_throw,cat_power,Overhead Ball Throw,meters,TRUE,Throw a ball overhead for maximum distance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,b05ny1i308Y
-test_squat_jump,cat_power,Squat Jump,cm,TRUE,Jump vertically from a squat position to assess explosive power.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,h5TmdMMtIT4
-test_single_leg_hop,cat_power,Single-Leg Hop Test,cm,TRUE,Hop on one leg for maximum distance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,lcEdGr-zRhE
-test_vertical_jump,cat_power,Vertical Jump,cm,TRUE,Jump vertically to measure lower-body explosive power.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,M0x3i0Fg2o4
-test_standing_broad_jump,cat_power,standing broad jump,cm,TRUE,Jump forward from a standing position for maximum distance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,gu_Nb5Bjhas
-test_triple_hop,cat_power,Triple Hop Test,cm,TRUE,Perform three consecutive hops for maximum distance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,JTDLN6_TeZ8
-test_medicine_ball_throw,cat_power,Medicine Ball Throw,meters,TRUE,Throw a medicine ball as far as possible to assess upper-body power.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,ZErGIvOG17g
-test_toe_touch,cat_flexibility,Toe Touch Test,cm,TRUE,Reach toward the toes to assess hamstring flexibility.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,V1vdNca1JJY
-test_shoulder_flexibility,cat_flexibility,Shoulder Flexibility Test,cm,TRUE,Assess shoulder range of motion through reaching movements.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,vDIhTlsA9RY
-test_back_scratch,cat_flexibility,Back Scratch Test,cm,TRUE,Measure shoulder flexibility by reaching one hand over and one under the back.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,4keYngsC4sY
-test_butterfly_stretch,cat_flexibility,Butterfly Stretch Test,cm,TRUE,Measure hip and groin flexibility in the butterfly position.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,cfJcO7gi3zw
-test_groin_flexibility,cat_flexibility,Groin Flexibility Test,cm,TRUE,Assess flexibility of the hip adductors and groin muscles.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,qeq1M2whRY0
-test_knee_to_wall,cat_flexibility,Knee-to-Wall Test,cm,TRUE,Measure ankle dorsiflexion by moving the knee toward a wall.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,zVwz1QQwuck
-test_trunk_flexion,cat_flexibility,Trunk Flexion Test,cm,TRUE,Bend forward to assess lower-back and hamstring flexibility.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,JH7tMiaTlzM
-test_y_balance,cat_balance,Y-Balance Test,cm,TRUE,Reach in multiple directions while balancing on one leg.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,Dyl0oEknmnw
-test_star_excursion,cat_balance,Star Excursion Test,cm,TRUE,Reach along multiple lines while maintaining balance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,L71HjOxls2U
-test_tandem_stand,cat_balance,Tandem Stand Test,seconds,TRUE,Stand heel-to-toe to assess static balance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,5TMiFENDDg0
-test_single_leg_hop_hold,cat_balance,Single-Leg Hop & Hold,seconds,TRUE,Hop and maintain balance on one leg after landing.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,nekKEq-6FiY
-test_stork_stand,cat_balance,Stork Stand Test,seconds,TRUE,Balance on one foot for as long as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,JIb0GLm8Q7E
-test_flamingo_balance,cat_balance,Flamingo Balance Test,falls,FALSE,Balance on one leg while counting loss-of-balance attempts.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,4FC4LUGHsI8
-test_single_leg_stand,cat_balance,Single-Leg Stand,seconds,TRUE,Stand on one leg to assess static balance.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,HTVVv4ESgms
-test_eyes_closed_balance,cat_balance,Eyes Closed Balance Test,seconds,TRUE,Maintain balance on one leg with eyes closed.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,YwZWcjtAdvw
-test_slalom_dribble,cat_coordination,Slalom Dribble Test,seconds,FALSE,Dribble a ball through cones as quickly as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,xYvns1AYPnU
-test_wall_toss,cat_coordination,Wall Toss Test,catches,TRUE,Throw and catch a ball against a wall repeatedly.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,Iel3Il0bMs0
-test_target_throw,cat_coordination,Target Throw Test,hits,TRUE,Throw a ball at a target to assess coordination and accuracy.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,AzQC_gx6g2Y
-test_passing_accuracy,cat_coordination,Passing Accuracy Test,hits,TRUE,Pass a ball toward designated targets and score successful hits.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,Vmnljn1LuIE
-test_football_juggling,cat_coordination,Football Juggling Test,touches,TRUE,Keep a football in the air using repeated touches.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,xoZU7UGO_TI
-test_alternate_hand_wall_toss,cat_coordination,Alternate Hand Wall Toss,catches,TRUE,Throw and catch a ball using alternate hands against a wall.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,vEUVsUfie4E
-test_dribbling,cat_coordination,Dribbling Test,seconds,FALSE,Dribble a ball through a course while maintaining control.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,1uaibMjle9g
-test_ball_catch,cat_coordination,Ball Catch Test,catches,TRUE,Catch repeated ball throws to assess hand-eye coordination.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,m_8U19K-LpU
-test_light_response,cat_reaction_time,Light Response Test,ms,FALSE,Respond to a visual light stimulus as quickly as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,NSCs9jGv8Q0
-test_ruler_drop,cat_reaction_time,Ruler Drop Test,cm,TRUE,Catch a falling ruler to measure reaction time.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,pb-Mh5mWxac
-test_color_cone_reaction,cat_reaction_time,Color Cone Reaction Test,seconds,FALSE,React to a color signal and move to the corresponding cone.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,DPRJvLApad4
-test_clap_reaction,cat_reaction_time,Clap Reaction Test,seconds,FALSE,Respond to a clap signal as quickly as possible.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,6ZzinrwOgA8
-test_sound_signal_sprint,cat_reaction_time,Sound Signal Sprint,seconds,FALSE,Sprint immediately upon hearing a sound cue.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,uthcH1XmVIE
-test_light_signal_sprint,cat_reaction_time,Light Signal Sprint,seconds,FALSE,Sprint immediately upon seeing a visual signal.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,KIHJz1sKWXk
-test_partner_point,cat_reaction_time,Partner Point Test,seconds,FALSE,React quickly to a partner's pointing direction.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,cVQZYwPR4G0?si=
-test_choice_ball_catch,cat_reaction_time,Choice Ball Catch Test,reps,TRUE,Catch the correct ball based on a visual or verbal cue.,INDIVIDUAL,NUMERIC,1,1,0,1000,NORM_LOOKUP,,Nl5rI-qEoaI
+﻿id,categoryId,name,unit,isHigherBetter,description,timingMode,inputParadigm,athletesPerHeat,trialsPerAthlete,validMin,validMax,interpretationStrategy,calculationConfig,youtube_id
+test_push_up,cat_muscular_strength,Push-Up Test,reps,TRUE,Perform as many correct push-ups as possible.,MANUAL_ENTRY,INCREMENTAL,1,1,0,150,NORM_LOOKUP,,pKZ-lkKKMws
+test_wall_sit,cat_muscular_strength,Wall Sit Test,seconds,TRUE,Hold a seated position against a wall.,INDIVIDUAL,CHRONO,1,1,5,600,NORM_LOOKUP,,mDdLC-yKudY
+test_1rm_squat,cat_muscular_strength,1RM Squat,kg,TRUE,Find the maximum weight lifted for one squat repetition.,MANUAL_ENTRY,NUMERIC,1,3,20,500,NORM_LOOKUP,,hscOjLrW60c
+test_pull_up,cat_muscular_strength,Pull-Up Test,reps,TRUE,Perform as many pull-ups as possible using an overhand grip.,MANUAL_ENTRY,INCREMENTAL,1,1,0,75,NORM_LOOKUP,,eDP_OOhMTZ4
+test_flexed_arm_hang,cat_muscular_strength,Flexed Arm Hang,seconds,TRUE,Hold the chin above the pull-up bar for as long as possible.,INDIVIDUAL,CHRONO,1,1,1,180,NORM_LOOKUP,,GA5SN4VfjsE
+test_single_leg_squat,cat_muscular_strength,Single-Leg Squat Test,reps,TRUE,"Perform squats on one leg to assess lower-body strength, balance, and control.",MANUAL_ENTRY,INCREMENTAL,1,2,0,60,NORM_LOOKUP,,3TyKayJDsK0
+test_hollow_hold,cat_muscular_strength,Hollow Hold Test,seconds,TRUE,Hold a hollow-body position on the floor to assess core strength and stability.,INDIVIDUAL,CHRONO,1,1,5,300,NORM_LOOKUP,,YHBp6fvXYcI
+test_side_plank_hold,cat_muscular_endurance,Side Plank Hold,seconds,TRUE,Hold a side plank position as long as possible to assess lateral core endurance.,INDIVIDUAL,CHRONO,1,1,5,300,NORM_LOOKUP,,fzLeV8X0Gb8
+test_curl_up,cat_muscular_endurance,Curl-Up Test,reps,TRUE,Perform controlled curl-ups continuously to assess abdominal endurance.,MANUAL_ENTRY,INCREMENTAL,1,1,0,100,NORM_LOOKUP,,d78qT9DUjsk
+test_push_up_test_1_min,cat_muscular_endurance,Push-Up Test (1 Min),reps,TRUE,Complete as many push-ups as possible in one minute.,MANUAL_ENTRY,INCREMENTAL,1,1,0,120,NORM_LOOKUP,,pKZ-lkKKMws
+test_bodyweight_squat,cat_muscular_endurance,Bodyweight Squat Test,reps,TRUE,Perform as many bodyweight squats as possible within the test period.,MANUAL_ENTRY,INCREMENTAL,1,1,0,150,NORM_LOOKUP,,-5LhNSMBrEs
+test_sit_up,cat_muscular_endurance,Sit-Up Test,reps,TRUE,Perform as many sit-ups as possible to assess core endurance.,MANUAL_ENTRY,INCREMENTAL,1,1,0,120,NORM_LOOKUP,,H8apFXZI500
+test_plank_hold,cat_muscular_endurance,Plank Hold,seconds,TRUE,Maintain a plank position for as long as possible.,INDIVIDUAL,CHRONO,1,1,10,600,NORM_LOOKUP,,0G_OI6oVzLA
+test_burpee_test,cat_muscular_endurance,Burpee Test,reps,TRUE,Perform as many burpees as possible within a set time.,MANUAL_ENTRY,INCREMENTAL,1,1,0,80,NORM_LOOKUP,,gYiE_2BtSTg
+test_cooper_12_min_run,cat_cardio,Cooper 12-Min Run,meters,TRUE,Cover the greatest distance possible in 12 minutes.,MANUAL_ENTRY,NUMERIC,1,1,500,5000,NORM_LOOKUP,,LoUCCvpxGMQ
+test_yo_yo,cat_cardio,Yo-Yo Test,level,TRUE,Run repeated shuttles at increasing speeds with short recovery periods.,MANUAL_ENTRY,MULTI_STAGE,1,1,1,24.8,NORM_LOOKUP,,t00yk-Fi_2Y
+test_shuttle_run,cat_cardio,Shuttle Run Test,seconds,FALSE,Run repeatedly between markers to assess aerobic fitness.,INDIVIDUAL,CHRONO,1,2,8,45,NORM_LOOKUP,,8xEPRtiG7yk
+test_rockport_walk,cat_cardio,Rockport Walk Test,seconds,FALSE,Walk one mile as fast as possible to estimate aerobic fitness.,GROUP_START,CHRONO,8,1,480,1800,NORM_LOOKUP,,xxTJtHE1sEs
+test_600m_run,cat_cardio,600m Run,seconds,FALSE,Complete 600 meters in the shortest possible time.,GROUP_START,CHRONO,8,1,70,360,NORM_LOOKUP,,asAk6jnqnXg
+test_1_km_run,cat_cardio,1 km Run,seconds,FALSE,Complete 1 kilometer in the shortest possible time.,GROUP_START,CHRONO,8,1,130,600,NORM_LOOKUP,,v4mLpDrHzyU
+test_1_5_km_run,cat_cardio,1.5 km Run,seconds,FALSE,Complete 1.5 kilometers in the shortest possible time.,GROUP_START,CHRONO,8,1,200,900,NORM_LOOKUP,,v4mLpDrHzyU
+test_beep,cat_cardio,Beep Test,level,TRUE,Run 20m shuttles at increasing speeds until exhaustion.,MANUAL_ENTRY,MULTI_STAGE,1,1,1,21,NORM_LOOKUP,,v4mLpDrHzyU
+test_40m_sprint,cat_speed,40m Sprint,seconds,FALSE,Sprint 40 meters as quickly as possible.,INDIVIDUAL,CHRONO,1,3,4.4,12,NORM_LOOKUP,,v4mLpDrHzyU
+test_flying_sprint,cat_speed,Flying Sprint,seconds,FALSE,Measure maximum sprint speed after a running start.,INDIVIDUAL,CHRONO,1,3,0.8,4,NORM_LOOKUP,,JWYtCTA6nX8
+test_5m_sprint,cat_speed,5m Sprint,seconds,FALSE,Sprint 5 meters to assess acceleration.,INDIVIDUAL,CHRONO,1,3,0.9,3.5,NORM_LOOKUP,,v4mLpDrHzyU
+test_10m_sprint,cat_speed,10m Sprint,seconds,FALSE,Sprint 10 meters to assess initial acceleration.,INDIVIDUAL,CHRONO,1,3,1.4,4.5,NORM_LOOKUP,,v4mLpDrHzyU
+test_20m_sprint,cat_speed,20m Sprint,seconds,FALSE,Sprint 20 meters to assess acceleration and speed.,INDIVIDUAL,CHRONO,1,3,2.5,7,NORM_LOOKUP,,v4mLpDrHzyU
+test_30m_sprint,cat_speed,30m Sprint,seconds,FALSE,Sprint 30 meters to assess sprint performance.,INDIVIDUAL,CHRONO,1,3,3.5,9,NORM_LOOKUP,,v4mLpDrHzyU
+test_50_m_sprint,cat_speed,50 m Sprint,seconds,FALSE,Sprint 50 meters as fast as possible.,GROUP_START,CHRONO,6,2,5.4,15,NORM_LOOKUP,,v4mLpDrHzyU
+test_100_m_sprint,cat_speed,100 m Sprint,seconds,FALSE,Sprint 100 meters as fast as possible.,GROUP_START,CHRONO,8,2,9.5,30,NORM_LOOKUP,,v4mLpDrHzyU
+test_t,cat_agility,T-Test,seconds,FALSE,"Sprint, shuffle, and backpedal through a T-shaped course.",INDIVIDUAL,CHRONO,1,3,8.5,20,NORM_LOOKUP,,xqJUYPVSxG4
+test_illinois_agility,cat_agility,Illinois Agility Test,seconds,FALSE,Navigate a cone course as quickly as possible.,INDIVIDUAL,CHRONO,1,2,13.5,30,NORM_LOOKUP,,k9CYW5NRMAk
+test_hexagon,cat_agility,Hexagon Test,seconds,FALSE,Jump in and out of a hexagon pattern to assess agility.,INDIVIDUAL,CHRONO,1,3,9.5,35,NORM_LOOKUP,,q9X6DRGgG-8
+test_ladder_drill,cat_agility,Ladder Drill Test,seconds,FALSE,Move through a ladder pattern quickly and accurately.,INDIVIDUAL,CHRONO,1,3,2.5,15,NORM_LOOKUP,,fXpsPyo-vlw
+test_ball_chase,cat_agility,Ball Chase Test,seconds,FALSE,Chase and retrieve a moving ball as quickly as possible.,INDIVIDUAL,CHRONO,1,3,1,8,NORM_LOOKUP,,mMYypSKXogY
+test_semo_agility,cat_agility,SEMO Agility Test,seconds,FALSE,Complete a standardized agility course involving multiple direction changes.,INDIVIDUAL,CHRONO,1,2,9,25,NORM_LOOKUP,,AtDSjL2vcXg
+test_5_10_5_shuttle_run,cat_agility,5-10-5 Shuttle Run,seconds,FALSE,Sprint and change direction rapidly over short distances.,INDIVIDUAL,CHRONO,1,3,3.7,9,NORM_LOOKUP,,v4mLpDrHzyU
+test_zig_zag_run,cat_agility,Zig-Zag Run,seconds,FALSE,Run through a zig-zag cone pattern as quickly as possible.,INDIVIDUAL,CHRONO,1,2,4.5,25,NORM_LOOKUP,,cujiUxOWBQo
+test_seated_medicine_ball_throw,cat_power,Seated Medicine Ball Throw,meters,TRUE,Throw a medicine ball from a seated position to assess upper-body power.,MANUAL_ENTRY,NUMERIC,1,3,1,15,NORM_LOOKUP,,vj80bmsb-5w
+test_overhead_ball_throw,cat_power,Overhead Ball Throw,meters,TRUE,Throw a ball overhead for maximum distance.,MANUAL_ENTRY,NUMERIC,1,3,2,25,NORM_LOOKUP,,b05ny1i308Y
+test_squat_jump,cat_power,Squat Jump,cm,TRUE,Jump vertically from a squat position to assess explosive power.,MANUAL_ENTRY,NUMERIC,1,3,10,90,NORM_LOOKUP,,h5TmdMMtIT4
+test_single_leg_hop,cat_power,Single-Leg Hop Test,cm,TRUE,Hop on one leg for maximum distance.,MANUAL_ENTRY,NUMERIC,1,3,30,350,NORM_LOOKUP,,lcEdGr-zRhE
+test_vertical_jump,cat_power,Vertical Jump,cm,TRUE,Jump vertically to measure lower-body explosive power.,MANUAL_ENTRY,NUMERIC,1,3,10,125,NORM_LOOKUP,,M0x3i0Fg2o4
+test_standing_broad_jump,cat_power,Standing Broad Jump,cm,TRUE,Jump forward from a standing position for maximum distance.,MANUAL_ENTRY,NUMERIC,1,3,50,385,NORM_LOOKUP,,gu_Nb5Bjhas
+test_triple_hop,cat_power,Triple Hop Test,cm,TRUE,Perform three consecutive hops for maximum distance.,MANUAL_ENTRY,NUMERIC,1,3,100,1100,NORM_LOOKUP,,JTDLN6_TeZ8
+test_medicine_ball_throw,cat_power,Medicine Ball Throw,meters,TRUE,Throw a medicine ball as far as possible to assess upper-body power.,MANUAL_ENTRY,NUMERIC,1,3,1.5,25,NORM_LOOKUP,,ZErGIvOG17g
+test_toe_touch,cat_flexibility,Toe Touch Test,cm,TRUE,Reach toward the toes to assess hamstring flexibility.,MANUAL_ENTRY,NUMERIC,1,3,-30,40,NORM_LOOKUP,,V1vdNca1JJY
+test_shoulder_flexibility,cat_flexibility,Shoulder Flexibility Test,cm,TRUE,Assess shoulder range of motion through reaching movements.,MANUAL_ENTRY,NUMERIC,1,3,-30,30,NORM_LOOKUP,,vDIhTlsA9RY
+test_back_scratch,cat_flexibility,Back Scratch Test,cm,TRUE,Measure shoulder flexibility by reaching one hand over and one under the back.,MANUAL_ENTRY,NUMERIC,1,3,-30,25,NORM_LOOKUP,,4keYngsC4sY
+test_butterfly_stretch,cat_flexibility,Butterfly Stretch Test,cm,TRUE,Measure hip and groin flexibility in the butterfly position.,MANUAL_ENTRY,NUMERIC,1,3,0,50,NORM_LOOKUP,,cfJcO7gi3zw
+test_groin_flexibility,cat_flexibility,Groin Flexibility Test,cm,TRUE,Assess flexibility of the hip adductors and groin muscles.,MANUAL_ENTRY,NUMERIC,1,3,0,60,NORM_LOOKUP,,qeq1M2whRY0
+test_knee_to_wall,cat_flexibility,Knee-to-Wall Test,cm,TRUE,Measure ankle dorsiflexion by moving the knee toward a wall.,MANUAL_ENTRY,NUMERIC,1,3,0,25,NORM_LOOKUP,,zVwz1QQwuck
+test_trunk_flexion,cat_flexibility,Trunk Flexion Test,cm,TRUE,Bend forward to assess lower-back and hamstring flexibility.,MANUAL_ENTRY,NUMERIC,1,3,-20,45,NORM_LOOKUP,,JH7tMiaTlzM
+test_y_balance,cat_balance,Y-Balance Test,cm,TRUE,Reach in multiple directions while balancing on one leg.,MANUAL_ENTRY,NUMERIC,1,3,20,130,NORM_LOOKUP,,Dyl0oEknmnw
+test_star_excursion,cat_balance,Star Excursion Test,cm,TRUE,Reach along multiple lines while maintaining balance.,MANUAL_ENTRY,NUMERIC,1,3,20,130,NORM_LOOKUP,,L71HjOxls2U
+test_tandem_stand,cat_balance,Tandem Stand Test,seconds,TRUE,Stand heel-to-toe to assess static balance.,INDIVIDUAL,CHRONO,1,2,1,60,NORM_LOOKUP,,5TMiFENDDg0
+test_single_leg_hop_hold,cat_balance,Single-Leg Hop & Hold,seconds,TRUE,Hop and maintain balance on one leg after landing.,INDIVIDUAL,CHRONO,1,3,0.5,30,NORM_LOOKUP,,nekKEq-6FiY
+test_stork_stand,cat_balance,Stork Stand Test,seconds,TRUE,Balance on one foot for as long as possible.,INDIVIDUAL,CHRONO,1,3,1,180,NORM_LOOKUP,,JIb0GLm8Q7E
+test_flamingo_balance,cat_balance,Flamingo Balance Test,falls,FALSE,Balance on one leg while counting loss-of-balance attempts.,MANUAL_ENTRY,INCREMENTAL,1,1,0,30,NORM_LOOKUP,,4FC4LUGHsI8
+test_single_leg_stand,cat_balance,Single-Leg Stand,seconds,TRUE,Stand on one leg to assess static balance.,INDIVIDUAL,CHRONO,1,3,1,120,NORM_LOOKUP,,HTVVv4ESgms
+test_eyes_closed_balance,cat_balance,Eyes Closed Balance Test,seconds,TRUE,Maintain balance on one leg with eyes closed.,INDIVIDUAL,CHRONO,1,3,1,60,NORM_LOOKUP,,YwZWcjtAdvw
+test_slalom_dribble,cat_coordination,Slalom Dribble Test,seconds,FALSE,Dribble a ball through cones as quickly as possible.,INDIVIDUAL,CHRONO,1,2,5,30,NORM_LOOKUP,,xYvns1AYPnU
+test_wall_toss,cat_coordination,Wall Toss Test,catches,TRUE,Throw and catch a ball against a wall repeatedly.,MANUAL_ENTRY,INCREMENTAL,1,2,0,60,NORM_LOOKUP,,Iel3Il0bMs0
+test_target_throw,cat_coordination,Target Throw Test,hits,TRUE,Throw a ball at a target to assess coordination and accuracy.,MANUAL_ENTRY,INCREMENTAL,1,2,0,30,NORM_LOOKUP,,AzQC_gx6g2Y
+test_passing_accuracy,cat_coordination,Passing Accuracy Test,hits,TRUE,Pass a ball toward designated targets and score successful hits.,MANUAL_ENTRY,INCREMENTAL,1,2,0,20,NORM_LOOKUP,,Vmnljn1LuIE
+test_football_juggling,cat_coordination,Football Juggling Test,touches,TRUE,Keep a football in the air using repeated touches.,MANUAL_ENTRY,INCREMENTAL,1,3,0,300,NORM_LOOKUP,,xoZU7UGO_TI
+test_alternate_hand_wall_toss,cat_coordination,Alternate Hand Wall Toss,catches,TRUE,Throw and catch a ball using alternate hands against a wall.,MANUAL_ENTRY,INCREMENTAL,1,2,0,45,NORM_LOOKUP,,vEUVsUfie4E
+test_dribbling,cat_coordination,Dribbling Test,seconds,FALSE,Dribble a ball through a course while maintaining control.,INDIVIDUAL,CHRONO,1,2,5,35,NORM_LOOKUP,,1uaibMjle9g
+test_ball_catch,cat_coordination,Ball Catch Test,catches,TRUE,Catch repeated ball throws to assess hand-eye coordination.,MANUAL_ENTRY,INCREMENTAL,1,2,0,30,NORM_LOOKUP,,m_8U19K-LpU
+test_light_response,cat_reaction_time,Light Response Test,ms,FALSE,Respond to a visual light stimulus as quickly as possible.,MANUAL_ENTRY,NUMERIC,1,5,120,800,NORM_LOOKUP,,NSCs9jGv8Q0
+test_ruler_drop,cat_reaction_time,Ruler Drop Test,cm,TRUE,Catch a falling ruler to measure reaction time.,MANUAL_ENTRY,NUMERIC,1,3,1,30,NORM_LOOKUP,,pb-Mh5mWxac
+test_color_cone_reaction,cat_reaction_time,Color Cone Reaction Test,seconds,FALSE,React to a color signal and move to the corresponding cone.,INDIVIDUAL,CHRONO,1,3,1.2,8,NORM_LOOKUP,,DPRJvLApad4
+test_clap_reaction,cat_reaction_time,Clap Reaction Test,seconds,FALSE,Respond to a clap signal as quickly as possible.,INDIVIDUAL,CHRONO,1,3,0.8,6,NORM_LOOKUP,,6ZzinrwOgA8
+test_sound_signal_sprint,cat_reaction_time,Sound Signal Sprint,seconds,FALSE,Sprint immediately upon hearing a sound cue.,INDIVIDUAL,CHRONO,1,3,1.5,6,NORM_LOOKUP,,uthcH1XmVIE
+test_light_signal_sprint,cat_reaction_time,Light Signal Sprint,seconds,FALSE,Sprint immediately upon seeing a visual signal.,INDIVIDUAL,CHRONO,1,3,1.55,6,NORM_LOOKUP,,KIHJz1sKWXk
+test_partner_point,cat_reaction_time,Partner Point Test,seconds,FALSE,React quickly to a partner's pointing direction.,INDIVIDUAL,CHRONO,1,3,1,6,NORM_LOOKUP,,cVQZYwPR4G0
+test_choice_ball_catch,cat_reaction_time,Choice Ball Catch Test,reps,TRUE,Catch the correct ball based on a visual or verbal cue.,MANUAL_ENTRY,INCREMENTAL,1,2,0,20,NORM_LOOKUP,,Nl5rI-qEoaI

@@ -31,4 +31,11 @@ data class FitnessTest(
     val calculationConfig: String? = null,
     val youtubeId: String? = null,
     val source: TestSource = TestSource.USER
-)
+) {
+    val isTimeBased: Boolean
+        get() = unit.trim().lowercase() in listOf("s", "sec", "second", "seconds", "min", "minute", "minutes", "ms", "time")
+
+    val canUseStopwatch: Boolean
+        get() = timingMode != TimingMode.MANUAL_ENTRY && isTimeBased
+}
+

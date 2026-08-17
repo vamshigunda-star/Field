@@ -15,6 +15,7 @@ import com.vamshi.field.domain.usecase.testing.AthleteRadarData
 import com.vamshi.field.domain.usecase.testing.GetAthleteRadarDataUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -70,15 +71,18 @@ class AthleteDashboardViewModel @Inject constructor(
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoading = false) } }
                 .collect { d ->
                     if (d != null) {
-                        try {
-                            val radar = getAthleteRadarData(athleteId)
-                            _uiState.update { it.copy(data = d, radarData = radar, isLoading = false) }
-                        } catch (e: Exception) {
-                            Log.e("AthleteDashboardVM", "Failed to fetch radar data", e)
-                            _uiState.update { it.copy(data = d, isLoading = false) }
+                        val radarDeferred = async {
+                            try {
+                                getAthleteRadarData(athleteId)
+                            } catch (e: Exception) {
+                                Log.e("AthleteDashboardVM", "Failed to fetch radar data", e)
+                                null
+                            }
                         }
+                        val radar = radarDeferred.await()
+                        _uiState.update { it.copy(data = d, radarData = radar, isLoading = false) }
                     } else {
-                        _uiState.update { it.copy(data = null, isLoading = false) }
+                        _uiState.update { it.copy(data = null, radarData = null, isLoading = false) }
                     }
                 }
         }

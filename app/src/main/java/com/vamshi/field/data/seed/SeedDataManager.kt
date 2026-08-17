@@ -37,7 +37,7 @@ class SeedDataManager @Inject constructor(
         // Bumping this key re-runs seedIfNeeded() on next launch.
         // This is non-destructive for user data: catalog tests/categories are upserted in place,
         // and norm_references and recommendation tables are safely updated.
-        private const val KEY_SEEDED_VERSION = "data_seeded_version_v25"
+        private const val KEY_SEEDED_VERSION = "data_seeded_version_v26"
         private const val SEED_SOURCE = "SEED"
     }
 
@@ -84,7 +84,7 @@ class SeedDataManager @Inject constructor(
                             id = row["id"]!!,
                             categoryId = row["categoryId"]!!,
                             name = row["name"]!!,
-                            unit = row["unit"]!!,
+                            unit = row["unit"]?.trim()?.ifEmpty { "units" } ?: "units",
                             isHigherBetter = row["isHigherBetter"]?.lowercase() == "true",
                             description = row["description"],
                             timingMode = row["timingMode"] ?: "MANUAL_ENTRY",

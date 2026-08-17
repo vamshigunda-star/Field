@@ -266,6 +266,13 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                 },
                 onStartQuickTest = { athleteId, testIds ->
                     navController.navigate(Screen.QuickTest.createRoute(athleteId = athleteId, testIds = testIds))
+                },
+                onResumeTesting = { eventId, groupId, athleteId, testIds ->
+                    if (groupId != null) {
+                        navController.navigate(Screen.TestingGrid.createRoute(eventId, groupId = groupId))
+                    } else {
+                        navController.navigate(Screen.QuickTest.createRoute(athleteId = athleteId, testIds = testIds ?: emptyList(), eventId = eventId))
+                    }
                 }
             )
         }

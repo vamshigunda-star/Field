@@ -8,6 +8,7 @@ import com.vamshi.field.domain.model.reports.SessionReportData
 import com.vamshi.field.domain.repository.ReportsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,6 +16,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.util.Collections
+import java.util.LinkedHashMap
 
 import com.vamshi.field.domain.repository.PeopleRepository
 import com.vamshi.field.domain.repository.StandardsRepository
@@ -163,25 +166,66 @@ class ReportsHubViewModel @Inject constructor(
         }
     }
 
+    private data class CachedAthleteReport(
+        val athleteData: AthleteDashboardData,
+        val radarData: AthleteRadarData?,
+        val testId: String?
+    )
+
+    private val athleteCache = Collections.synchronizedMap(
+        object : LinkedHashMap<String, CachedAthleteReport>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedAthleteReport>?): Boolean {
+                return size > 25
+            }
+        }
+    )
+
     private fun loadAthlete(id: String) {
         athleteJob?.cancel()
-        _uiState.update { it.copy(selectedAthleteId = id, isLoadingAthlete = true, athleteData = null, selectedAthleteTestId = null) }
+        val cached = athleteCache[id]
+        if (cached != null) {
+            _uiState.update {
+                it.copy(
+                    selectedAthleteId = id,
+                    athleteData = cached.athleteData,
+                    athleteRadarData = cached.radarData,
+                    selectedAthleteTestId = cached.testId,
+                    isLoadingAthlete = false
+                )
+            }
+        } else {
+            _uiState.update {
+                it.copy(
+                    selectedAthleteId = id,
+                    isLoadingAthlete = true,
+                    athleteData = null,
+                    athleteRadarData = null,
+                    selectedAthleteTestId = null
+                )
+            }
+        }
+
         athleteJob = viewModelScope.launch {
             reports.observeAthleteDashboard(id, null)
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoadingAthlete = false) } }
                 .collect { data ->
-                    _uiState.update { state ->
-                        state.copy(
-                            athleteData = data,
-                            isLoadingAthlete = false,
-                            selectedAthleteTestId = state.selectedAthleteTestId ?: data?.tiles?.firstOrNull()?.test?.id
-                        )
-                    }
                     if (data != null) {
-                        try {
-                            val radar = getAthleteRadarData(id)
-                            _uiState.update { it.copy(athleteRadarData = radar) }
-                        } catch (_: Exception) {}
+                        val radarDeferred = async {
+                            try { getAthleteRadarData(id) } catch (_: Exception) { null }
+                        }
+                        val radar = radarDeferred.await()
+                        val initialTestId = data.tiles.firstOrNull()?.test?.id
+                        athleteCache[id] = CachedAthleteReport(data, radar, initialTestId)
+                        _uiState.update { state ->
+                            state.copy(
+                                athleteData = data,
+                                athleteRadarData = radar,
+                                isLoadingAthlete = false,
+                                selectedAthleteTestId = state.selectedAthleteTestId ?: initialTestId
+                            )
+                        }
+                    } else {
+                        _uiState.update { it.copy(athleteData = null, athleteRadarData = null, isLoadingAthlete = false) }
                     }
                 }
         }
