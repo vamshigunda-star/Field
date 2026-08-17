@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -31,7 +32,6 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -131,6 +131,19 @@ fun ReportScreen(
                 },
                 actions = {
                     if (selectedTab == 0 && uiState.athleteData != null) {
+                        if (isAiCoachVisible) {
+                            AppTopBarActionButton(
+                                icon = Icons.Default.AutoAwesome,
+                                contentDescription = "AI Coach",
+                                onClick = {
+                                    val contextString = uiState.athleteData?.let { d ->
+                                        "Athlete: ${d.athlete.fullName}\nAge: ${d.athlete.currentAge}\nAvg Percentile: ${d.athleteSessionAvgPctile}\nTest Results:\n" +
+                                        d.tiles.joinToString("\n") { t -> "${t.test.name}: ${t.latestResult?.rawScore} ${t.test.unit} (${t.latestResult?.percentile}th percentile)" }
+                                    }
+                                    onNavigateToAiCoach(contextString)
+                                }
+                            )
+                        }
                         if (uiState.isExporting) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
                         } else {
@@ -141,8 +154,25 @@ fun ReportScreen(
                             )
                         }
                     } else if (selectedTab == 1 && uiState.eventData != null) {
-                        IconButton(onClick = { viewModel.onAction(ReportsHubAction.RequestDeleteEvent) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete Event", tint = MaterialTheme.colorScheme.error)
+                        if (uiState.eventData!!.tests.isNotEmpty()) {
+                            AppTopBarActionButton(
+                                icon = Icons.Default.Lightbulb,
+                                contentDescription = "Coach Insight",
+                                onClick = { viewModel.onAction(ReportsHubAction.OnOpenInsight) }
+                            )
+                        }
+                        if (isAiCoachVisible) {
+                            AppTopBarActionButton(
+                                icon = Icons.Default.AutoAwesome,
+                                contentDescription = "AI Coach",
+                                onClick = {
+                                    val contextString = uiState.eventData?.let { d ->
+                                        "Session: ${d.event.name}\nTotal Athletes: ${d.totalAthletes}\n" +
+                                        "Tests:\n" + d.tests.joinToString("\n") { it.name }
+                                    }
+                                    onNavigateToAiCoach(contextString)
+                                }
+                            )
                         }
                         if (uiState.isExporting) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
@@ -152,6 +182,9 @@ fun ReportScreen(
                                 contentDescription = "Export Event CSV",
                                 onClick = { viewModel.onAction(ReportsHubAction.ExportEventCsv) }
                             )
+                        }
+                        IconButton(onClick = { viewModel.onAction(ReportsHubAction.RequestDeleteEvent) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete Event", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -175,37 +208,6 @@ fun ReportScreen(
                 onResumeTesting = onResumeTesting,
                 modifier = Modifier.fillMaxSize()
             )
-            
-            com.vamshi.field.ui.aicoach.components.DraggableAiFab(
-                isVisible = isAiCoachVisible,
-                onClick = {
-                    val contextString = if (selectedTab == 0) {
-                        uiState.athleteData?.let { d ->
-                            "Athlete: ${d.athlete.fullName}\nAge: ${d.athlete.currentAge}\nAvg Percentile: ${d.athleteSessionAvgPctile}\nTest Results:\n" +
-                            d.tiles.joinToString("\n") { t -> "${t.test.name}: ${t.latestResult?.rawScore} ${t.test.unit} (${t.latestResult?.percentile}th percentile)" }
-                        }
-                    } else {
-                        uiState.eventData?.let { d ->
-                            "Session: ${d.event.name}\nTotal Athletes: ${d.totalAthletes}\n" +
-                            "Tests:\n" + d.tests.joinToString("\n") { it.name }
-                        }
-                    }
-                    onNavigateToAiCoach(contextString)
-                }
-            )
-
-            if (selectedTab == 1 && uiState.eventData != null && uiState.eventData!!.tests.isNotEmpty()) {
-                ExtendedFloatingActionButton(
-                    onClick = { viewModel.onAction(ReportsHubAction.OnOpenInsight) },
-                    icon = { Icon(Icons.Default.Lightbulb, contentDescription = null) },
-                    text = { Text("Coach Insight") },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 16.dp, bottom = 96.dp)
-                )
-            }
         }
 
         if (uiState.showDeleteDialog) {

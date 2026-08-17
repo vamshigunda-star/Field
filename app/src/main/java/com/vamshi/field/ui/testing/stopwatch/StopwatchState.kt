@@ -89,6 +89,7 @@ sealed interface StopwatchAction {
     data object OnRequestSubmit : StopwatchAction
     data object OnDismissMissingEntriesDialog : StopwatchAction
     data object OnSubmitPending : StopwatchAction
+    data class OnToggleTimingMode(val mode: TimingMode) : StopwatchAction
 }
 
 sealed interface StopwatchUiEvent {

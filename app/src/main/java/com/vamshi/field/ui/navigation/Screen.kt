@@ -39,9 +39,20 @@ sealed class Screen(val route: String) {
         fun createRoute(eventId: String, groupId: String) = "testing_grid/$eventId/$groupId"
     }
 
-    data object Stopwatch : Screen("stopwatch/{eventId}/{fitnessTestId}/{groupId}?athleteId={athleteId}") {
-        fun createRoute(eventId: String, fitnessTestId: String, groupId: String, athleteId: String? = null) =
-            "stopwatch/$eventId/$fitnessTestId/$groupId" + if (athleteId != null) "?athleteId=$athleteId" else ""
+    data object Stopwatch : Screen("stopwatch/{eventId}/{fitnessTestId}/{groupId}?athleteId={athleteId}&timingMode={timingMode}") {
+        fun createRoute(
+            eventId: String,
+            fitnessTestId: String,
+            groupId: String,
+            athleteId: String? = null,
+            timingMode: String? = null
+        ): String {
+            val params = mutableListOf<String>()
+            if (athleteId != null) params.add("athleteId=$athleteId")
+            if (timingMode != null) params.add("timingMode=$timingMode")
+            val query = if (params.isNotEmpty()) "?" + params.joinToString("&") else ""
+            return "stopwatch/$eventId/$fitnessTestId/$groupId$query"
+        }
     }
 
     data object TestsHub : Screen("tests_hub")

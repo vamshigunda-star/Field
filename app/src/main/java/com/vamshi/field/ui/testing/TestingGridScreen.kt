@@ -35,7 +35,7 @@ fun TestingGridScreen(
     onNavigateToAthleteReport: (String) -> Unit,
     onNavigateToLeaderboard: (String, String, String) -> Unit,
     onNavigateToGroupReport: (String, String) -> Unit,
-    onNavigateToStopwatch: (String, String, String, String?) -> Unit = { _, _, _, _ -> },
+    onNavigateToStopwatch: (String, String, String, String?, String?) -> Unit = { _, _, _, _, _ -> },
     viewModel: TestingGridViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -51,7 +51,7 @@ fun TestingGridScreen(
                 is TestingGridAction.OnNavigateToAthleteReport -> onNavigateToAthleteReport(action.individualId)
                 is TestingGridAction.OnNavigateToLeaderboard -> onNavigateToLeaderboard(action.eventId, action.groupId, action.mode)
                 is TestingGridAction.OnNavigateToGroupReport -> onNavigateToGroupReport(action.eventId, action.groupId)
-                is TestingGridAction.OnNavigateToStopwatch -> onNavigateToStopwatch(action.eventId, action.fitnessTestId, action.groupId, action.individualId)
+                is TestingGridAction.OnNavigateToStopwatch -> onNavigateToStopwatch(action.eventId, action.fitnessTestId, action.groupId, action.individualId, action.timingMode)
                 else -> viewModel.onAction(action)
             }
         }
@@ -71,10 +71,16 @@ fun TestingGridScreen(
             athleteName = "${choice.athlete.firstName} ${choice.athlete.lastName}",
             testName = choice.test.name,
             unit = choice.test.unit,
-            onUseStopwatch = {
-                viewModel.onAction(TestingGridAction.OnSelectTimingMethod(choice.test.id, CaptureMethodPreference.STOPWATCH))
+            suggestedMode = choice.test.timingMode,
+            onSelectIndividualStopwatch = {
+                viewModel.onAction(TestingGridAction.OnSelectTimingMethod(choice.test.id, CaptureMethodPreference.INDIVIDUAL_STOPWATCH))
                 viewModel.onAction(TestingGridAction.OnDismissTimingChoice)
-                onNavigateToStopwatch(viewModel.eventId, choice.test.id, viewModel.groupId, choice.athlete.id)
+                onNavigateToStopwatch(viewModel.eventId, choice.test.id, viewModel.groupId, choice.athlete.id, com.vamshi.field.domain.model.standards.TimingMode.INDIVIDUAL.name)
+            },
+            onSelectGroupStopwatch = {
+                viewModel.onAction(TestingGridAction.OnSelectTimingMethod(choice.test.id, CaptureMethodPreference.GROUP_STOPWATCH))
+                viewModel.onAction(TestingGridAction.OnDismissTimingChoice)
+                onNavigateToStopwatch(viewModel.eventId, choice.test.id, viewModel.groupId, choice.athlete.id, com.vamshi.field.domain.model.standards.TimingMode.GROUP_START.name)
             },
             onEnterManually = {
                 viewModel.onAction(TestingGridAction.OnSelectTimingMethod(choice.test.id, CaptureMethodPreference.MANUAL))

@@ -37,6 +37,7 @@ class StopwatchViewModel @Inject constructor(
     private val fitnessTestId: String = savedStateHandle["fitnessTestId"] ?: ""
     private val groupId: String = savedStateHandle["groupId"] ?: ""
     private val initialAthleteId: String? = savedStateHandle["athleteId"] // New: handle passed athleteId
+    private val passedTimingMode: String? = savedStateHandle["timingMode"]
 
     private val _uiState = MutableStateFlow(StopwatchUiState())
     val uiState: StateFlow<StopwatchUiState> = _uiState.asStateFlow()
@@ -86,7 +87,11 @@ class StopwatchViewModel @Inject constructor(
                 val event = testingRepository.getEventById(eventId)
                 val groupName = if (groupId.isNotEmpty()) peopleRepository.getGroupById(groupId)?.name else null
 
-                when (test.timingMode) {
+                val resolvedMode = passedTimingMode?.let {
+                    try { TimingMode.valueOf(it) } catch (_: Exception) { null }
+                } ?: if (test.timingMode == TimingMode.GROUP_START) TimingMode.GROUP_START else TimingMode.INDIVIDUAL
+
+                when (resolvedMode) {
                     TimingMode.INDIVIDUAL -> {
                         _uiState.update {
                             it.copy(
@@ -96,6 +101,7 @@ class StopwatchViewModel @Inject constructor(
                                 testUnit = test.unit,
                                 groupName = groupName,
                                 trialsPerAthlete = totalTrialsPerAthlete,
+                                totalHeats = heats.size,
                                 isLoading = false,
                                 sessionLoaded = true,
                                 selectedAthleteId = initialAthleteId // Use passed ID instead of first entry
@@ -261,8 +267,46 @@ class StopwatchViewModel @Inject constructor(
             is StopwatchAction.OnDismissDiscard -> {
                 _uiState.update { it.copy(showDiscardDialog = false) }
             }
+            is StopwatchAction.OnToggleTimingMode -> handleToggleTimingMode(action.mode)
             is StopwatchAction.OnNavigateBack -> Unit
         }
+    }
+
+    private fun handleToggleTimingMode(newMode: TimingMode) {
+        if (_uiState.value.mode == newMode) return
+        if (_uiState.value.stopwatchPhase == StopwatchPhase.RUNNING) return
+
+        if (newMode == TimingMode.INDIVIDUAL) {
+            _uiState.update {
+                it.copy(
+                    mode = TimingMode.INDIVIDUAL,
+                    stopwatchPhase = StopwatchPhase.READY,
+                    elapsedMs = 0L
+                ).withRefreshedAllAthletes()
+            }
+            recomputeSummaryCounts()
+        } else if (newMode == TimingMode.GROUP_START) {
+            currentHeatIndex = findFirstIncompleteHeatIndex()
+            _uiState.update {
+                it.copy(
+                    mode = TimingMode.GROUP_START,
+                    stopwatchPhase = StopwatchPhase.READY,
+                    elapsedMs = 0L,
+                    heatAthletes = buildHeatAthletesList(totalTrialsPerAthlete),
+                    currentHeatNumber = currentHeatIndex + 1,
+                    totalHeats = heats.size
+                )
+            }
+            recomputeSummaryCounts()
+        }
+    }
+
+    private fun findFirstIncompleteHeatIndex(): Int {
+        for (i in heats.indices) {
+            val hasIncomplete = heats[i].any { (completionState[it.id] ?: 0) < totalTrialsPerAthlete }
+            if (hasIncomplete) return i
+        }
+        return 0
     }
 
     private fun handleStartStop() {

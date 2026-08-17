@@ -1,6 +1,7 @@
-﻿package com.vamshi.field.ui.testing
+package com.vamshi.field.ui.testing
 
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -23,7 +24,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -69,42 +73,132 @@ fun TimingChoiceDialog(
     athleteName: String,
     testName: String,
     unit: String,
-    onUseStopwatch: () -> Unit,
+    suggestedMode: TimingMode? = null,
+    onSelectIndividualStopwatch: () -> Unit,
+    onSelectGroupStopwatch: () -> Unit,
     onEnterManually: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("How are you recording this time?") },
-        text = {
+        title = {
             Column {
+                Text("Select Timing Mode", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
                 Text(
-                    "$athleteName � $testName ($unit)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "Use the in-app stopwatch for live timing, or enter the time manually if you used an external timer.",
-                    style = MaterialTheme.typography.bodyMedium
+                    "$athleteName • $testName ($unit)",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
-        confirmButton = {
-            Button(
-                onClick = onUseStopwatch,
-                colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text("Use Stopwatch", fontWeight = FontWeight.Bold)
+                TimingOptionCard(
+                    title = "Individual Stopwatch",
+                    description = "Time one athlete at a time with dedicated Start/Stop timer",
+                    icon = Icons.Default.Person,
+                    isSuggested = suggestedMode == TimingMode.INDIVIDUAL,
+                    onClick = onSelectIndividualStopwatch
+                )
+                TimingOptionCard(
+                    title = "Group / Heat Stopwatch",
+                    description = "Time multiple athletes together with mass start and split tap capture",
+                    icon = Icons.Default.Groups,
+                    isSuggested = suggestedMode == TimingMode.GROUP_START,
+                    onClick = onSelectGroupStopwatch
+                )
+                TimingOptionCard(
+                    title = "Manual Keypad Entry",
+                    description = "Type in a pre-recorded score using the keypad",
+                    icon = Icons.Default.Edit,
+                    isSuggested = false,
+                    onClick = onEnterManually
+                )
             }
         },
+        confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onEnterManually) {
-                Text("Enter Manually")
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
             }
         }
     )
+}
+
+@Composable
+private fun TimingOptionCard(
+    title: String,
+    description: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isSuggested: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSuggested) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        border = if (isSuggested) BorderStroke(1.5.dp, NavyPrimary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(if (isSuggested) NavyPrimary else MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (isSuggested) Color.White else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (isSuggested) {
+                        Spacer(Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = NavyPrimary.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "Default",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = NavyPrimary,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 16.sp
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -260,8 +354,11 @@ private fun handleCellAction(
 ) {
     if (test.canUseStopwatch) {
         when (uiState.testCapturePreferences[test.id]) {
-            CaptureMethodPreference.STOPWATCH -> {
-                onAction(TestingGridAction.OnNavigateToStopwatch(eventId, test.id, groupId, athlete.id))
+            CaptureMethodPreference.INDIVIDUAL_STOPWATCH -> {
+                onAction(TestingGridAction.OnNavigateToStopwatch(eventId, test.id, groupId, athlete.id, TimingMode.INDIVIDUAL.name))
+            }
+            CaptureMethodPreference.GROUP_STOPWATCH -> {
+                onAction(TestingGridAction.OnNavigateToStopwatch(eventId, test.id, groupId, athlete.id, TimingMode.GROUP_START.name))
             }
             CaptureMethodPreference.MANUAL -> {
                 onAction(TestingGridAction.OnStartEditing(athlete, test))

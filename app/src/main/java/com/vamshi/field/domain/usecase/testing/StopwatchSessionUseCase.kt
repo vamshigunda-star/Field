@@ -33,14 +33,8 @@ class StopwatchSessionUseCase @Inject constructor(
             athlete.id to testingRepository.getTrialCountForAthlete(eventId, athlete.id, fitnessTestId)
         }
 
-        val heats = when (test.timingMode) {
-            TimingMode.GROUP_START -> {
-                val perHeat = test.athletesPerHeat ?: 6
-                athletes.chunked(perHeat)
-            }
-            TimingMode.INDIVIDUAL -> athletes.map { listOf(it) }
-            TimingMode.MANUAL_ENTRY -> emptyList()
-        }
+        val perHeat = test.athletesPerHeat ?: 6
+        val heats = if (athletes.isNotEmpty()) athletes.chunked(perHeat) else emptyList()
 
         return StopwatchSession(
             fitnessTest = test,

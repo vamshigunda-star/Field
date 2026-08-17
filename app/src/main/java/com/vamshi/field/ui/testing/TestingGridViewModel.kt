@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class CaptureMethodPreference { STOPWATCH, MANUAL }
+enum class CaptureMethodPreference { INDIVIDUAL_STOPWATCH, GROUP_STOPWATCH, MANUAL }
 
 data class TestingGridUiState(
     val event: TestingEvent? = null,
@@ -90,7 +90,13 @@ sealed interface TestingGridAction {
     data class OnNavigateToAthleteReport(val individualId: String) : TestingGridAction
     data class OnNavigateToLeaderboard(val eventId: String, val groupId: String, val mode: String) : TestingGridAction
     data class OnNavigateToGroupReport(val eventId: String, val groupId: String) : TestingGridAction
-    data class OnNavigateToStopwatch(val eventId: String, val fitnessTestId: String, val groupId: String, val individualId: String?) : TestingGridAction
+    data class OnNavigateToStopwatch(
+        val eventId: String,
+        val fitnessTestId: String,
+        val groupId: String,
+        val individualId: String?,
+        val timingMode: String? = null
+    ) : TestingGridAction
 }
 
 @HiltViewModel

@@ -36,6 +36,6 @@ data class FitnessTest(
         get() = unit.trim().lowercase() in listOf("s", "sec", "second", "seconds", "min", "minute", "minutes", "ms", "time")
 
     val canUseStopwatch: Boolean
-        get() = timingMode != TimingMode.MANUAL_ENTRY && isTimeBased
+        get() = isTimeBased
 }
 

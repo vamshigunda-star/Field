@@ -39,6 +39,9 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.alpha
 
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Person
+
 @Composable
 fun StopwatchScreen(
     onNavigateBack: () -> Unit,
@@ -143,7 +146,7 @@ private fun StopwatchContent(
 ) {
     Scaffold(
         topBar = {
-            StopwatchTopBar(uiState = uiState, onBack = { onAction(StopwatchAction.OnNavigateBack) })
+            StopwatchTopBar(uiState = uiState, onAction = onAction)
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
@@ -199,7 +202,7 @@ private fun StopwatchContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StopwatchTopBar(uiState: StopwatchUiState, onBack: () -> Unit) {
+private fun StopwatchTopBar(uiState: StopwatchUiState, onAction: (StopwatchAction) -> Unit) {
     Column {
         AppTopBar(
             title = {
@@ -213,12 +216,100 @@ private fun StopwatchTopBar(uiState: StopwatchUiState, onBack: () -> Unit) {
                 }
             },
             navigationIcon = {
-                IconButton(onClick = onBack) {
+                IconButton(onClick = { onAction(StopwatchAction.OnNavigateBack) }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             }
         )
+
+        // Mode Switcher Segmented Control (only when session is loaded)
+        if (uiState.sessionLoaded) {
+            StopwatchModeSelector(
+                currentMode = uiState.mode,
+                enabled = uiState.stopwatchPhase != StopwatchPhase.RUNNING,
+                onSelectMode = { onAction(StopwatchAction.OnToggleTimingMode(it)) }
+            )
+        }
+
         SaveProgressIndicator(completedCount = uiState.completedCount, totalCount = uiState.totalCount)
+    }
+}
+
+@Composable
+private fun StopwatchModeSelector(
+    currentMode: TimingMode,
+    enabled: Boolean,
+    onSelectMode: (TimingMode) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            ModeTabButton(
+                title = "Individual",
+                icon = Icons.Default.Person,
+                isSelected = currentMode == TimingMode.INDIVIDUAL,
+                enabled = enabled,
+                onClick = { onSelectMode(TimingMode.INDIVIDUAL) },
+                modifier = Modifier.weight(1f)
+            )
+            ModeTabButton(
+                title = "Group Heats",
+                icon = Icons.Default.Groups,
+                isSelected = currentMode == TimingMode.GROUP_START,
+                enabled = enabled,
+                onClick = { onSelectMode(TimingMode.GROUP_START) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ModeTabButton(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isSelected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(8.dp),
+        color = if (isSelected) NavyPrimary else Color.Transparent,
+        shadowElevation = if (isSelected) 2.dp else 0.dp,
+        modifier = modifier.height(36.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

@@ -371,8 +371,8 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
         ) {
             TestingGridScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToStopwatch = { eventId, testId, groupId, athleteId ->
-                    navController.navigate(Screen.Stopwatch.createRoute(eventId, testId, groupId, athleteId))
+                onNavigateToStopwatch = { eventId, testId, groupId, athleteId, timingMode ->
+                    navController.navigate(Screen.Stopwatch.createRoute(eventId, testId, groupId, athleteId, timingMode))
                 },
                 onNavigateToLeaderboard = { eventId, groupId, mode ->
                     navController.navigate(Screen.Leaderboard.createRoute(eventId, groupId, mode))
@@ -392,7 +392,8 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                 navArgument("eventId") { type = NavType.StringType },
                 navArgument("fitnessTestId") { type = NavType.StringType },
                 navArgument("groupId") { type = NavType.StringType },
-                navArgument("athleteId") { type = NavType.StringType; nullable = true }
+                navArgument("athleteId") { type = NavType.StringType; nullable = true },
+                navArgument("timingMode") { type = NavType.StringType; nullable = true }
             )
         ) {
             StopwatchScreen(

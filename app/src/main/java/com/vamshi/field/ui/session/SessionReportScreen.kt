@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lightbulb
@@ -33,7 +34,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,8 +59,8 @@ import com.vamshi.field.domain.model.reports.Classification
 import com.vamshi.field.domain.model.reports.LeaderboardRow
 import com.vamshi.field.domain.repository.AiCoachStatus
 import com.vamshi.field.ui.aicoach.AiCoachViewModel
-import com.vamshi.field.ui.aicoach.components.AiFloatingActionButton
 import com.vamshi.field.ui.components.AppTopBar
+import com.vamshi.field.ui.components.AppTopBarActionButton
 import com.vamshi.field.ui.components.AppTopBarSubtitleColor
 import com.vamshi.field.ui.report.components.AthleteLeaderRow
 import com.vamshi.field.ui.report.components.SessionSwitcherSheet
@@ -177,42 +177,41 @@ fun SessionReportContent(
                 },
                 actions = {
                     if (data != null) {
-                        IconButton(onClick = { onAction(SessionReportAction.OnRequestDelete) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete Event")
+                        if (data.tests.isNotEmpty()) {
+                            AppTopBarActionButton(
+                                icon = Icons.Default.Lightbulb,
+                                contentDescription = "Coach Insight",
+                                onClick = { onAction(SessionReportAction.OnOpenInsight) }
+                            )
+                        }
+                        if (isAiCoachVisible) {
+                            AppTopBarActionButton(
+                                icon = Icons.Default.AutoAwesome,
+                                contentDescription = "AI Coach",
+                                onClick = {
+                                    val contextString = data.let { d ->
+                                        "Session: ${d.event.name}\nTotal Athletes: ${d.totalAthletes}\n" +
+                                        "Tests:\n" + d.tests.joinToString("\n") { it.name }
+                                    }
+                                    onNavigateToAiCoach(contextString)
+                                }
+                            )
                         }
                         if (uiState.isExporting) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = Color.White)
                         } else {
-                            IconButton(onClick = { onAction(SessionReportAction.OnExportCsv) }) {
-                                Icon(Icons.Default.Download, contentDescription = "Export CSV")
-                            }
+                            AppTopBarActionButton(
+                                icon = Icons.Default.Download,
+                                contentDescription = "Export CSV",
+                                onClick = { onAction(SessionReportAction.OnExportCsv) }
+                            )
+                        }
+                        IconButton(onClick = { onAction(SessionReportAction.OnRequestDelete) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete Event", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (data != null && data.tests.isNotEmpty()) {
-                    ExtendedFloatingActionButton(
-                        onClick = { onAction(SessionReportAction.OnOpenInsight) },
-                        icon = { Icon(Icons.Default.Lightbulb, contentDescription = null) },
-                        text = { Text("Coach Insight") },
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-                AiFloatingActionButton(
-                    isVisible = isAiCoachVisible,
-                    onClick = {
-                        val contextString = data?.let { d ->
-                            "Session: ${d.event.name}\nTotal Athletes: ${d.totalAthletes}\n" +
-                            "Tests:\n" + d.tests.joinToString("\n") { it.name }
-                        }
-                        onNavigateToAiCoach(contextString)
-                    }
-                )
-            }
         }
     ) { padding ->
         when {
