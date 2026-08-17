@@ -16,8 +16,13 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
@@ -234,57 +239,66 @@ private fun TestLibraryBody(
         navigator = navigator,
         listPane = {
             AnimatedPane {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    uiState.categories.forEach { category ->
-                        val isExpanded = category.id == uiState.expandedCategoryId
-                        val categoryTests = uiState.allTests.filter { it.categoryId == category.id }
-                        val filteredTests = if (uiState.searchQuery.isBlank()) {
-                            categoryTests
-                        } else {
-                            categoryTests.filter { it.name.contains(uiState.searchQuery, ignoreCase = true) }
-                        }
-
-                        item(key = "category_${category.id}") {
-                            CategoryAccordionHeader(
-                                name = category.name,
-                                totalCount = categoryTests.size,
-                                isExpanded = isExpanded,
-                                onClick = { onAction(TestLibraryAction.OnToggleCategoryExpanded(category.id)) }
+                Column(modifier = Modifier.fillMaxSize()) {
+                    OutlinedTextField(
+                        value = uiState.searchQuery,
+                        onValueChange = { onAction(TestLibraryAction.OnSearchQueryChanged(it)) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        placeholder = { Text("Search tests...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        }
+                        },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
+                        ),
+                        singleLine = true
+                    )
 
-                        if (isExpanded) {
-                            item(key = "description_${category.id}") {
-                                Column {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        uiState.categories.forEach { category ->
+                            val isExpanded = category.id == uiState.expandedCategoryId
+                            val categoryTests = uiState.allTests.filter { it.categoryId == category.id }
+                            val filteredTests = if (uiState.searchQuery.isBlank()) {
+                                categoryTests
+                            } else {
+                                categoryTests.filter { it.name.contains(uiState.searchQuery, ignoreCase = true) }
+                            }
+
+                            item(key = "category_${category.id}") {
+                                CategoryAccordionHeader(
+                                    name = category.name,
+                                    totalCount = categoryTests.size,
+                                    isExpanded = isExpanded,
+                                    onClick = { onAction(TestLibraryAction.OnToggleCategoryExpanded(category.id)) }
+                                )
+                            }
+
+                            if (isExpanded) {
+                                item(key = "description_${category.id}") {
                                     CategoryDescription(description = category.description)
-                                    OutlinedTextField(
-                                        value = uiState.searchQuery,
-                                        onValueChange = { onAction(TestLibraryAction.OnSearchQueryChanged(it)) },
-                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                        placeholder = { Text("Search tests...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                        shape = RoundedCornerShape(20.dp),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                            focusedBorderColor = MaterialTheme.colorScheme.primary
-                                        ),
-                                        singleLine = true
+                                }
+                                items(filteredTests, key = { it.id }) { test ->
+                                    TestListCard(
+                                        test = test,
+                                        categoryName = category.name,
+                                        onClick = { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, test.id) },
+                                        modifier = Modifier.padding(top = 4.dp)
                                     )
                                 }
-                            }
-                            items(filteredTests, key = { it.id }) { test ->
-                                TestListCard(
-                                    test = test,
-                                    categoryName = category.name,
-                                    onClick = { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, test.id) },
-                                    modifier = Modifier.padding(top = 12.dp)
-                                )
                             }
                         }
                     }
@@ -309,28 +323,37 @@ private fun TestLibraryBody(
 
 @Composable
 private fun TestListCard(test: FitnessTest, categoryName: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column {
+            // Netflix-style Top Video / Athletic Hero Thumbnail
             TestVideoPreview(
                 youtubeId = test.youtubeId,
-                testName = test.name
+                testName = test.name,
+                height = 135.dp,
+                cornerShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
             )
 
-            Column(modifier = Modifier.padding(12.dp)) {
+            // Card Body (Clickable to open test detail)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick)
+                    .padding(14.dp)
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
                         test.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f, fill = false)
                     )
@@ -339,11 +362,11 @@ private fun TestListCard(test: FitnessTest, categoryName: String, onClick: () ->
                     }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(3.dp))
 
                 Text(
                     text = "$categoryName • ${test.unit}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -354,28 +377,38 @@ private fun TestListCard(test: FitnessTest, categoryName: String, onClick: () ->
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Trend/Context Indicator
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            if (test.isHigherBetter) Icons.AutoMirrored.Filled.TrendingUp
-                            else Icons.AutoMirrored.Filled.TrendingDown,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                    val badgeColor = if (test.isHigherBetter) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                    val textColor = if (test.isHigherBetter) Color(0xFF2E7D32) else Color(0xFFC62828)
+                    Surface(
+                        color = badgeColor,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
                         Text(
                             if (test.isHigherBetter) "Higher is better" else "Lower is better",
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = textColor
                         )
                     }
 
-                    TextButton(
-                        onClick = onClick,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text("View Test")
+                        Text(
+                            "View Details",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = "View Details",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
                 }
             }
@@ -387,13 +420,14 @@ private fun TestListCard(test: FitnessTest, categoryName: String, onClick: () ->
 @Composable
 private fun CustomBadge() {
     Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+        shape = RoundedCornerShape(4.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
     ) {
         Text(
             "Custom",
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         )
@@ -420,6 +454,42 @@ private fun TestDetailPane(test: FitnessTest, onAction: (TestLibraryAction) -> U
             )
             if (test.source == TestSource.USER) {
                 CustomBadge()
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    "Unit: ${test.unit}",
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            val badgeColor = if (test.isHigherBetter) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+            val textColor = if (test.isHigherBetter) Color(0xFF2E7D32) else Color(0xFFC62828)
+            Surface(
+                color = badgeColor,
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    if (test.isHigherBetter) "Higher is better" else "Lower is better",
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = textColor
+                )
             }
         }
         Spacer(modifier = Modifier.height(16.dp))

@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.vamshi.field.domain.model.standards.FitnessTest
 
 /**
@@ -54,16 +55,17 @@ fun CategoryAccordionHeader(
 ) {
     val chevronRotation by animateFloatAsState(if (isExpanded) 180f else 0f, label = "chevronRotation")
     val backgroundColor by animateColorAsState(
-        if (isExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface,
+        if (isExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface,
         label = "categoryHeaderBackground"
     )
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = backgroundColor,
+        shadowElevation = 2.dp,
         border = BorderStroke(
-            if (isExpanded) 2.dp else 1.dp,
+            1.5.dp,
             if (isExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
         ),
         modifier = modifier.fillMaxWidth()
@@ -71,14 +73,14 @@ fun CategoryAccordionHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold
                 )
                 if (subtitle != null) {
@@ -91,15 +93,16 @@ fun CategoryAccordionHeader(
             }
             if (selectedCount > 0) {
                 Surface(
-                    shape = CircleShape,
+                    shape = RoundedCornerShape(6.dp),
                     color = MaterialTheme.colorScheme.primary
                 ) {
                     Text(
                         "$selectedCount",
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
             }

@@ -28,10 +28,14 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.vamshi.field.ui.util.youtubeThumbnailUrl
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+
 /**
  * Shared card-top thumbnail slot for Test Library and Recommendations cards. Always
  * occupies [height] regardless of whether a video exists, so list items stay uniform
- * height — renders a neutral placeholder icon when [youtubeId] is null.
+ * height — renders a branded athletic gradient header when [youtubeId] is null.
  */
 @Composable
 fun TestThumbnail(
@@ -40,7 +44,7 @@ fun TestThumbnail(
     onPlayClick: () -> Unit,
     modifier: Modifier = Modifier,
     height: Dp = 135.dp,
-    cornerShape: RoundedCornerShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+    cornerShape: RoundedCornerShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
 ) {
     Box(
         modifier = modifier
@@ -57,44 +61,65 @@ fun TestThumbnail(
                 modifier = Modifier.fillMaxSize()
             )
 
+            // Netflix-style subtle dark gradient overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f))
+                        )
+                    )
+            )
+
             Surface(
                 modifier = Modifier.size(40.dp).align(Alignment.Center),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                shadowElevation = 4.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.PlayArrow,
                         contentDescription = "Play",
                         tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
 
             Surface(
-                modifier = Modifier.padding(8.dp).align(Alignment.BottomStart),
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                modifier = Modifier.padding(10.dp).align(Alignment.BottomStart),
+                shape = RoundedCornerShape(6.dp),
+                color = Color.Black.copy(alpha = 0.65f)
             ) {
                 Text(
                     "Video Guide",
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                 )
             }
         } else {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.FitnessCenter,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
                     modifier = Modifier.size(36.dp)
                 )
             }

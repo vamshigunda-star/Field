@@ -18,9 +18,8 @@ fun CategoryDescription(
     val hasRealDescription = realDescription != null
     Text(
         text = realDescription ?: fallback,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (hasRealDescription) 1f else 0.6f),
-        fontStyle = if (hasRealDescription) FontStyle.Normal else FontStyle.Italic,
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (hasRealDescription) 1f else 0.7f),
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 6.dp)
     )
 }
