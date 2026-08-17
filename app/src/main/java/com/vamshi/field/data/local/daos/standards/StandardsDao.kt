@@ -121,7 +121,9 @@ interface StandardsDao {
     @Transaction
     suspend fun replaceUserNormsForTest(testId: String, norms: List<NormReferenceEntity>) {
         deleteUserNormsForTest(testId)
-        insertNorms(norms)
+        norms.chunked(50).forEach { chunk ->
+            insertNorms(chunk)
+        }
     }
 
     /**
@@ -151,6 +153,8 @@ interface StandardsDao {
     @Transaction
     suspend fun replaceSeedNorms(norms: List<NormReferenceEntity>) {
         deleteSeedNorms()
-        insertNorms(norms)
+        norms.chunked(50).forEach { chunk ->
+            insertNorms(chunk)
+        }
     }
 }

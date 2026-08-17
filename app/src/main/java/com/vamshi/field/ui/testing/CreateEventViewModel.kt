@@ -95,20 +95,31 @@ class CreateEventViewModel @Inject constructor(
                         presets = buildPresets(categories, tests)
                     )
                 }
-                if (!recommendationApplied && recommendationId != null) {
-                    recommendationApplied = true
-                    applyRecommendation(recommendationId)
-                }
             }
         }
-    }
 
-    private fun applyRecommendation(categoryId: String) {
-        viewModelScope.launch {
-            val recommendedTests = getRecommendations.getRecommendedTests(categoryId).first()
-            val knownIds = _uiState.value.allTests.map { it.id }.toSet()
-            _uiState.update {
-                it.copy(selectedTestIds = recommendedTests.map { test -> test.id }.filter { id -> id in knownIds }.toSet())
+        if (recommendationId != null) {
+            viewModelScope.launch {
+                combine(
+                    getRecommendations.getRecommendedTests(recommendationId),
+                    getTestLibrary.getAllTests()
+                ) { recommendedTests, allTests ->
+                    recommendedTests to allTests
+                }.collect { (recommendedTests, allTests) ->
+                    if (!recommendationApplied && recommendedTests.isNotEmpty()) {
+                        val knownIds = allTests.map { it.id }.toSet()
+                        val toSelect = if (knownIds.isNotEmpty()) {
+                            recommendedTests.map { it.id }.filter { it in knownIds }.toSet()
+                        } else {
+                            recommendedTests.map { it.id }.toSet()
+                        }
+                        if (toSelect.isNotEmpty()) {
+                            recommendationApplied = true
+                            android.util.Log.d("CreateEventViewModel", "Successfully auto-selected ${toSelect.size} recommended tests for category $recommendationId")
+                            _uiState.update { it.copy(selectedTestIds = toSelect) }
+                        }
+                    }
+                }
             }
         }
     }

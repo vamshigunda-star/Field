@@ -37,4 +37,10 @@ interface RecommendationDao {
 
     @Query("DELETE FROM recommendation_categories")
     suspend fun deleteAllCategories()
+
+    @Query("SELECT COUNT(*) FROM recommendation_categories")
+    suspend fun getCategoryCount(): Int
+
+    @Query("SELECT COUNT(*) FROM recommendation_test_cross_ref")
+    suspend fun getCrossRefCount(): Int
 }

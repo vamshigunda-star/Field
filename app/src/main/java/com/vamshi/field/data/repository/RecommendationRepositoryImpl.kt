@@ -28,7 +28,13 @@ class RecommendationRepositoryImpl @Inject constructor(
         categories: List<RecommendationCategory>,
         links: List<RecommendationTestLink>
     ) {
-        categories.forEach { dao.insertCategory(it.toEntity()) }
+        categories.forEach { category ->
+            try {
+                dao.insertCategory(category.toEntity())
+            } catch (e: Exception) {
+                Log.e("RecommendationRepositoryImpl", "Failed to insert recommendation category ${category.id}: ${e.message}")
+            }
+        }
         // Insert each link independently: a single row referencing a testId that isn't in
         // fitness_tests (an FK violation) must not abort every category listed after it.
         var inserted = 0

@@ -10,8 +10,14 @@ object CsvParser {
 
     fun parse(inputStream: InputStream): List<Map<String, String>> {
         val reader = BufferedReader(InputStreamReader(inputStream))
-        val headerLine = reader.readLine() ?: return emptyList()
-        val headers = parseLine(headerLine)
+        var headerLine = reader.readLine() ?: return emptyList()
+        
+        // Handle UTF-8 BOM if present
+        if (headerLine.startsWith("\uFEFF")) {
+            headerLine = headerLine.substring(1)
+        }
+        
+        val headers = parseLine(headerLine).map { it.trim() }
 
         val result = mutableListOf<Map<String, String>>()
         var lineNumber = 1

@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Field** is an offline-first fitness testing and performance tracking app for coaches and fitness professionals.
 **Primary user:** A single coach managing multiple athlete groups.
 **Platform:** Android (Kotlin, Jetpack Compose, Material 3).
-**Data:** Fully offline. Room database (Current Version: 12).
+**Data:** Fully offline. Room database (Current Version: 13).
 
 ---
 

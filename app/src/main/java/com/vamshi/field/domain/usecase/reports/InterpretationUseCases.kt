@@ -9,11 +9,11 @@ import com.vamshi.field.domain.repository.StandardsRepository
 import javax.inject.Inject
 
 class ClassifyPercentileUseCase @Inject constructor() {
-    // Four-zone color contract (CLAUDE.md): Green ≥60, Yellow 30–59, Red <30, Grey = no data.
+    // Simplified three-zone color contract: Green ≥80 (Superior), Yellow 40–79 (Healthy), Red <40 (Needs Improvement), Grey = no data.
     operator fun invoke(percentile: Int?): Classification = when {
         percentile == null -> Classification.NO_DATA
-        percentile >= 60 -> Classification.SUPERIOR
-        percentile >= 30 -> Classification.HEALTHY
+        percentile >= 80 -> Classification.SUPERIOR
+        percentile >= 40 -> Classification.HEALTHY
         else -> Classification.NEEDS_IMPROVEMENT
     }
 }
