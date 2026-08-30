@@ -30,7 +30,13 @@ import java.util.UUID
             onDelete = ForeignKey.RESTRICT
         )
     ],
-    indices = [Index("eventId"), Index("individualId"), Index("testId")]
+    indices = [
+        Index("eventId"),
+        Index("individualId"),
+        Index("testId"),
+        Index(value = ["individualId", "testId", "createdAt"]),
+        Index(value = ["individualId", "createdAt"])
+    ]
 )
 data class TestResultEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),

@@ -37,7 +37,7 @@ class SeedDataManager @Inject constructor(
         // Bumping this key re-runs seedIfNeeded() on next launch.
         // This is non-destructive for user data: catalog tests/categories are upserted in place,
         // and norm_references and recommendation tables are safely updated.
-        private const val KEY_SEEDED_VERSION = "data_seeded_version_v26"
+        private const val KEY_SEEDED_VERSION = "data_seeded_version_v28"
         private const val SEED_SOURCE = "SEED"
     }
 
@@ -47,24 +47,35 @@ class SeedDataManager @Inject constructor(
             val isAlreadySeeded = try {
                 prefs.getBoolean(KEY_SEEDED_VERSION, false)
             } catch (e: Exception) {
-                Log.w(TAG, "Error checking seeded version pref: ${e.message}")
                 false
             }
 
-            val recCategoryCount = try { database.recommendationDao().getCategoryCount() } catch (_: Exception) { 0 }
+            val testCount = try { database.standardsDao().getAllTestsOnce().size } catch (_: Exception) { 0 }
             val athleteCount = try { database.peopleDao().getIndividualCount() } catch (_: Exception) { 0 }
 
-            Log.d(TAG, "seedIfNeeded: isAlreadySeeded=$isAlreadySeeded, recCategoryCount=$recCategoryCount, athleteCount=$athleteCount")
+            Log.d(TAG, "seedIfNeeded: isAlreadySeeded=$isAlreadySeeded, testCount=$testCount, athleteCount=$athleteCount")
 
-            // Seed standards & recommendations if not seeded or if categories are missing
-            if (!isAlreadySeeded || recCategoryCount == 0) {
+            // Fast path: Database already has pre-packaged catalog and data
+            if (testCount > 0 && athleteCount > 0) {
+                if (!isAlreadySeeded) {
+                    prefs.edit().putBoolean(KEY_SEEDED_VERSION, true).apply()
+                }
+                Log.d(TAG, "Pre-packaged database detected with $testCount tests and $athleteCount athletes. Skipping runtime CSV seeding.")
+                return
+            }
                 Log.d(TAG, "Starting standards and recommendations seeding from CSV...")
 
                 // 1. Seed Test Library from CSV
                 try {
                     val categoryMaps = com.vamshi.field.util.CsvParser.parse(context.assets.open("test_categories.csv"))
                     val testMaps = com.vamshi.field.util.CsvParser.parse(context.assets.open("tests.csv"))
-                    val normMaps = com.vamshi.field.util.CsvParser.parse(context.assets.open("norms.csv"))
+                    val normsStream = try {
+                        context.assets.open("norms_v2.csv")
+                    } catch (_: Exception) {
+                        context.assets.open("norms.csv")
+                    }
+                    val normMaps = com.vamshi.field.util.CsvParser.parse(normsStream)
+
 
                     Log.d(TAG, "Parsed ${categoryMaps.size} categories, ${testMaps.size} tests, ${normMaps.size} norms")
 
@@ -162,7 +173,6 @@ class SeedDataManager @Inject constructor(
                 }
 
                 prefs.edit().putBoolean(KEY_SEEDED_VERSION, true).apply()
-            }
 
             // 3. Seed Dummy Athletes, Groups, Events & Results (if missing)
             try {
@@ -272,6 +282,7 @@ class SeedDataManager @Inject constructor(
                     val oneYearMs = 31536000000L
                     val msPerEvent = oneYearMs / 10
 
+                    val resultsToInsert = mutableListOf<TestResultEntity>()
                     for (i in 0 until 10) {
                         val eventId = "event_benchmark_$i"
                         val eventDate = currentTime - oneYearMs + (i * msPerEvent)
@@ -308,7 +319,7 @@ class SeedDataManager @Inject constructor(
                                     else -> "NEEDS_IMPROVEMENT"
                                 }
 
-                                val result = TestResultEntity(
+                                resultsToInsert += TestResultEntity(
                                     eventId = eventId,
                                     individualId = athleteId,
                                     testId = testId,
@@ -318,10 +329,10 @@ class SeedDataManager @Inject constructor(
                                     classification = classification,
                                     createdAt = eventDate
                                 )
-                                testingDao.insertResult(result)
                             }
                         }
                     }
+                    testingDao.insertResults(resultsToInsert)
                     Log.d(TAG, "Successfully seeded preloaded athletes, groups, events, and testing results!")
                 }
             } catch (e: Exception) {

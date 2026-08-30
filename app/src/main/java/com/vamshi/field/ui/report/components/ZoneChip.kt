@@ -20,15 +20,25 @@ import com.vamshi.field.ui.theme.PerformanceRedText
 import com.vamshi.field.ui.theme.PerformanceYellow
 import com.vamshi.field.ui.theme.PerformanceYellowText
 
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.vamshi.field.ui.theme.PerformanceGreenDark
+import com.vamshi.field.ui.theme.PerformanceGreenTextDark
+import com.vamshi.field.ui.theme.PerformanceGreyDark
+import com.vamshi.field.ui.theme.PerformanceGreyTextDark
+import com.vamshi.field.ui.theme.PerformanceRedDark
+import com.vamshi.field.ui.theme.PerformanceRedTextDark
+import com.vamshi.field.ui.theme.PerformanceYellowDark
+import com.vamshi.field.ui.theme.PerformanceYellowTextDark
+
 data class ZoneColors(val bg: Color, val fg: Color)
 
-// Maps engine Classification onto the four-zone color contract documented in CLAUDE.md.
+// Maps engine Classification onto the four-zone color contract.
 // HEALTHY is the mid (Yellow 30–59) zone — never blue.
-fun zoneColors(c: Classification): ZoneColors = when (c) {
-    Classification.SUPERIOR -> ZoneColors(PerformanceGreen, PerformanceGreenText)
-    Classification.HEALTHY -> ZoneColors(PerformanceYellow, PerformanceYellowText)
-    Classification.NEEDS_IMPROVEMENT -> ZoneColors(PerformanceRed, PerformanceRedText)
-    Classification.NO_DATA -> ZoneColors(PerformanceGrey, PerformanceGreyText)
+fun zoneColors(c: Classification, isDark: Boolean = false): ZoneColors = when (c) {
+    Classification.SUPERIOR -> if (isDark) ZoneColors(PerformanceGreenDark, PerformanceGreenTextDark) else ZoneColors(PerformanceGreen, PerformanceGreenText)
+    Classification.HEALTHY -> if (isDark) ZoneColors(PerformanceYellowDark, PerformanceYellowTextDark) else ZoneColors(PerformanceYellow, PerformanceYellowText)
+    Classification.NEEDS_IMPROVEMENT -> if (isDark) ZoneColors(PerformanceRedDark, PerformanceRedTextDark) else ZoneColors(PerformanceRed, PerformanceRedText)
+    Classification.NO_DATA -> if (isDark) ZoneColors(PerformanceGreyDark, PerformanceGreyTextDark) else ZoneColors(PerformanceGrey, PerformanceGreyText)
 }
 
 fun zoneLabel(c: Classification): String = when (c) {
@@ -44,7 +54,8 @@ fun ZoneChip(
     modifier: Modifier = Modifier,
     label: String = zoneLabel(classification)
 ) {
-    val colors = zoneColors(classification)
+    val isDark = isSystemInDarkTheme()
+    val colors = zoneColors(classification, isDark)
     Text(
         text = label,
         modifier = modifier
@@ -58,13 +69,16 @@ fun ZoneChip(
 
 @Composable
 fun PerformanceYellowChip(text: String, modifier: Modifier = Modifier) {
+    val isDark = isSystemInDarkTheme()
+    val bg = if (isDark) PerformanceYellowDark else PerformanceYellow
+    val fg = if (isDark) PerformanceYellowTextDark else PerformanceYellowText
     Text(
         text = text,
         modifier = modifier
-            .background(PerformanceYellow, RoundedCornerShape(999.dp))
+            .background(bg, RoundedCornerShape(999.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp),
         style = MaterialTheme.typography.labelSmall,
-        color = PerformanceYellowText,
+        color = fg,
         fontWeight = FontWeight.SemiBold
     )
 }

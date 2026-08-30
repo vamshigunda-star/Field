@@ -26,8 +26,8 @@ class RestoreBackupViewModel @Inject constructor(
 
     fun onAction(action: RestoreBackupAction) {
         when (action) {
-            RestoreBackupAction.GoogleSignInSucceeded -> loadBackups()
-            is RestoreBackupAction.GoogleSignInFailed ->
+            RestoreBackupAction.AuthSucceeded -> loadBackups()
+            is RestoreBackupAction.AuthFailed ->
                 _uiState.update { it.copy(errorMessage = action.message) }
             is RestoreBackupAction.RestoreSelectedBackup -> restore(action.backupId)
             RestoreBackupAction.DismissError ->

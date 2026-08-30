@@ -10,16 +10,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.material3.MaterialTheme
+
 fun Modifier.glassmorphismFallback(
     radius: Dp = 16.dp,
-    fallbackColor: Color = Color(0xB3F2F2F7) // 70% opacity off-white
+    fallbackColor: Color? = null
 ): Modifier = composed {
+    val defaultFallback = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+    val resolvedFallback = fallbackColor ?: defaultFallback
+    val tint = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         // Native blur available on API 31+
         this.blur(radius = radius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-            .background(Color.White.copy(alpha = 0.5f))
+            .background(tint)
     } else {
         // Fallback for older devices
-        this.background(fallbackColor)
+        this.background(resolvedFallback)
     }
 }

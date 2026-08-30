@@ -25,6 +25,12 @@ interface StandardsRepository {
         score: Double
     ): NormReference?
 
+    suspend fun getNormBandsForAthleteTest(
+        testId: String,
+        sex: BiologicalSex,
+        age: Double
+    ): List<NormReference>
+
     // --- Admin / Setup ---
 
     /** Upserts catalog rows in place; never deletes tests or categories. */

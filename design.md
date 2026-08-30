@@ -155,6 +155,18 @@ To change the app's colors, modify the Hex values here and rebuild the app.
 | PerformanceGrey | #FAFAFA |
 | PerformanceGreyText | #757575 |
 | PerformanceGreyBorder | #EEEEEE |
+| PerformanceGreenDark | #14532D |
+| PerformanceGreenTextDark | #86EFAC |
+| PerformanceGreenBorderDark | #166534 |
+| PerformanceYellowDark | #713F12 |
+| PerformanceYellowTextDark | #FDE047 |
+| PerformanceYellowBorderDark | #854D0E |
+| PerformanceRedDark | #7F1D1D |
+| PerformanceRedTextDark | #FDA4AF |
+| PerformanceRedBorderDark | #991B1B |
+| PerformanceGreyDark | #374151 |
+| PerformanceGreyTextDark | #D1D5DB |
+| PerformanceGreyBorderDark | #4B5563 |
 
 ## 13. Design Control Layer (Rules for Agents/Engineers)
 

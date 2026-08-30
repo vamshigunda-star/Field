@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -38,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.ui.athlete.AthleteDashboardScreen
 import com.vamshi.field.ui.components.AppTopBar
-import com.vamshi.field.ui.theme.SportOrange
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -116,6 +116,7 @@ fun RosterContent(
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             AppTopBar(
                 title = "Roster",
@@ -136,7 +137,7 @@ fun RosterContent(
                             onAction(RosterAction.OnShowAddGroupDialog)
                         }
                     },
-                    containerColor = SportOrange,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
                     shape = RoundedCornerShape(16.dp)
                 ) {

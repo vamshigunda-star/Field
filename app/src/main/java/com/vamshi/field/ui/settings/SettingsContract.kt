@@ -13,6 +13,12 @@ sealed interface SettingsAction {
     data class SelectBackup(val backupId: String) : SettingsAction
     object RestoreData : SettingsAction           // now only fired by dialog confirm
     object NavigateBack : SettingsAction
+    // Tours & Tutorials Actions
+    object OnOpenWelcomeTour : SettingsAction
+    object OnDismissWelcomeTour : SettingsAction
+    object OnOpenTestingTour : SettingsAction
+    object OnDismissTestingTour : SettingsAction
+    object OnResetAllTours : SettingsAction
 }
 
 data class SettingsUiState(
@@ -25,4 +31,7 @@ data class SettingsUiState(
     val isLoadingBackups: Boolean = false,
     val availableBackups: List<DriveBackupSummary> = emptyList(),
     val selectedBackupId: String? = null,
+    val showWelcomeTour: Boolean = false,
+    val showTestingTour: Boolean = false,
+    val tourResetMessage: String? = null
 )

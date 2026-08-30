@@ -68,6 +68,32 @@ interface StandardsDao {
         score: Double
     ): NormReferenceEntity?
 
+    @Query("""
+        SELECT * FROM norm_references
+        WHERE testId = :testId
+        AND sex = :sex
+        AND :age BETWEEN ageMin AND ageMax
+        ORDER BY percentile ASC
+    """)
+    suspend fun getNormBandsForAthleteTest(
+        testId: String,
+        sex: String,
+        age: Double
+    ): List<NormReferenceEntity>
+
+    @Query("""
+        SELECT * FROM norm_references
+        WHERE testId = :testId
+        AND sex = :sex
+        ORDER BY ABS(ageMin - :age) ASC, percentile ASC
+    """)
+    suspend fun getNormBandsClosestToAge(
+        testId: String,
+        sex: String,
+        age: Double
+    ): List<NormReferenceEntity>
+
+
     // --- DATA IMPORT (Admin/Setup) ---
 
     @Upsert
@@ -121,7 +147,7 @@ interface StandardsDao {
     @Transaction
     suspend fun replaceUserNormsForTest(testId: String, norms: List<NormReferenceEntity>) {
         deleteUserNormsForTest(testId)
-        norms.chunked(50).forEach { chunk ->
+        norms.chunked(500).forEach { chunk ->
             insertNorms(chunk)
         }
     }
@@ -153,7 +179,7 @@ interface StandardsDao {
     @Transaction
     suspend fun replaceSeedNorms(norms: List<NormReferenceEntity>) {
         deleteSeedNorms()
-        norms.chunked(50).forEach { chunk ->
+        norms.chunked(500).forEach { chunk ->
             insertNorms(chunk)
         }
     }

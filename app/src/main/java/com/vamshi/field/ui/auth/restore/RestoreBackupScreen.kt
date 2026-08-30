@@ -1,5 +1,6 @@
 package com.vamshi.field.ui.auth.restore
 
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -28,32 +29,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
 import com.google.api.services.drive.DriveScopes
 import com.vamshi.field.domain.model.backup.DriveBackupSummary
 import com.vamshi.field.ui.auth.components.AuthErrorBanner
 import com.vamshi.field.ui.components.AppTopBar
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
+ /**
  * Pre-auth "restore from Google Drive" screen, reachable from both Onboarding and
  * Unlock for a coach reinstalling the app who already has a backup.
  *
- * Uses the same [GoogleSignInClient] construction / [rememberLauncherForActivityResult]
- * pattern as [com.vamshi.field.ui.settings.SettingsScreen] — see that file for the
- * original. No password field, no security question: restoring the backup re-establishes
+ * No password field, no security question: restoring the backup re-establishes
  * the whole account and session by itself.
  */
 @Composable
@@ -86,31 +84,50 @@ fun RestoreBackupContent(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    val googleSignInClient: GoogleSignInClient = remember {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestEmail()
-            .requestScopes(Scope(DriveScopes.DRIVE_APPDATA))
-            .build()
-        GoogleSignIn.getClient(context, gso)
-    }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
+    val authorizationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult(),
     ) { result ->
         if (result.resultCode != android.app.Activity.RESULT_OK) {
-            onAction(RestoreBackupAction.GoogleSignInFailed("Sign-in cancelled or failed."))
+            onAction(RestoreBackupAction.AuthFailed("Sign-in cancelled or failed."))
             return@rememberLauncherForActivityResult
         }
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        try {
-            task.getResult(ApiException::class.java)
-            onAction(RestoreBackupAction.GoogleSignInSucceeded)
-        } catch (e: ApiException) {
-            onAction(RestoreBackupAction.GoogleSignInFailed("Sign-in failed (Code: ${e.statusCode}): ${e.message}"))
-        } catch (e: Exception) {
-            onAction(RestoreBackupAction.GoogleSignInFailed("Sign-in failed: ${e.message}"))
+
+        scope.launch {
+            try {
+                Identity.getAuthorizationClient(context)
+                    .getAuthorizationResultFromIntent(result.data)
+                
+                onAction(RestoreBackupAction.AuthSucceeded)
+            } catch (e: Exception) {
+                onAction(RestoreBackupAction.AuthFailed("Authorization failed: ${e.message}"))
+            }
         }
+    }
+
+    val onSignInClick = {
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(listOf(
+                Scope(DriveScopes.DRIVE_APPDATA),
+                Scope("https://www.googleapis.com/auth/userinfo.email")
+            ))
+            .build()
+
+        Identity.getAuthorizationClient(context)
+            .authorize(request)
+            .addOnSuccessListener { result ->
+                if (result.hasResolution()) {
+                    authorizationLauncher.launch(
+                        IntentSenderRequest.Builder(result.pendingIntent!!.intentSender).build()
+                    )
+                } else {
+                    onAction(RestoreBackupAction.AuthSucceeded)
+                }
+            }
+            .addOnFailureListener { e ->
+                onAction(RestoreBackupAction.AuthFailed("Authorization failed: ${e.message}"))
+            }
     }
 
     Scaffold(
@@ -165,7 +182,7 @@ fun RestoreBackupContent(
                     onSelect = { onAction(RestoreBackupAction.RestoreSelectedBackup(it.id)) }
                 )
                 else -> Button(
-                    onClick = { launcher.launch(googleSignInClient.signInIntent) },
+                    onClick = { onSignInClick() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
@@ -229,3 +246,4 @@ private fun BackupPicker(
 private fun formatBackupDate(timestamp: Long): String =
     if (timestamp == 0L) "Backed up date unknown"
     else "Backed up ${SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(timestamp))}"
+

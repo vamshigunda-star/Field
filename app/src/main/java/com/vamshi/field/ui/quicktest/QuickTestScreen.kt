@@ -27,9 +27,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
@@ -74,21 +77,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.components.testing.TestInputSwitcher
+import com.vamshi.field.ui.components.testing.TestSelectionCard
 import com.vamshi.field.ui.components.testing.TestSelectionRow
-import com.vamshi.field.ui.theme.NavyPrimary
-import com.vamshi.field.ui.theme.PerformanceGreen
-import com.vamshi.field.ui.theme.PerformanceGreenText
-import com.vamshi.field.ui.theme.PerformanceGrey
-import com.vamshi.field.ui.theme.PerformanceRed
+import com.vamshi.field.ui.theme.*
 import androidx.compose.material3.OutlinedCard
-import com.vamshi.field.ui.theme.PerformanceGreyText
-import com.vamshi.field.ui.theme.PerformanceRedText
-import com.vamshi.field.ui.theme.PerformanceYellow
-import com.vamshi.field.ui.theme.PerformanceYellowText
 import java.util.Locale
 
 @Composable
@@ -269,38 +266,53 @@ private fun SetupStep(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text(
-                "Athlete Details",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Athlete Search / Input Field
                 OutlinedTextField(
                     value = uiState.athleteSearchQuery,
                     onValueChange = { onAction(QuickTestAction.OnAthleteQueryChange(it)) },
                     label = { Text(if (uiState.requireRegisteredAthlete) "Registered Athlete" else "Athlete Name") },
                     placeholder = {
                         Text(
-                            if (uiState.requireRegisteredAthlete) "Search registered athletes..." else "Enter name or search..."
+                            if (uiState.requireRegisteredAthlete) "Search registered athletes..." else "Enter athlete name..."
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Person, null) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = "Athlete",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
                     trailingIcon = {
                         if (uiState.selectedAthlete != null) {
-                            Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50))
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = "Selected",
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
+                    shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface
                     )
                 )
 
@@ -308,26 +320,67 @@ private fun SetupStep(
                 if (uiState.matchingAthletes.isNotEmpty()) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        tonalElevation = 2.dp,
-                        shadowElevation = 4.dp
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        color = MaterialTheme.colorScheme.surface,
+                        shadowElevation = 2.dp
                     ) {
                         Column {
-                            uiState.matchingAthletes.take(3).forEach { athlete ->
+                            uiState.matchingAthletes.take(4).forEachIndexed { index, athlete ->
                                 ListItem(
-                                    headlineContent = { Text(athlete.fullName) },
-                                    supportingContent = { Text(athlete.sex.name) },
-                                    leadingContent = { 
-                                        Box(Modifier.size(32.dp).background(NavyPrimary, CircleShape), contentAlignment = Alignment.Center) {
-                                            Text(athlete.firstName.first().toString(), color = Color.White)
+                                    headlineContent = { Text(athlete.fullName, fontWeight = FontWeight.SemiBold) },
+                                    supportingContent = { Text(athlete.sex.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall) },
+                                    leadingContent = {
+                                        Box(
+                                            Modifier
+                                                .size(32.dp)
+                                                .background(MaterialTheme.colorScheme.primary, CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                athlete.firstName.firstOrNull()?.uppercase() ?: "A",
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp
+                                            )
                                         }
                                     },
                                     modifier = Modifier.clickable { onAction(QuickTestAction.OnSelectAthlete(athlete)) }
                                 )
+                                if (index < uiState.matchingAthletes.take(4).size - 1) {
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                }
                             }
                         }
                     }
                 }
+
+                // Event Name Field
+                OutlinedTextField(
+                    value = uiState.eventName,
+                    onValueChange = { onAction(QuickTestAction.OnSetEventName(it)) },
+                    label = { Text("Event Name (Optional)") },
+                    placeholder = { Text("e.g. Morning Assessment") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Event,
+                            contentDescription = "Event Name",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
             }
         }
 
@@ -335,12 +388,21 @@ private fun SetupStep(
             item {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    shadowElevation = 1.dp
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Guest Details (Required for Percentiles)", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                        
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            "Guest Details (Required for Percentiles)",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
                                 value = uiState.guestAge,
@@ -348,22 +410,32 @@ private fun SetupStep(
                                 label = { Text("Age") },
                                 modifier = Modifier.weight(1f),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surface
+                                )
                             )
-                            
+
                             var expanded by remember { mutableStateOf(false) }
                             Box(modifier = Modifier.weight(1f)) {
                                 OutlinedTextField(
-                                    value = uiState.guestSex.name,
+                                    value = uiState.guestSex.name.lowercase().replaceFirstChar { it.uppercase() },
                                     onValueChange = {},
                                     readOnly = true,
                                     label = { Text("Sex") },
                                     modifier = Modifier.fillMaxWidth(),
-                                    trailingIcon = {ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                                     shape = RoundedCornerShape(12.dp),
+                                    textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        focusedContainerColor = Color.Transparent,
-                                        unfocusedContainerColor = Color.Transparent
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
                                     ),
                                     interactionSource = remember { MutableInteractionSource() }
                                         .also { interactionSource ->
@@ -378,11 +450,12 @@ private fun SetupStep(
                                 )
                                 DropdownMenu(
                                     expanded = expanded,
-                                    onDismissRequest = { expanded = false }
+                                    onDismissRequest = { expanded = false },
+                                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
                                 ) {
                                     BiologicalSex.entries.filter { it != BiologicalSex.UNSPECIFIED }.forEach { sex ->
                                         DropdownMenuItem(
-                                            text = { Text(sex.name) },
+                                            text = { Text(sex.name.lowercase().replaceFirstChar { it.uppercase() }) },
                                             onClick = {
                                                 onAction(QuickTestAction.OnSetGuestSex(sex))
                                                 expanded = false
@@ -397,57 +470,124 @@ private fun SetupStep(
             }
         }
 
-        item {
-            HorizontalDivider()
-        }
-
-        item {
-            OutlinedTextField(
-                value = uiState.eventName,
-                onValueChange = { onAction(QuickTestAction.OnSetEventName(it)) },
-                label = { Text("Event Name (Optional)") },
-                placeholder = { Text("e.g., Morning Session") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                )
-            )
-        }
-
-        item {
-            Text(
-                "Select Tests",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        uiState.categories.forEach { category ->
-            val isExpanded = category.id == uiState.expandedCategoryId
-            val categoryTests = uiState.allTests.filter { it.categoryId == category.id }
-            val selectedCount = categoryTests.count { it.id in uiState.selectedTestIds }
-
-            item(key = "category_${category.id}") {
-                CategoryAccordionHeader(
-                    name = category.name,
-                    selectedCount = selectedCount,
-                    totalCount = categoryTests.size,
-                    isExpanded = isExpanded,
-                    onClick = { onAction(QuickTestAction.OnToggleCategoryExpanded(category.id)) }
-                )
+        if (uiState.categories.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(2.dp))
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
+                    shadowElevation = 1.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Select Tests",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer
+                                ) {
+                                    Text(
+                                        text = "${uiState.allTests.size} Tests Available",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    Text(
+                                        text = "${uiState.categories.size} Categories",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Text(
+                            text = "Choose one or more tests from the categories below. Tap any category to expand tests.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
 
-            if (isExpanded) {
-                items(categoryTests, key = { it.id }) { test ->
-                    TestSelectionRow(
-                        test = test,
-                        isSelected = test.id in uiState.selectedTestIds,
-                        onToggle = { onAction(QuickTestAction.OnToggleTest(test.id)) }
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            uiState.categories.forEach { category ->
+                val isExpanded = category.id == uiState.expandedCategoryId
+                val categoryTests = uiState.allTests.filter { it.categoryId == category.id }
+                val selectedCount = categoryTests.count { it.id in uiState.selectedTestIds }
+                val visual = getCategoryVisual(category.name, category.radarAxis)
+
+                item(key = "category_${category.id}") {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = if (isExpanded) {
+                                visual.accentColor.copy(alpha = 0.35f)
+                            } else {
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.50f)
+                            }
+                        ),
+                        shadowElevation = if (isExpanded) 1.5.dp else 0.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            CategoryAccordionHeader(
+                                name = category.name,
+                                radarAxis = category.radarAxis,
+                                selectedCount = selectedCount,
+                                totalCount = categoryTests.size,
+                                isExpanded = isExpanded,
+                                onClick = { onAction(QuickTestAction.OnToggleCategoryExpanded(category.id)) },
+                                isDocked = true
+                            )
+
+                            if (isExpanded) {
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                                    thickness = 1.dp
+                                )
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    categoryTests.forEach { test ->
+                                        TestSelectionCard(
+                                            test = test,
+                                            isSelected = test.id in uiState.selectedTestIds,
+                                            onToggle = { onAction(QuickTestAction.OnToggleTest(test.id)) },
+                                            accentColor = visual.accentColor
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -465,7 +605,7 @@ private fun EnterScoresStep(
         // Athlete Banner
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = if (uiState.isGuest) Color(0xFF546E7A) else NavyPrimary
+            color = if (uiState.isGuest) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
         ) {
             Row(
                 modifier = Modifier.padding(16.dp),
@@ -539,18 +679,46 @@ private fun EnterScoresStep(
             }
             
             item {
+                val canComplete = uiState.recordedResults.isNotEmpty()
+                val buttonTitle = if (uiState.requireRegisteredAthlete) "Complete Test" else "Complete Quick Test"
+
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = { onAction(QuickTestAction.OnCompleteTest) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        "Complete Quick Test",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (!canComplete) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        ) {
+                            Text(
+                                text = "Enter a test result before completing this test.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = { onAction(QuickTestAction.OnCompleteTest) },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        enabled = canComplete,
+                        shape = RoundedCornerShape(28.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Text(
+                            buttonTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -582,29 +750,56 @@ private fun EnterScoresStep(
 
 @Composable
 fun QuickTestScoreCell(savedResult: RecordedTestResult?) {
+    val isDark = isSystemInDarkTheme()
     val (bgColor, textColor) = when {
-        savedResult == null -> Color(0xFFF3F4F6) to Color.Gray
-        savedResult.percentile == null -> PerformanceGrey to Color.Black
-        savedResult.percentile >= 60 -> PerformanceGreen.copy(alpha = 0.7f) to PerformanceGreenText
-        savedResult.percentile >= 30 -> PerformanceYellow.copy(alpha = 0.7f) to PerformanceYellowText
-        else -> PerformanceRed.copy(alpha = 0.7f) to PerformanceRedText
+        savedResult == null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) to MaterialTheme.colorScheme.primary
+        savedResult.percentile == null -> if (isDark) PerformanceGreyDark to PerformanceGreyTextDark else PerformanceGrey to MaterialTheme.colorScheme.onSurface
+        savedResult.percentile >= 60 -> if (isDark) PerformanceGreenDark to PerformanceGreenTextDark else PerformanceGreen.copy(alpha = 0.7f) to PerformanceGreenText
+        savedResult.percentile >= 30 -> if (isDark) PerformanceYellowDark to PerformanceYellowTextDark else PerformanceYellow.copy(alpha = 0.7f) to PerformanceYellowText
+        else -> if (isDark) PerformanceRedDark to PerformanceRedTextDark else PerformanceRed.copy(alpha = 0.7f) to PerformanceRedText
     }
 
-    Box(
+    val cellBorder = if (savedResult == null) {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+    } else null
+
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(bgColor),
-        contentAlignment = Alignment.Center
+            .height(56.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = bgColor,
+        border = cellBorder,
+        shadowElevation = if (savedResult != null) 1.dp else 0.dp
     ) {
-        if (savedResult != null) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(String.format(Locale.getDefault(), "%.1f", savedResult.rawScore), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = textColor)
-                savedResult.percentile?.let { p -> Text("${p}%", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = textColor.copy(alpha = 0.8f)) }
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            if (savedResult != null) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(String.format(Locale.getDefault(), "%.1f", savedResult.rawScore), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = textColor)
+                    savedResult.percentile?.let { p -> Text("${p}%", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = textColor.copy(alpha = 0.8f)) }
+                }
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        "Enter Result",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
-        } else {
-            Text("--", color = Color.LightGray, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -714,15 +909,43 @@ private fun CompleteStep(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(64.dp), tint = PerformanceGreen)
-                Spacer(Modifier.height(12.dp))
-                Text("Quick Test Complete", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF16A34A)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = "Success",
+                        tint = Color.White,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                val titleText = if (uiState.requireRegisteredAthlete) "Test Successfully Recorded" else "Quick Test Completed"
                 Text(
-                    if (uiState.isGuest)
-                        "${results.size} test${if (results.size == 1) "" else "s"} calculated for ${uiState.athleteSearchQuery} (Guest)."
+                    titleText,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(8.dp))
+                val athleteName = if (uiState.isGuest) "${uiState.athleteSearchQuery} (Guest)" else (uiState.selectedAthlete?.fullName ?: "athlete")
+                Text(
+                    text = if (uiState.isGuest)
+                        "Result successfully recorded for $athleteName."
                     else
-                        "${results.size} test${if (results.size == 1) "" else "s"} recorded to ${uiState.selectedAthlete?.fullName ?: "the athlete"}'s history.",
+                        "Result successfully recorded and saved to $athleteName's history.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "${results.size} ${if (results.size == 1) "test" else "tests"} recorded successfully.",
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -777,11 +1000,14 @@ private fun CompleteStep(
 }
 
 @Composable
-private fun zoneFor(percentile: Int?): Triple<Color, Color, String> = when {
-    percentile == null -> Triple(PerformanceGrey, PerformanceGreyText, "No Norm")
-    percentile >= 60 -> Triple(PerformanceGreen, PerformanceGreenText, "Superior")
-    percentile >= 30 -> Triple(PerformanceYellow, PerformanceYellowText, "Healthy")
-    else -> Triple(PerformanceRed, PerformanceRedText, "Needs Improvement")
+private fun zoneFor(percentile: Int?): Triple<Color, Color, String> {
+    val isDark = isSystemInDarkTheme()
+    return when {
+        percentile == null -> if (isDark) Triple(PerformanceGreyDark, PerformanceGreyTextDark, "No Norm") else Triple(PerformanceGrey, PerformanceGreyText, "No Norm")
+        percentile >= 60 -> if (isDark) Triple(PerformanceGreenDark, PerformanceGreenTextDark, "Superior") else Triple(PerformanceGreen, PerformanceGreenText, "Superior")
+        percentile >= 30 -> if (isDark) Triple(PerformanceYellowDark, PerformanceYellowTextDark, "Healthy") else Triple(PerformanceYellow, PerformanceYellowText, "Healthy")
+        else -> if (isDark) Triple(PerformanceRedDark, PerformanceRedTextDark, "Needs Improvement") else Triple(PerformanceRed, PerformanceRedText, "Needs Improvement")
+    }
 }
 
 @Composable

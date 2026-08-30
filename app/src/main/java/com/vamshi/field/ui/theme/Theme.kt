@@ -1,6 +1,5 @@
 package com.vamshi.field.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -9,23 +8,36 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = ElectricBlue,
     onPrimary = Color.White,
+    primaryContainer = Color(0xFF1E3A8A),
+    onPrimaryContainer = Color(0xFF93C5FD),
     secondary = DynamicOrange,
     onSecondary = Color.White,
+    secondaryContainer = Color(0xFF431407),
+    onSecondaryContainer = Color(0xFFFFD7BA),
     tertiary = AquaCyan,
+    onTertiary = Color(0xFF003640),
     background = Color(0xFF111827),
+    onBackground = Color(0xFFF9FAFB),
     surface = Color(0xFF1F2937),
-    onBackground = Color.White,
-    onSurface = Color.White
+    onSurface = Color(0xFFF9FAFB),
+    surfaceVariant = Color(0xFF374151),
+    onSurfaceVariant = Color(0xFF9CA3AF),
+    surfaceContainer = Color(0xFF1F2937),
+    surfaceContainerLow = Color(0xFF111827),
+    surfaceContainerHigh = Color(0xFF374151),
+    surfaceContainerHighest = Color(0xFF4B5563),
+    outline = Color(0xFF4B5563),
+    outlineVariant = Color(0xFF374151),
+    error = Color(0xFFF87171),
+    onError = Color(0xFF450A0A),
+    errorContainer = Color(0xFF4C0519),
+    onErrorContainer = Color(0xFFFDA4AF)
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -35,6 +47,8 @@ private val LightColorScheme = lightColorScheme(
     onPrimaryContainer = ElectricBlue,
     secondary = DynamicOrange,
     onSecondary = Color.White,
+    secondaryContainer = SportOrangeContainer,
+    onSecondaryContainer = SportOrange,
     tertiary = AquaCyan,
     onTertiary = Color.White,
     background = BackgroundLight,
@@ -43,7 +57,16 @@ private val LightColorScheme = lightColorScheme(
     onSurface = TextPrimary,
     surfaceVariant = Color(0xFFF3F4F6),
     onSurfaceVariant = TextSecondary,
-    outline = OutlineGrey
+    surfaceContainer = SurfaceWhite,
+    surfaceContainerLow = BackgroundLight,
+    surfaceContainerHigh = Color(0xFFF3F4F6),
+    surfaceContainerHighest = Color(0xFFE5E7EB),
+    outline = OutlineGrey,
+    outlineVariant = Color(0xFFE5E7EB),
+    error = Color(0xFFDC2626),
+    onError = Color.White,
+    errorContainer = PerformanceRed,
+    onErrorContainer = PerformanceRedText
 )
 
 @Composable
@@ -61,18 +84,6 @@ fun FieldTheme(
         }
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
-    }
-
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val context = view.context
-            if (context is Activity) {
-                val window = context.window
-                window.statusBarColor = colorScheme.primary.toArgb()
-                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-            }
-        }
     }
 
     MaterialTheme(

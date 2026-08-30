@@ -1,33 +1,28 @@
 package com.vamshi.field.ui.testing
 
 import android.util.Log
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Leaderboard
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.AppTopBarSubtitleColor
 import com.vamshi.field.ui.components.InlineErrorBanner
 import kotlinx.coroutines.delay
+
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import com.vamshi.field.ui.components.tour.CoachMarkBanner
+import com.vamshi.field.ui.components.tour.TestingTourDialog
 
 @Composable
 fun TestingGridScreen(
@@ -56,6 +51,33 @@ fun TestingGridScreen(
             }
         }
     )
+
+    if (uiState.showTestingTour) {
+        TestingTourDialog(
+            onDismiss = { viewModel.onAction(TestingGridAction.OnDismissTestingTour) }
+        )
+    }
+
+    if (uiState.showCompletionDialog) {
+        val uniqueAthletesTested = uiState.gridData?.results?.map { it.individualId }?.distinct()?.size ?: 0
+        val totalResults = uiState.gridData?.results?.size ?: 0
+
+        TestingCompleteDialog(
+            athleteCount = uniqueAthletesTested,
+            testsRecordedCount = totalResults,
+            onViewReport = {
+                viewModel.onAction(TestingGridAction.OnDismissCompletionDialog)
+                onNavigateToGroupReport(viewModel.eventId, viewModel.groupId)
+            },
+            onBackToDashboard = {
+                viewModel.onAction(TestingGridAction.OnDismissCompletionDialog)
+                onNavigateBack()
+            },
+            onContinueTesting = {
+                viewModel.onAction(TestingGridAction.OnDismissCompletionDialog)
+            }
+        )
+    }
 
     uiState.deleteCandidate?.let { candidate ->
         DeleteResultDialog(
@@ -128,6 +150,9 @@ private fun TestingGridContent(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { onAction(TestingGridAction.OnOpenTestingTour) }) {
+                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Testing Guide")
+                    }
                     IconButton(onClick = { onAction(TestingGridAction.OnNavigateToLeaderboard(eventId, groupId, "event")) }) {
                         Icon(Icons.Default.Leaderboard, contentDescription = "Leaderboard")
                     }
@@ -136,6 +161,70 @@ private fun TestingGridContent(
                     }
                 }
             )
+        },
+        bottomBar = {
+            val totalResults = uiState.gridData?.results?.size ?: 0
+            val hasResults = totalResults > 0
+            val totalStudents = uiState.gridData?.students?.size ?: 0
+            val uniqueAthletesTested = remember(uiState.gridData?.results) {
+                uiState.gridData?.results?.map { it.individualId }?.distinct()?.size ?: 0
+            }
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
+                color = MaterialTheme.colorScheme.background
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (hasResults) "Session in Progress" else "No Results Entered Yet",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (hasResults) "$uniqueAthletesTested/$totalStudents Athletes • $totalResults Recorded" else "Tap score field to record",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (hasResults) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Button(
+                        onClick = { onAction(TestingGridAction.OnRequestSaveSession) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        enabled = hasResults,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Save Results",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
@@ -149,6 +238,18 @@ private fun TestingGridContent(
                     } else null
                 )
             }
+
+            if (!uiState.hasSeenCoachMark) {
+                CoachMarkBanner(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    title = "Live Scoring & Stopwatch",
+                    message = "Tap any cell to record scores. For timed tests, choose Solo or Group stopwatch mode. Tap the Trophy icon at the top for live event rankings.",
+                    actionLabel = "View Tour",
+                    onActionClick = { onAction(TestingGridAction.OnOpenTestingTour) },
+                    onDismiss = { onAction(TestingGridAction.OnDismissCoachMark) }
+                )
+            }
+
             when {
                 uiState.isLoading -> LoadingState()
                 uiState.errorMessage != null && uiState.gridData == null -> ErrorState(

@@ -64,6 +64,12 @@ class FakeStandardsRepository : StandardsRepository {
         score: Double
     ): NormReference? = null
 
+    override suspend fun getNormBandsForAthleteTest(
+        testId: String,
+        sex: BiologicalSex,
+        age: Double
+    ): List<NormReference> = normsByTest[testId].orEmpty()
+
     override suspend fun importStandards(
         categories: List<TestCategory>,
         tests: List<FitnessTest>

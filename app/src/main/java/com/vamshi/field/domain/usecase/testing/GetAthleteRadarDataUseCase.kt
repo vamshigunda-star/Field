@@ -1,6 +1,7 @@
 package com.vamshi.field.domain.usecase.testing
 
 import android.util.Log
+import com.vamshi.field.domain.model.standards.FitnessTest
 import com.vamshi.field.domain.model.standards.RadarAxis
 import com.vamshi.field.domain.repository.StandardsRepository
 import com.vamshi.field.domain.repository.TestingRepository
@@ -50,14 +51,17 @@ class GetAthleteRadarDataUseCase @Inject constructor(
      * that category. Tests with a null percentile (no matching norm) are
      * skipped so they don't drag the average toward zero.
      */
+    private var cachedCategories: List<com.vamshi.field.domain.model.standards.TestCategory>? = null
+    private var cachedTestMap: Map<String, FitnessTest>? = null
+
     suspend operator fun invoke(individualId: String): AthleteRadarData = withContext(Dispatchers.IO) {
         val latestResults = testingRepository
             .getLatestResultPerTestForIndividual(individualId)
 
-        val categories = standardsRepository.getAllCategories().first()
-            .sortedBy { it.sortOrder }
-        val allTests = standardsRepository.getAllTests().first()
-        val testMap = allTests.associateBy { it.id }
+        val categories = cachedCategories ?: standardsRepository.getAllCategories().first()
+            .sortedBy { it.sortOrder }.also { cachedCategories = it }
+        val testMap = cachedTestMap ?: standardsRepository.getAllTests().first()
+            .associateBy { it.id }.also { cachedTestMap = it }
         val categoryMap = categories.associateBy { it.id }
         
         val testsByCategory = mutableMapOf<String, MutableList<Int>>()

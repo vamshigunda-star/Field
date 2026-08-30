@@ -41,16 +41,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vamshi.field.domain.model.people.BiologicalSex
+import com.vamshi.field.ui.theme.SportOrange
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
-private val BackgroundGray = Color(0xFFF8F9FB)
-private val SurfaceWhite = Color(0xFFFFFFFF)
-private val TextPrimary = Color(0xFF1A1A1A)
-private val TextSecondary = Color(0xFF757575)
-private val BrandAccent = Color(0xFFF97D28)
-private val BorderLight = Color(0xFFE5E7EB)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,8 +63,8 @@ fun RegisterAthleteSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceWhite,
-        dragHandle = { BottomSheetDefaults.DragHandle(color = BorderLight) }
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)) }
     ) {
         Column(
             modifier = Modifier
@@ -79,7 +73,7 @@ fun RegisterAthleteSheet(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Register Athlete", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("Register Athlete", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -103,38 +97,38 @@ fun RegisterAthleteSheet(
                 onClick = { showDatePicker = true },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, BorderLight)
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Cake, contentDescription = null, tint = BrandAccent)
+                    Icon(Icons.Default.Cake, contentDescription = null, tint = SportOrange)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = if (datePickerState.selectedDateMillis != null) {
                             val date = Date(datePickerState.selectedDateMillis!!)
                             SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(date)
                         } else "Date of Birth *",
-                        color = if (datePickerState.selectedDateMillis != null) TextPrimary else TextSecondary
+                        color = if (datePickerState.selectedDateMillis != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            Text("Biological Sex", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+            Text("Biological Sex", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 BiologicalSex.entries.forEach { sex ->
                     val isSelected = selectedSex == sex
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) BrandAccent else BackgroundGray)
+                            .background(if (isSelected) SportOrange else MaterialTheme.colorScheme.surfaceVariant)
                             .clickable { selectedSex = sex }
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         Text(
                             sex.name.lowercase().replaceFirstChar { it.uppercase() },
-                            color = if (isSelected) Color.White else TextSecondary,
+                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                         )
                     }
@@ -172,7 +166,7 @@ fun RegisterAthleteSheet(
                 enabled = firstName.isNotBlank() && lastName.isNotBlank() && datePickerState.selectedDateMillis != null,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandAccent)
+                colors = ButtonDefaults.buttonColors(containerColor = SportOrange)
             ) {
                 Text("Register Athlete", fontWeight = FontWeight.Bold)
             }
@@ -183,7 +177,7 @@ fun RegisterAthleteSheet(
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("OK", color = BrandAccent) }
+                TextButton(onClick = { showDatePicker = false }) { Text("OK", color = SportOrange) }
             }
         ) {
             DatePicker(state = datePickerState)

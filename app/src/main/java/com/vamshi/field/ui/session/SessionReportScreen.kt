@@ -1,10 +1,17 @@
 package com.vamshi.field.ui.session
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,28 +25,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -47,13 +57,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.reports.Classification
 import com.vamshi.field.domain.model.reports.LeaderboardRow
@@ -67,6 +82,11 @@ import com.vamshi.field.ui.report.components.SessionSwitcherSheet
 import com.vamshi.field.ui.report.components.ZoneChip
 import com.vamshi.field.ui.theme.PerformanceRed
 import com.vamshi.field.ui.theme.PerformanceRedText
+import com.vamshi.field.ui.theme.SportOrange
+import com.vamshi.field.ui.components.tour.CoachMarkBanner
+import com.vamshi.field.ui.components.tour.TestingTourDialog
+import com.vamshi.field.ui.session.components.GroupTrendChart
+import com.vamshi.field.ui.session.components.TestSelectorHeroCard
 import com.vamshi.field.ui.theme.SportOrangeContainer
 import com.vamshi.field.util.CsvExporter
 import java.text.SimpleDateFormat
@@ -80,7 +100,7 @@ fun SessionReportScreen(
     onResumeTesting: (String, String?, String?, List<String>?) -> Unit,
     onNavigateToAiCoach: (String?) -> Unit,
     viewModel: SessionReportViewModel = hiltViewModel(),
-    aiCoachViewModel: AiCoachViewModel = hiltViewModel()
+    aiCoachViewModel: AiCoachViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -122,8 +142,14 @@ fun SessionReportScreen(
             }
         },
         aiCoachViewModel = aiCoachViewModel,
-        onNavigateToAiCoach = onNavigateToAiCoach
+        onNavigateToAiCoach = onNavigateToAiCoach,
     )
+
+        if (uiState.showTestingTour) {
+            TestingTourDialog(
+                onDismiss = { viewModel.onAction(SessionReportAction.OnDismissTestingTour) },
+            )
+        }
 
     if (uiState.showDeleteDialog) {
         AlertDialog(
@@ -149,7 +175,7 @@ fun SessionReportContent(
     uiState: SessionReportUiState,
     aiCoachViewModel: AiCoachViewModel,
     onNavigateToAiCoach: (String?) -> Unit = {},
-    onAction: (SessionReportAction) -> Unit
+    onAction: (SessionReportAction) -> Unit,
 ) {
     val aiCoachState by aiCoachViewModel.uiState.collectAsState()
     val isAiCoachVisible = aiCoachState.status != AiCoachStatus.UNSUPPORTED
@@ -177,6 +203,9 @@ fun SessionReportContent(
                 },
                 actions = {
                     if (data != null) {
+                        IconButton(onClick = { onAction(SessionReportAction.OnOpenTestingTour) }) {
+                            Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Testing Guide")
+                        }
                         if (data.tests.isNotEmpty()) {
                             AppTopBarActionButton(
                                 icon = Icons.Default.Lightbulb,
@@ -221,23 +250,21 @@ fun SessionReportContent(
             }
             else -> SessionReportBody(uiState = uiState, padding = padding, onAction = onAction)
         }
-        if (uiState.isSwitcherOpen && data != null) {
+        if ((uiState.isSwitcherOpen) && (data != null)) {
             SessionSwitcherSheet(
                 sessions = data.groupSessions,
                 currentId = data.event.id,
-                onPick = { onAction(SessionReportAction.OnSwitchSession(it.id)) },
-                onDismiss = { onAction(SessionReportAction.OnDismissSwitcher) }
-            )
+                onPick = { onAction(SessionReportAction.OnSwitchSession(it.id)) }
+            ) { onAction(SessionReportAction.OnDismissSwitcher) }
         }
-        if (uiState.isInsightSheetOpen && data != null) {
+        if ((uiState.isInsightSheetOpen) && (data != null)) {
             val activeTestId = uiState.selectedTestId ?: data.tests.firstOrNull()?.id
             val activeTest = data.tests.find { it.id == activeTestId }
             val activeRows = activeTestId?.let { data.leaderboardByTest[it] }.orEmpty()
             CoachInsightSheet(
                 test = activeTest,
-                redZoneAthletes = activeRows.filter { it.percentile != null && it.percentile < 30 },
-                onDismiss = { onAction(SessionReportAction.OnDismissInsight) }
-            )
+                redZoneAthletes = activeRows.filter { (it.percentile != null) && (it.percentile < 30) }
+            ) { onAction(SessionReportAction.OnDismissInsight) }
         }
     }
 }
@@ -247,12 +274,18 @@ fun SessionReportBody(
     uiState: SessionReportUiState,
     padding: PaddingValues,
     onAction: (SessionReportAction) -> Unit,
-    headerContent: @Composable (() -> Unit)? = null
+    headerContent: @Composable (() -> Unit)? = null,
 ) {
     val data = uiState.data!!
     val activeTestId = uiState.selectedTestId ?: data.tests.firstOrNull()?.id
     val activeRows = activeTestId?.let { data.leaderboardByTest[it] }.orEmpty()
     val absent = activeTestId?.let { data.absentByTest[it] }.orEmpty()
+    val isDark = isSystemInDarkTheme()
+
+    var isMetricsExpanded by remember { mutableStateOf(value = true) }
+    var isLeaderboardExpanded by remember { mutableStateOf(value = true) }
+    var isAbsentExpanded by remember { mutableStateOf(value = true) }
+    var isMissingExpanded by remember { mutableStateOf(value = true) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(padding),
@@ -263,50 +296,28 @@ fun SessionReportBody(
             item { headerContent() }
         }
 
+        if (!uiState.hasSeenCoachMark) {
+            item {
+                CoachMarkBanner(
+                    title = "Session Analytics & Reports",
+                    message = "Review group attendance and test distributions. Tap the Lightbulb for insights, Sparkles for AI Coach analysis, or Download to export CSV data.",
+                    actionLabel = "View Tour",
+                    onActionClick = { onAction(SessionReportAction.OnOpenTestingTour) }
+                ) { onAction(SessionReportAction.OnDismissCoachMark) }
+            }
+        }
+
         if (data.tests.isNotEmpty()) {
             // Primary control: prominent test selector
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-                        Text(
-                            "TEST",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        if (data.tests.size > 1) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                data.tests.forEach { t ->
-                                    FilterChip(
-                                        selected = t.id == activeTestId,
-                                        onClick = { onAction(SessionReportAction.OnSelectTest(t.id)) },
-                                        label = { Text(t.name, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
-                                        shape = RoundedCornerShape(10.dp)
-                                    )
-                                }
-                            }
-                        } else {
-                            Text(
-                                data.tests.first().name,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                }
+                TestSelectorHeroCard(
+                    tests = data.tests,
+                    selectedTestId = activeTestId,
+                    onSelectTest = { onAction(SessionReportAction.OnSelectTest(it)) }
+                )
             }
 
-            // Stats Summary
+            // Stats Summary Card (Collapsible)
             val validScores = activeRows.mapNotNull { it.rawScore }
             val maxVal = if (validScores.isNotEmpty()) validScores.maxOrNull() ?: 0.0 else 0.0
             val minVal = if (validScores.isNotEmpty()) validScores.minOrNull() ?: 0.0 else 0.0
@@ -316,98 +327,152 @@ fun SessionReportBody(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    shape = RoundedCornerShape(24.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.35f else 0.50f))
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-                        Text("Session Metrics", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
-                        Spacer(Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        CollapsibleSectionHeader(
+                            title = "Session Metrics",
+                            isExpanded = isMetricsExpanded,
+                            onToggle = { isMetricsExpanded = !isMetricsExpanded },
+                            icon = Icons.Default.Analytics
+                        )
+
+                        AnimatedVisibility(
+                            visible = isMetricsExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
                         ) {
-                            StatSummaryItem("Max", maxVal, unit, modifier = Modifier.weight(1f))
-                            StatSummaryItem("Avg", avgVal, unit, modifier = Modifier.weight(1f))
-                            StatSummaryItem("Min", minVal, unit, modifier = Modifier.weight(1f))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                StatSummaryItem("Max", maxVal, unit, modifier = Modifier.weight(1f))
+                                StatSummaryItem("Avg", avgVal, unit, modifier = Modifier.weight(1f))
+                                StatSummaryItem("Min", minVal, unit, modifier = Modifier.weight(1f))
+                            }
                         }
                     }
                 }
             }
 
+            // Leaderboard Card (Collapsible)
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Leaderboard", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            if (activeRows.isEmpty()) {
-                item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        Text("No results recorded for this test yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            } else {
-                items(activeRows, key = { it.individualId }) { row ->
-                    AthleteLeaderRow(
-                        row = row,
-                        onClick = { onAction(SessionReportAction.OnNavigateToAthlete(row.individualId)) }
-                    )
-                }
-            }
-
-            // Absent subsection
-            if (absent.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Absent (${absent.size})",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                items(absent, key = { "absent-${it.individualId}" }) { row ->
-                    AbsentAthleteRow(row = row, onClick = { onAction(SessionReportAction.OnResumeTesting) })
-                }
-            }
-
-            // Group trend
-            item {
-                Spacer(Modifier.height(4.dp))
-                Text("Group trend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
-            item {
-                val trend = activeTestId?.let { data.groupTrendByTest[it] }.orEmpty()
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(24.dp),
-                    elevation = CardDefaults.cardElevation(0.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.35f else 0.50f))
                 ) {
-                    if (trend.size < 2) {
-                        Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                            Text("Need 2+ sessions for trend analysis", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    } else {
-                        Box(modifier = Modifier.fillMaxWidth().height(160.dp).padding(24.dp), contentAlignment = Alignment.Center) {
-                            TrendBars(points = trend)
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        CollapsibleSectionHeader(
+                            title = "Leaderboard",
+                            badgeText = if (activeRows.isNotEmpty()) "${activeRows.size} ranked" else null,
+                            isExpanded = isLeaderboardExpanded,
+                            onToggle = { isLeaderboardExpanded = !isLeaderboardExpanded },
+                            icon = Icons.Default.Leaderboard
+                        )
+
+                        AnimatedVisibility(
+                            visible = isLeaderboardExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (activeRows.isEmpty()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("No results recorded for this test yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                } else {
+                                    activeRows.forEach { row ->
+                                        AthleteLeaderRow(
+                                            row = row,
+                                            onClick = { onAction(SessionReportAction.OnNavigateToAthlete(row.individualId)) }
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // Missing-data card
+            // Absent subsection Card (Collapsible)
+            if (absent.isNotEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.35f else 0.50f))
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            CollapsibleSectionHeader(
+                                title = "Absent",
+                                badgeText = "${absent.size} athletes",
+                                isExpanded = isAbsentExpanded,
+                                onToggle = { isAbsentExpanded = !isAbsentExpanded },
+                                icon = Icons.Default.PersonOff,
+                                badgeColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                badgeTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            AnimatedVisibility(
+                                visible = isAbsentExpanded,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    absent.forEach { row ->
+                                        AbsentAthleteRow(row = row) { onAction(SessionReportAction.OnResumeTesting) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Group trend progression (Collapsible Line Chart)
+            item {
+                val trend = activeTestId?.let { data.groupTrendByTest[it] }.orEmpty()
+                GroupTrendChart(
+                    points = trend,
+                    currentSessionDate = data.event.date,
+                    unit = unit
+                )
+            }
+
+            // Missing-data Card (Collapsible)
             val missingNames = activeTestId?.let { data.missingByTest[it] }.orEmpty()
             if (missingNames.isNotEmpty()) {
                 item {
                     MissingDataCard(
                         names = missingNames,
-                        onResume = { onAction(SessionReportAction.OnResumeTesting) }
-                    )
+                        isExpanded = isMissingExpanded,
+                        onToggle = { isMissingExpanded = !isMissingExpanded }
+                    ) { onAction(SessionReportAction.OnResumeTesting) }
                 }
             }
         } else {
@@ -420,73 +485,149 @@ fun SessionReportBody(
     }
 }
 
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AbsentAthleteRow(row: LeaderboardRow, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    val isDark = isSystemInDarkTheme()
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.40f else 0.65f)
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(row.athleteName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(
+                text = row.athleteName,
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.5.sp),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
             ZoneChip(classification = Classification.NO_DATA, label = "Absent")
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MissingDataCard(names: List<String>, onResume: () -> Unit) {
+fun MissingDataCard(
+    names: List<String>,
+    isExpanded: Boolean = true,
+    onToggle: () -> Unit = {},
+    onResume: () -> Unit
+) {
+    val isDark = isSystemInDarkTheme()
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "missingChevron"
+    )
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = SportOrangeContainer),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.35f else 0.50f))
     ) {
-        Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onResume).padding(14.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "Missing data: ${names.size} athlete${if (names.size == 1) "" else "s"}",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    "Resume testing",
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            names.forEach { n -> Text("• $n", style = MaterialTheme.typography.bodySmall) }
-        }
-    }
-}
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = SportOrange,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "Missing Data",
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.5.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = SportOrange.copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            text = "${names.size} athlete${if (names.size == 1) "" else "s"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = SportOrange,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
 
-@Composable
-fun TrendBars(points: List<Pair<Long, Float>>) {
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.Bottom
-    ) {
-        val max = points.maxOf { it.second }.coerceAtLeast(1f)
-        points.forEach { (_, v) ->
-            val frac = (v / max).coerceIn(0f, 1f)
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Resume testing",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable(onClick = onResume)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ExpandMore,
+                            contentDescription = if (isExpanded) "Collapse" else "Expand",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .rotate(chevronRotation)
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
                     modifier = Modifier
-                        .width(20.dp)
-                        .height((110 * frac).dp.coerceAtLeast(2.dp))
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                )
-                Spacer(Modifier.height(4.dp))
-                Text("${v.toInt()}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    names.forEach { n ->
+                        Text(
+                            text = "• $n",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
     }
@@ -519,23 +660,23 @@ fun CoachInsightSheet(
 
             if (redZoneAthletes.isNotEmpty()) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = PerformanceRed.copy(alpha = 0.2f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, PerformanceRed)
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Warning, contentDescription = null, tint = PerformanceRedText)
+                            Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
                             Spacer(Modifier.width(8.dp))
-                            Text("Remediation Required (<30%ile)", color = PerformanceRedText, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                            Text("Remediation Required (<30%ile)", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                         }
                         Spacer(Modifier.height(8.dp))
                         val names = redZoneAthletes.joinToString(", ") { row ->
-                            val valStr = if (row.rawScore != null && row.rawScore % 1.0 == 0.0) row.rawScore.toInt().toString() else String.format("%.1f", row.rawScore)
+                            val valStr = if ((row.rawScore != null) && (row.rawScore % 1.0 == 0.0)) row.rawScore.toInt().toString() else String.format(Locale.getDefault(), "%.1f", row.rawScore)
                             "${row.athleteName} ($valStr ${row.unit})"
                         }
-                        Text("Immediate focus needed for: $names.", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall)
+                        Text("Immediate focus needed for: $names.", color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -591,26 +732,105 @@ private fun getImprovementText(test: com.vamshi.field.domain.model.standards.Fit
 }
 
 @Composable
+private fun CollapsibleSectionHeader(
+    title: String,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    badgeText: String? = null,
+    badgeColor: Color? = null,
+    badgeTextColor: Color? = null
+) {
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "chevronRotation"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.5.sp),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (badgeText != null) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = badgeColor ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = badgeText,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = badgeTextColor ?: MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.ExpandMore,
+                contentDescription = if (isExpanded) "Collapse" else "Expand",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(18.dp)
+                    .rotate(chevronRotation)
+            )
+        }
+    }
+}
+
+@Composable
 fun StatSummaryItem(
     label: String,
     value: Double,
     unit: String,
     modifier: Modifier = Modifier
 ) {
-    val valueStr = if (value % 1.0 == 0.0) value.toInt().toString() else String.format("%.1f", value)
-    Card(
+    val isDark = isSystemInDarkTheme()
+    val valueStr = if ((value % 1.0) == 0.0) value.toInt().toString() else String.format(Locale.getDefault(), "%.1f", value)
+    Surface(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(16.dp),
+        color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.50f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.35f else 0.50f))
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(3.dp))
             Text(valueStr, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-            Text(unit, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (unit.isNotBlank()) {
+                Text(unit, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f))
+            }
         }
     }
 }

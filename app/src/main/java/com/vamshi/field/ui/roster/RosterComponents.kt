@@ -24,11 +24,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.domain.model.people.Group
 import com.vamshi.field.domain.model.people.Individual
-import com.vamshi.field.ui.theme.SportOrange
-import com.vamshi.field.ui.theme.SportOrangeContainer
+import com.vamshi.field.ui.components.AppFilterChip
+import com.vamshi.field.ui.theme.ElectricBlue
 import java.util.*
 
 @Composable
@@ -44,47 +45,16 @@ fun RosterTabRow(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        RosterFilterChip(
+        AppFilterChip(
             label = "Athletes ($athleteCount)",
             isSelected = currentTab == RosterTab.ATHLETES,
             onClick = { onTabSelected(RosterTab.ATHLETES) }
         )
-        RosterFilterChip(
+        AppFilterChip(
             label = "Groups ($groupCount)",
             isSelected = currentTab == RosterTab.GROUPS,
             onClick = { onTabSelected(RosterTab.GROUPS) }
         )
-    }
-}
-
-@Composable
-fun RosterFilterChip(
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    compact: Boolean = false
-) {
-    Surface(
-        modifier = modifier
-            .height(if (compact) 32.dp else 38.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-    ) {
-        Box(
-            modifier = Modifier.padding(horizontal = if (compact) 6.dp else 16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = label,
-                style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
-            )
-        }
     }
 }
 
@@ -102,12 +72,12 @@ fun AthleteFilterRow(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            RosterFilterChip(
+            AppFilterChip(
                 label = "Male",
                 isSelected = BiologicalSex.MALE in selectedSexFilters,
                 onClick = { onSexToggled(BiologicalSex.MALE) }
             )
-            RosterFilterChip(
+            AppFilterChip(
                 label = "Female",
                 isSelected = BiologicalSex.FEMALE in selectedSexFilters,
                 onClick = { onSexToggled(BiologicalSex.FEMALE) }
@@ -118,7 +88,7 @@ fun AthleteFilterRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             AthleteAgeRange.entries.forEach { range ->
-                RosterFilterChip(
+                AppFilterChip(
                     label = range.label,
                     isSelected = selectedAgeRange == range,
                     onClick = { onAgeRangeSelected(if (selectedAgeRange == range) null else range) },
@@ -208,7 +178,7 @@ fun SwipeableAthleteCard(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(color)
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
@@ -237,18 +207,22 @@ fun ModernAthleteCard(
 ) {
     val initials = "${athlete.firstName.first()}${athlete.lastName.first()}".uppercase()
     val isRestricted = athlete.isRestricted || athlete.medicalAlert != null
+    val isDark = isSystemInDarkTheme()
     
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp,
-        border = BorderStroke(1.5.dp, if (isSelected) SportOrange else MaterialTheme.colorScheme.outline)
+        shape = RoundedCornerShape(14.dp),
+        color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surface,
+        shadowElevation = 0.dp,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isSelected) ElectricBlue else MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.40f else 0.65f)
+        )
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Custom Checkbox
@@ -256,8 +230,16 @@ fun ModernAthleteCard(
                 modifier = Modifier
                     .size(24.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(if (isSelected) SportOrange else MaterialTheme.colorScheme.background)
-                    .border(1.5.dp, if (isSelected) SportOrange else MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
+                    .background(
+                        if (isSelected) ElectricBlue 
+                        else if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) 
+                        else MaterialTheme.colorScheme.surface
+                    )
+                    .border(
+                        1.dp, 
+                        if (isSelected) ElectricBlue else MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.60f else 0.80f), 
+                        RoundedCornerShape(6.dp)
+                    )
                     .clickable { onToggleSelection() },
                 contentAlignment = Alignment.Center
             ) {
@@ -266,28 +248,40 @@ fun ModernAthleteCard(
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(if (isRestricted) MaterialTheme.colorScheme.errorContainer else SportOrangeContainer),
-                contentAlignment = Alignment.Center
+            // Squircle Avatar
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = if (isRestricted) {
+                    MaterialTheme.colorScheme.errorContainer
+                } else if (isDark) {
+                    ElectricBlue.copy(alpha = 0.20f)
+                } else {
+                    ElectricBlue.copy(alpha = 0.12f)
+                }
             ) {
-                Text(
-                    initials, 
-                    fontWeight = FontWeight.Bold, 
-                    color = if (isRestricted) MaterialTheme.colorScheme.error else SportOrange
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        initials, 
+                        fontWeight = FontWeight.Bold, 
+                        fontSize = 14.sp,
+                        color = if (isRestricted) MaterialTheme.colorScheme.error else ElectricBlue
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(athlete.fullName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        athlete.fullName, 
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.5.sp), 
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     if (isRestricted) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Icon(Icons.Default.Warning, contentDescription = "Medical Alert", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
@@ -304,15 +298,16 @@ fun ModernAthleteCard(
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         groups.take(3).forEach { group ->
                             Surface(
-                                color = SportOrangeContainer,
-                                shape = RoundedCornerShape(4.dp)
+                                color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.60f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f),
+                                shape = RoundedCornerShape(5.dp)
                             ) {
                                 Text(
                                     group.name,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = SportOrange,
-                                    fontSize = 10.sp
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 10.5.sp
                                 )
                             }
                         }
@@ -368,41 +363,54 @@ fun ModernGroupCard(
     onAddMember: () -> Unit
 ) {
     val rotation by animateFloatAsState(if (isExpanded) 90f else 0f)
+    val isDark = isSystemInDarkTheme()
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp,
-        border = BorderStroke(1.5.dp, if (isExpanded) SportOrange else MaterialTheme.colorScheme.outline)
+        shape = RoundedCornerShape(14.dp),
+        color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surface,
+        shadowElevation = 0.dp,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isExpanded) ElectricBlue.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.40f else 0.65f)
+        )
     ) {
         Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onToggleExpansion() }
-                    .padding(16.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
                     modifier = Modifier.size(40.dp),
                     shape = RoundedCornerShape(10.dp),
-                    color = SportOrangeContainer
+                    color = if (isDark) ElectricBlue.copy(alpha = 0.20f) else ElectricBlue.copy(alpha = 0.12f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             Icons.Default.Groups,
                             contentDescription = null,
-                            tint = SportOrange
+                            tint = ElectricBlue
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(group.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                    Text("${members.size} athletes", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        group.name, 
+                        fontWeight = FontWeight.Bold, 
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.5.sp),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "${members.size} athletes", 
+                        style = MaterialTheme.typography.bodySmall, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
                 if (!isExpanded) {
@@ -421,7 +429,7 @@ fun ModernGroupCard(
 
             AnimatedVisibility(visible = isExpanded) {
                 Column {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                     members.forEach { member ->
                         MemberRow(member, onRemove = { onRemoveMember(member.id) })
                     }
@@ -434,9 +442,9 @@ fun ModernGroupCard(
                             .padding(vertical = 4.dp),
                         contentPadding = PaddingValues(16.dp)
                     ) {
-                        Icon(Icons.Default.PersonAdd, contentDescription = null, tint = SportOrange, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.PersonAdd, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Athlete", color = SportOrange, fontWeight = FontWeight.Bold)
+                        Text("Add Athlete", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -473,19 +481,20 @@ fun MemberRow(member: Individual, onRemove: () -> Unit) {
 
 @Composable
 fun AvatarStack(members: List<Individual>) {
+    val isDark = isSystemInDarkTheme()
     Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
         members.take(4).forEach { member ->
             Surface(
                 modifier = Modifier.size(28.dp).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
                 shape = CircleShape,
-                color = SportOrange
+                color = if (isDark) ElectricBlue.copy(alpha = 0.25f) else ElectricBlue.copy(alpha = 0.15f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         "${member.firstName.first()}${member.lastName.first()}".uppercase(),
-                        fontSize = 8.sp,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = ElectricBlue
                     )
                 }
             }
@@ -494,10 +503,10 @@ fun AvatarStack(members: List<Individual>) {
             Surface(
                 modifier = Modifier.size(28.dp).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("+${members.size - 4}", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("+${members.size - 4}", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -506,17 +515,18 @@ fun AvatarStack(members: List<Individual>) {
 
 @Composable
 fun SearchBar(query: String, onQueryChange: (String) -> Unit, placeholder: String) {
+    val isDark = isSystemInDarkTheme()
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         placeholder = { Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant) },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            unfocusedContainerColor = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surface,
+            focusedContainerColor = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surface,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.40f else 0.65f),
             focusedBorderColor = MaterialTheme.colorScheme.primary
         ),
         singleLine = true
@@ -526,7 +536,7 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit, placeholder: Strin
 @Composable
 fun ContextualActionBar(selectedCount: Int, onAddToGroup: () -> Unit) {
     Surface(
-        color = SportOrange,
+        color = MaterialTheme.colorScheme.primary,
         shape = RoundedCornerShape(16.dp),
         shadowElevation = 8.dp,
         modifier = Modifier.fillMaxWidth().height(64.dp)
@@ -568,7 +578,7 @@ fun AddToGroupSelectionSheet(
     onGroupSelected: (String) -> Unit,
     onCreateGroup: () -> Unit
 ) {
-    // Basic implementation of group selection for "Add to Group"
+    val isDark = isSystemInDarkTheme()
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.padding(24.dp).padding(bottom = 32.dp)) {
             Text("Select Group", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -578,7 +588,8 @@ fun AddToGroupSelectionSheet(
                     Surface(
                         modifier = Modifier.fillMaxWidth().clickable { onGroupSelected(group.id) },
                         shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.background
+                        color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.40f else 0.65f))
                     ) {
                         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(group.name, fontWeight = FontWeight.Bold)
@@ -613,7 +624,7 @@ fun ConfirmationDialog(
             Button(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isDestructive) MaterialTheme.colorScheme.error else SportOrange
+                    containerColor = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 )
             ) {
                 Text(confirmText)
@@ -630,7 +641,7 @@ fun ConfirmationDialog(
 @Composable
 fun LoadingState() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = SportOrange)
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -696,7 +707,7 @@ fun AddGroupSheet(onDismiss: () -> Unit, onConfirm: (String, String?, String?) -
                 enabled = name.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = SportOrange)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text("Create Group", fontWeight = FontWeight.Bold)
             }
@@ -728,7 +739,7 @@ fun ManageGroupMembersSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.8f) // Spacious but not full screen
+                .fillMaxHeight(0.8f)
                 .padding(horizontal = 24.dp)
         ) {
             Text("Manage Group Members", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -757,22 +768,22 @@ fun ManageGroupMembersSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (isInGroup) SportOrangeContainer else Color.Transparent)
+                            .background(if (isInGroup) ElectricBlue.copy(alpha = 0.10f) else Color.Transparent)
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(if (isInGroup) SportOrange else MaterialTheme.colorScheme.outline),
-                            contentAlignment = Alignment.Center
+                        Surface(
+                            modifier = Modifier.size(40.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isInGroup) ElectricBlue.copy(alpha = 0.20f) else MaterialTheme.colorScheme.surfaceVariant
                         ) {
-                            Text(
-                                athlete.firstName.first().toString().uppercase(),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    athlete.firstName.first().toString().uppercase(),
+                                    color = if (isInGroup) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                         
                         Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -789,7 +800,7 @@ fun ManageGroupMembersSheet(
                             Icon(
                                 if (isInGroup) Icons.Default.RemoveCircleOutline else Icons.Default.AddCircleOutline,
                                 contentDescription = null,
-                                tint = if (isInGroup) MaterialTheme.colorScheme.error else SportOrange
+                                tint = if (isInGroup) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -799,8 +810,7 @@ fun ManageGroupMembersSheet(
             Button(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp).height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Done", fontWeight = FontWeight.Bold)
             }

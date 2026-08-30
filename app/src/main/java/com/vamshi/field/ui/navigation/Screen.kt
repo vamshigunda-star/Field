@@ -1,7 +1,7 @@
 package com.vamshi.field.ui.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Groups
@@ -74,12 +74,12 @@ sealed class Screen(val route: String) {
 
     data object AthleteDashboard : Screen("athlete/{athleteId}?contextSessionId={contextSessionId}") {
         fun createRoute(athleteId: String, contextSessionId: String? = null) =
-            "athlete/$athleteId" + if (contextSessionId != null) "?contextSessionId=$contextSessionId" else ""
+            "athlete/${android.net.Uri.encode(athleteId)}" + if (contextSessionId != null) "?contextSessionId=${android.net.Uri.encode(contextSessionId)}" else ""
     }
 
     data object AthleteTestDetail : Screen("athlete/{athleteId}/test/{testId}?contextSessionId={contextSessionId}") {
         fun createRoute(athleteId: String, testId: String, contextSessionId: String? = null) =
-            "athlete/$athleteId/test/$testId" + if (contextSessionId != null) "?contextSessionId=$contextSessionId" else ""
+            "athlete/${android.net.Uri.encode(athleteId)}/test/${android.net.Uri.encode(testId)}" + if (contextSessionId != null) "?contextSessionId=${android.net.Uri.encode(contextSessionId)}" else ""
     }
 
     // ----- Auth screens -----
@@ -117,7 +117,7 @@ sealed class BottomNavItem(
     data object Tests : BottomNavItem(
         route = Screen.TestLibrary.route,
         title = "Tests",
-        icon = Icons.AutoMirrored.Filled.Assignment
+        icon = Icons.AutoMirrored.Filled.LibraryBooks
     )
 
     data object Reports : BottomNavItem(

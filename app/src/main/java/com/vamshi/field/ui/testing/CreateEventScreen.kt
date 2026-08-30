@@ -9,24 +9,33 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.standards.TestPreset
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
+import com.vamshi.field.ui.components.testing.TestSelectionCard
 import com.vamshi.field.ui.components.testing.TestSelectionRow
+import com.vamshi.field.ui.components.tour.CoachMarkBanner
+import com.vamshi.field.ui.components.tour.TestingTourDialog
 import com.vamshi.field.ui.theme.*
 
 @Composable
@@ -36,6 +45,7 @@ fun CreateEventScreen(
     viewModel: CreateEventViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showTestingTour by remember { mutableStateOf(false) }
 
     // Handle navigation event
     LaunchedEffect(uiState.eventCreated) {
@@ -47,6 +57,7 @@ fun CreateEventScreen(
 
     CreateEventContent(
         uiState = uiState,
+        onOpenTestingTour = { showTestingTour = true },
         onAction = { action ->
             when (action) {
                 is CreateEventAction.NavigateBack -> onNavigateBack()
@@ -54,15 +65,23 @@ fun CreateEventScreen(
             }
         }
     )
+
+    if (showTestingTour) {
+        TestingTourDialog(
+            onDismiss = { showTestingTour = false }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventContent(
     uiState: CreateEventUiState,
+    onOpenTestingTour: () -> Unit = {},
     onAction: (CreateEventAction) -> Unit
 ) {
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             AppTopBar(
                 title = "Create Testing Event",
@@ -70,38 +89,104 @@ fun CreateEventContent(
                     IconButton(onClick = { onAction(CreateEventAction.NavigateBack) }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    IconButton(onClick = onOpenTestingTour) {
+                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Testing Guide")
+                    }
                 }
             )
         },
         bottomBar = {
+            val isReady = uiState.eventName.isNotBlank() &&
+                    uiState.selectedGroupId != null &&
+                    uiState.selectedTestIds.isNotEmpty()
+
+            val gradientBrush = if (isReady && !uiState.isCreating) {
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                    )
+                )
+            } else {
+                SolidColor(MaterialTheme.colorScheme.surfaceVariant)
+            }
+
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                tonalElevation = 8.dp,
-                shadowElevation = 8.dp
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
+                color = MaterialTheme.colorScheme.surface
             ) {
-                Button(
-                    onClick = { onAction(CreateEventAction.CreateEvent) },
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
-                        .height(56.dp),
-                    enabled = uiState.eventName.isNotBlank() &&
-                            uiState.selectedGroupId != null &&
-                            uiState.selectedTestIds.isNotEmpty() &&
-                            !uiState.isCreating,
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary // Vibrant blue from image
-                    )
+                        .navigationBarsPadding()
+                        .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
                 ) {
-                    if (uiState.isCreating) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                    } else {
-                        Text(
-                            "Start Testing (${uiState.selectedTestIds.size} tests)",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .shadow(
+                                elevation = if (isReady && !uiState.isCreating) 6.dp else 0.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                            ),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.Transparent
+                    ) {
+                        Button(
+                            onClick = { onAction(CreateEventAction.CreateEvent) },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(gradientBrush),
+                            enabled = isReady && !uiState.isCreating,
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent,
+                                contentColor = Color.White,
+                                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            if (uiState.isCreating) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.5.dp
+                                )
+                            } else {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        "Start Group Testing",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isReady) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    if (uiState.selectedTestIds.isNotEmpty()) {
+                                        Spacer(Modifier.width(8.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = if (isReady) Color.White.copy(alpha = 0.25f) else MaterialTheme.colorScheme.outlineVariant
+                                        ) {
+                                            Text(
+                                                "${uiState.selectedTestIds.size} Selected",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isReady) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -252,13 +337,13 @@ private fun CreateEventBody(
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         contentPadding = padding,
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 ExposedDropdownMenuBox(
                     expanded = groupDropdownExpanded,
@@ -267,19 +352,24 @@ private fun CreateEventBody(
                 ) {
                     val groupText = selectedGroup?.let {
                         val count = uiState.groupAthleteCounts[it.id] ?: 0
-                        "${it.name} • $count"
+                        "${it.name} • $count athletes"
                     } ?: ""
                     
                     OutlinedTextField(
                         value = groupText,
                         onValueChange = {},
-                        label = { Text("Group") },
+                        label = { Text("Athlete Group") },
                         singleLine = true,
                         leadingIcon = { 
-                            Icon(Icons.Default.Person, contentDescription = "Group", modifier = Modifier.size(16.dp))
+                            Icon(
+                                Icons.Default.Groups,
+                                contentDescription = "Group",
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         },
-                        textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.Bold),
-                        placeholder = { Text("Select") },
+                        textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
+                        placeholder = { Text("Select athlete group") },
                         readOnly = true,
                         trailingIcon = { 
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = groupDropdownExpanded)
@@ -287,11 +377,13 @@ private fun CreateEventBody(
                         modifier = Modifier
                             .menuAnchor()
                             .fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface
                         )
                     )
 
@@ -308,13 +400,23 @@ private fun CreateEventBody(
                                         Text(
                                             text = group.name,
                                             modifier = Modifier.weight(1f),
+                                            fontWeight = FontWeight.Medium,
                                             maxLines = 1,
                                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Icon(
+                                            Icons.Default.Person,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("$count", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(
+                                            "$count",
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 },
                                 onClick = {
@@ -332,17 +434,24 @@ private fun CreateEventBody(
                     onValueChange = { onAction(CreateEventAction.SetEventName(it)) },
                     label = { Text("Event Name") },
                     leadingIcon = {
-                        Icon(Icons.Default.Event, contentDescription = "Event Name", modifier = Modifier.size(16.dp))
+                        Icon(
+                            Icons.Default.Event,
+                            contentDescription = "Event Name",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     },
-                    textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.Bold),
-                    placeholder = { Text("e.g. Morning Sprints") },
+                    textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
+                    placeholder = { Text("e.g. Spring Fitness Assessment") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface
                     )
                 )
             }
@@ -350,37 +459,138 @@ private fun CreateEventBody(
 
         if (uiState.categories.isNotEmpty()) {
             item {
-                Text(
-                    "Select Tests",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
+                    shadowElevation = 1.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Select Tests",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer
+                                ) {
+                                    Text(
+                                        text = "${uiState.allTests.size} Tests Available",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    Text(
+                                        text = "${uiState.categories.size} Categories",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Text(
+                            text = "Choose one or more tests from the categories below. Tap any category to expand tests.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
 
             uiState.categories.forEach { category ->
                 val isExpanded = category.id == uiState.expandedCategoryId
                 val categoryTests = uiState.allTests.filter { it.categoryId == category.id }
                 val selectedCount = categoryTests.count { it.id in uiState.selectedTestIds }
+                val visual = getCategoryVisual(category.name, category.radarAxis)
 
                 item(key = "category_${category.id}") {
-                    CategoryAccordionHeader(
-                        name = category.name,
-                        selectedCount = selectedCount,
-                        totalCount = categoryTests.size,
-                        isExpanded = isExpanded,
-                        onClick = { onAction(CreateEventAction.ToggleCategoryExpanded(category.id)) }
-                    )
-                }
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = if (isExpanded) {
+                                visual.accentColor.copy(alpha = 0.35f)
+                            } else {
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.50f)
+                            }
+                        ),
+                        shadowElevation = if (isExpanded) 1.5.dp else 0.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            CategoryAccordionHeader(
+                                name = category.name,
+                                radarAxis = category.radarAxis,
+                                selectedCount = selectedCount,
+                                totalCount = categoryTests.size,
+                                isExpanded = isExpanded,
+                                onClick = { onAction(CreateEventAction.ToggleCategoryExpanded(category.id)) },
+                                isDocked = true
+                            )
 
-                if (isExpanded) {
-                    items(categoryTests, key = { it.id }) { test ->
-                        TestSelectionRow(
-                            test = test,
-                            isSelected = test.id in uiState.selectedTestIds,
-                            onToggle = { onAction(CreateEventAction.ToggleTest(test.id)) }
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            if (isExpanded) {
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                                    thickness = 1.dp
+                                )
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    categoryTests.forEach { test ->
+                                        TestSelectionCard(
+                                            test = test,
+                                            isSelected = test.id in uiState.selectedTestIds,
+                                            onToggle = { onAction(CreateEventAction.ToggleTest(test.id)) },
+                                            accentColor = visual.accentColor
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "↓ Scroll to explore additional test categories",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -418,8 +628,8 @@ private fun CreateEventBody(
                 enabled = uiState.selectedTestIds.isNotEmpty(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(28.dp),
+                    .height(52.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
@@ -434,7 +644,7 @@ private fun CreateEventBody(
             }
         }
 
-        item { Spacer(modifier = Modifier.height(24.dp)) }
+        item { Spacer(modifier = Modifier.height(4.dp)) }
     }
 }
 

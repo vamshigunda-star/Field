@@ -19,6 +19,7 @@ fun ProgressLineChart(
 ) {
     if (dataPoints.size < 2) return
 
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     Canvas(
         modifier = modifier
             .fillMaxWidth()
@@ -29,10 +30,10 @@ fun ProgressLineChart(
         val height = size.height
         val stepX = width / (dataPoints.size - 1)
 
-        // Draw background grid lines (optional)
+        // Draw background grid lines
         for (i in 0..4) {
             val y = height * (i / 4f)
-            drawLine(Color.LightGray.copy(alpha = 0.3f), Offset(0f, y), Offset(width, y), strokeWidth = 1.dp.toPx())
+            drawLine(gridColor, Offset(0f, y), Offset(width, y), strokeWidth = 1.dp.toPx())
         }
 
         val path = Path()

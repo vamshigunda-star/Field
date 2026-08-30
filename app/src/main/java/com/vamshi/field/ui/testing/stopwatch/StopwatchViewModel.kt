@@ -51,6 +51,7 @@ class StopwatchViewModel @Inject constructor(
 
     // Full list of unique athletes for this test session
     private var athletes: List<Individual> = emptyList()
+    private var fitnessTest: com.vamshi.field.domain.model.standards.FitnessTest? = null
     
     // Tracks completed trial counts per athlete for this specific session
     private var completionState = mutableMapOf<String, Int>()
@@ -78,6 +79,7 @@ class StopwatchViewModel @Inject constructor(
             try {
                 val session = stopwatchSessionUseCase(eventId, fitnessTestId, groupId)
                 val test = session.fitnessTest
+                fitnessTest = test
 
                 athletes = session.athletes
                 completionState = session.trialCounts.toMutableMap()
@@ -353,11 +355,30 @@ class StopwatchViewModel @Inject constructor(
 
         val elapsedMs = (System.nanoTime() - startNanos) / 1_000_000
         val selectedId = _uiState.value.selectedAthleteId ?: return
+        val rawScore = elapsedMs / 1000.0
+
+        val test = fitnessTest
+        if (test != null) {
+            if (test.validMin != null && rawScore < test.validMin) {
+                _uiState.update { it.copy(elapsedMs = elapsedMs) }
+                viewModelScope.launch {
+                    _uiEvents.send(StopwatchUiEvent.ShowSnackbar("Time (${String.format(java.util.Locale.getDefault(), "%.1f", rawScore)}s) is below minimum valid time (${test.validMin}s) for ${test.name}"))
+                }
+                return
+            }
+            if (test.validMax != null && rawScore > test.validMax) {
+                _uiState.update { it.copy(elapsedMs = elapsedMs) }
+                viewModelScope.launch {
+                    _uiEvents.send(StopwatchUiEvent.ShowSnackbar("Time (${String.format(java.util.Locale.getDefault(), "%.1f", rawScore)}s) exceeds maximum valid time (${test.validMax}s) for ${test.name}"))
+                }
+                return
+            }
+        }
 
         _uiState.update {
             it.copy(
                 elapsedMs = elapsedMs,
-                pendingResults = it.pendingResults + (selectedId to elapsedMs / 1000.0)
+                pendingResults = it.pendingResults + (selectedId to rawScore)
             )
         }
         refreshAllAthletesIfIndividual()
@@ -427,9 +448,18 @@ class StopwatchViewModel @Inject constructor(
     private fun handleCaptureTime(athleteId: String) {
         if (_uiState.value.stopwatchPhase != StopwatchPhase.RUNNING) return
         val elapsedMs = (System.nanoTime() - startNanos) / 1_000_000
+        val rawScore = elapsedMs / 1000.0
+
+        val test = fitnessTest
+        if (test != null && test.validMin != null && rawScore < test.validMin) {
+            viewModelScope.launch {
+                _uiEvents.send(StopwatchUiEvent.ShowSnackbar("Time (${String.format(java.util.Locale.getDefault(), "%.1f", rawScore)}s) is below valid minimum (${test.validMin}s)"))
+            }
+            return
+        }
 
         _uiState.update { s ->
-            s.copy(pendingResults = s.pendingResults + (athleteId to elapsedMs / 1000.0))
+            s.copy(pendingResults = s.pendingResults + (athleteId to rawScore))
         }
         refreshAllAthletesIfIndividual()
         refreshHeatAthletes()

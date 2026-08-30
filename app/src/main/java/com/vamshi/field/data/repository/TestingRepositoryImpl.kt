@@ -85,6 +85,14 @@ class TestingRepositoryImpl @Inject constructor(
         return dao.getLatestResultPerTestForIndividual(individualId).map { it.toDomain() }
     }
 
+    override fun getAllLatestResults(): Flow<List<TestResult>> {
+        return dao.getAllLatestResults().map { list -> list.map { it.toDomain() } }
+    }
+
+    override suspend fun getAllLatestResultsOnce(): List<TestResult> {
+        return dao.getAllLatestResultsOnce().map { it.toDomain() }
+    }
+
     // --- STOPWATCH SUPPORT ---
     override suspend fun getAthletesInGroupOrdered(groupId: String): List<Individual> {
         return dao.getAthletesInGroupOrdered(groupId).map { it.toDomain() }

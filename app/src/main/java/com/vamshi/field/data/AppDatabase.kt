@@ -43,7 +43,7 @@ import com.vamshi.field.data.local.entities.testing.TestingEventEntity
         RecommendationCategoryEntity::class,
         RecommendationTestCrossRef::class
     ],
-    version = 13,
+    version = 15,
     exportSchema = true
 )
 @ColumnTypeConverters(Converters::class)
@@ -57,6 +57,34 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recommendationDao(): RecommendationDao
 
     companion object {
+        /**
+         * Migration 14 → 15: Ensures composite indices on test_results exist for fast query performance.
+         */
+        val MIGRATION_14_15 = object : androidx.room3.migration.Migration(14, 15) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_test_results_individualId_testId_createdAt` ON `test_results` (`individualId`, `testId`, `createdAt`)"
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_test_results_individualId_createdAt` ON `test_results` (`individualId`, `createdAt`)"
+                )
+            }
+        }
+
+        /**
+         * Migration 13 → 14: Adds composite indices on test_results.
+         */
+        val MIGRATION_13_14 = object : androidx.room3.migration.Migration(13, 14) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_test_results_individualId_testId_createdAt` ON `test_results` (`individualId`, `testId`, `createdAt`)"
+                )
+                connection.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_test_results_individualId_createdAt` ON `test_results` (`individualId`, `createdAt`)"
+                )
+            }
+        }
+
         /**
          * Migration 12 → 13: Adds `source` to the three catalog tables.
          *

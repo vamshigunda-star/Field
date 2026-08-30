@@ -4,6 +4,7 @@ import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.domain.model.people.Group
 import com.vamshi.field.domain.model.people.Individual
 import com.vamshi.field.domain.model.standards.FitnessTest
+import com.vamshi.field.domain.model.standards.NormReference
 import com.vamshi.field.domain.model.testing.TestResult
 import com.vamshi.field.domain.model.testing.TestingEvent
 import com.vamshi.field.domain.repository.PeopleRepository
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 import java.util.Calendar
+import java.util.concurrent.ConcurrentHashMap
 
 // ───────────────────────────────────────────────────────────────────
 // Repository
@@ -34,66 +36,106 @@ class ReportsRepositoryImpl @Inject constructor(
     private val getAthleteFlags: GetAthleteFlagsUseCase
 ) : ReportsRepository {
 
+    private val expectedTestsCache = ConcurrentHashMap<Pair<BiologicalSex, Int>, List<FitnessTest>>()
+
+    private suspend fun cachedExpectedTests(athlete: Individual): List<FitnessTest> =
+        expectedTestsCache.getOrPut(athlete.sex to athlete.currentAge) {
+            expectedTestsForAthlete(athlete)
+        }
+
     // ---------- Home ----------
 
     override fun observeHome(): Flow<ReportsHomeData> = combine(
         people.getAllGroups(),
         people.getAllIndividuals(),
         testing.getAllEvents(),
+        testing.getAllLatestResults(),
         testing.getAllResults()
-    ) { groups, individuals, events, _ ->
-        // Per-emission memoization: athletes sharing (sex, age) share one expectedTests computation.
-        // Without this, each athlete triggers ~150 norm probes (50 tests × 3 score points).
-        val expectedTestsCache = mutableMapOf<Pair<BiologicalSex, Int>, List<FitnessTest>>()
-        suspend fun cachedExpected(athlete: Individual): List<FitnessTest> =
-            expectedTestsCache.getOrPut(athlete.sex to athlete.currentAge) {
-                expectedTestsForAthlete(athlete)
+    ) { groups, individuals, events, allLatestResults, allResults ->
+        val groupMap = groups.associateBy { it.id }
+        val latestByAthlete = allLatestResults.groupBy { it.individualId }
+        val allResultsByAthlete = allResults.groupBy { it.individualId }
+        val eventsByGroup = events.groupBy { it.groupId }
+
+        // 1. Group Cards
+        val groupCards = groups.map { g ->
+            val members = people.getIndividualsInGroup(g.id).first()
+            val athleteAvgs = members.map { ind ->
+                val latest = latestByAthlete[ind.id].orEmpty()
+                calculateAthleteSessionAvg(latest)
             }
+            val distribution = calculateGroupDistribution(athleteAvgs)
+            val lastSession = eventsByGroup[g.id]?.firstOrNull()?.date
+            GroupCardData(g, members.size, distribution, lastSession)
+        }
 
-        val groupCards = groups.map { g -> buildGroupCard(g) }
-        val recent = events.take(15).map { e -> buildRecentSessionRow(e, groups) }
+        // 2. Recent Sessions (in-memory aggregation)
+        val recent = events.take(15).map { e ->
+            val results = allResults.filter { it.eventId == e.id }
+            val testCount = results.map { it.testId }.distinct().size
+            RecentSessionRow(
+                event = e,
+                groupId = e.groupId,
+                groupName = e.groupId?.let { groupMap[it]?.name },
+                testCount = testCount,
+                athleteTestedCount = results.map { it.individualId }.distinct().size
+            )
+        }
 
-        // Engine flags from each group's latest session — keep BELOW_HEALTHY / REGRESSION / ABSENT,
-        // but drop MISSING_DATA (session-scoped) and recompute it from full history below so
-        // Insights stays in sync with the Athlete Profile.
+        // 3. Flags from groups' latest sessions
         val flags = mutableListOf<AthleteFlag>()
+        val primaryGroupByAthlete = mutableMapOf<String, String>()
+        val athleteGroupMap = mutableMapOf<String, Set<String>>()
         for (g in groups) {
             val members = people.getIndividualsInGroup(g.id).first()
-            flags += computeGroupFlags(g, members, ::cachedExpected).filter { it.type != FlagType.MISSING_DATA }
+            for (m in members) {
+                primaryGroupByAthlete.putIfAbsent(m.id, g.id)
+                athleteGroupMap[m.id] = (athleteGroupMap[m.id] ?: emptySet()) + g.id
+            }
+            val latestSession = eventsByGroup[g.id]?.firstOrNull()
+            if (latestSession != null && members.isNotEmpty()) {
+                flags += computeGroupFlagsInMemory(g, members, latestSession, allResults).filter { it.type != FlagType.MISSING_DATA }
+            }
         }
 
-        // Full-history MISSING_DATA per athlete (matches Athlete Profile). Once any session
-        // records the missing tests, outstanding becomes empty and the flag clears.
-        val groupNameById = groups.associateBy({ it.id }, { it.name })
-        val primaryGroupByAthlete = mutableMapOf<String, String>()
-        for (g in groups) {
-            val members = people.getIndividualsInGroup(g.id).first()
-            for (m in members) primaryGroupByAthlete.putIfAbsent(m.id, g.id)
-        }
+        // 4. Group-scoped MISSING_DATA per athlete (only tests conducted by athlete's groups)
+        val allTestsMap = standards.getAllTests().first().associateBy { it.id }
+
         for (ind in individuals) {
-            val outstanding = computeOutstandingTests(ind, ::cachedExpected)
-            if (outstanding.isEmpty()) continue
-            val gid = primaryGroupByAthlete[ind.id] ?: ""
+            val gids = athleteGroupMap[ind.id].orEmpty()
+            if (gids.isEmpty()) continue
+            val groupEventIds = events.filter { it.groupId != null && it.groupId in gids }.map { it.id }.toSet()
+            if (groupEventIds.isEmpty()) continue
+            val groupTestIds = allResults.filter { it.eventId in groupEventIds }.map { it.testId }.toSet()
+            if (groupTestIds.isEmpty()) continue
+
+            val takenIds = allResultsByAthlete[ind.id].orEmpty().map { it.testId }.toSet()
+            val missedIds = groupTestIds - takenIds
+            if (missedIds.isEmpty()) continue
+
+            val gid = primaryGroupByAthlete[ind.id] ?: gids.first()
+            val missedTests = missedIds.mapNotNull { allTestsMap[it] }
+            if (missedTests.isEmpty()) continue
+
             flags += AthleteFlag(
                 individualId = ind.id,
                 athleteName = ind.fullName,
                 groupId = gid,
-                groupName = groupNameById[gid] ?: "",
+                groupName = groupMap[gid]?.name ?: "",
                 type = FlagType.MISSING_DATA,
-                message = "Missing ${outstanding.size} expected test${if (outstanding.size == 1) "" else "s"}: ${outstanding.joinToString { it.name }}",
-                testIds = outstanding.map { it.id },
-                testNames = outstanding.map { it.name }
+                message = "Missing ${missedTests.size} expected test${if (missedTests.size == 1) "" else "s"}: ${missedTests.joinToString { it.name }}",
+                testIds = missedTests.map { it.id },
+                testNames = missedTests.map { it.name }
             )
         }
 
-        // de-duplicate flagged athletes
         val flaggedIds = flags.map { it.individualId }.toSet()
         val flagged = flaggedIds.size
 
-        // Count "Healthy" — athletes whose latest-session avg pctile is in HEALTHY or SUPERIOR
+        // 5. Healthy Count
         var healthy = 0
         for (ind in individuals) {
-            val latest = testing.getLatestResultPerTestForIndividual(ind.id)
+            val latest = latestByAthlete[ind.id].orEmpty()
             val avg = calculateAthleteSessionAvg(latest) ?: continue
             val cls = classifyPercentile(avg)
             if (cls == Classification.HEALTHY || cls == Classification.SUPERIOR) healthy++
@@ -124,7 +166,7 @@ class ReportsRepositoryImpl @Inject constructor(
         people.getGroupFlow(groupId),
         people.getIndividualsInGroup(groupId),
         testing.getEventsForGroup(groupId),
-        testing.getAllResults(), // Re-triggers on any result change
+        testing.getAllResults(),
         testing.getAllEvents(),
         standards.getAllTests()
     ) { args ->
@@ -149,11 +191,8 @@ class ReportsRepositoryImpl @Inject constructor(
         val testMap = allTests.associateBy { it.id }
         val allEventsMap = allEvents.associateBy { it.id }
 
-        android.util.Log.d("ReportsRepo", "observeGroupOverview: gid=$groupId athletes=${athleteIds.size} sessions=${sessionIds.size} allResults=${allResultsInDb.size}")
-
         // Distribution from latest results
         val athleteAvgs = distinctAthletes.map { ind ->
-            // Use in-memory filter instead of DAO to avoid loop-latency and race conditions
             val latest = allResultsInDb
                 .filter { it.individualId == ind.id }
                 .groupBy { it.testId }
@@ -162,16 +201,13 @@ class ReportsRepositoryImpl @Inject constructor(
         }
         val distribution = calculateGroupDistribution(athleteAvgs)
 
-        // Optimized Session Rows: Pre-filter results for this group's sessions once
         val resultsForTheseSessions = allResultsInDb.filter { it.eventId in sessionIds }
-        
-        android.util.Log.d("ReportsRepo", "resultsForTheseSessions: ${resultsForTheseSessions.size}")
 
         val sessionRows = distinctSessions.map { ev ->
             val results = resultsForTheseSessions.filter { it.eventId == ev.id }
             val testsWithResults = results.map { it.testId }.distinct()
             val tested = results.map { it.individualId }.distinct().size
-            val flags = computeSessionFlagCount(group, distinctAthletes, ev, results)
+            val flags = computeSessionFlagCountInMemory(group, distinctAthletes, ev, results, allResultsInDb)
             SessionRow(
                 event = ev,
                 testCount = testsWithResults.size,
@@ -181,35 +217,20 @@ class ReportsRepositoryImpl @Inject constructor(
             )
         }
 
-        // Per-test trend strips: gather all tests touched by this group's members across ALL sessions
+        // Per-test trend strips
         val relevantResults = allResultsInDb.filter { it.individualId in athleteIds }
-        
-        android.util.Log.d("ReportsRepo", "relevantResults for trends: ${relevantResults.size}")
-
         val byTest = relevantResults.groupBy { it.testId }
         val trends = byTest.mapNotNull { (testId, testResults) ->
             val test = testMap[testId] ?: return@mapNotNull null
-            
-            // Group by date (via session)
-            val groupedByDate = testResults.groupBy { r -> 
-                allEventsMap[r.eventId]?.date
-            }
-            
+            val groupedByDate = testResults.groupBy { r -> allEventsMap[r.eventId]?.date }
             val pts = groupedByDate.mapNotNull { (date, items) ->
                 if (date == null) return@mapNotNull null
                 val pctiles = items.mapNotNull { it.percentile }
-                if (pctiles.isEmpty()) {
-                    android.util.Log.w("ReportsRepo", "No percentiles for test $testId on date $date. resultCount=${items.size}")
-                    null
-                } else date to pctiles.average().toFloat()
+                if (pctiles.isEmpty()) null else date to pctiles.average().toFloat()
             }.sortedBy { it.first }
-            
-            android.util.Log.d("ReportsRepo", "Trend for test ${test.name}: pts=${pts.size}")
 
             if (pts.isEmpty()) null else TestTrendStrip(test, pts)
         }.sortedBy { it.test.name }
-
-        android.util.Log.d("ReportsRepo", "Total trends found: ${trends.size}")
 
         GroupOverviewData(
             group = group,
@@ -230,9 +251,9 @@ class ReportsRepositoryImpl @Inject constructor(
         combine(
             testing.getTestsForEvent(sessionId),
             testing.getEventResults(sessionId),
-            testing.getAllResults() // Re-triggers on any result change (useful for deltas)
-        ) { tests, results, _ -> tests to results }
-    ) { event, group, athletes, sessions, (tests, sessionResults) ->
+            testing.getAllResults()
+        ) { tests, results, allResults -> Triple(tests, results, allResults) }
+    ) { event, group, athletes, sessions, (tests, sessionResults, allResults) ->
         if (event == null || group == null) return@combine null
 
         val distinctAthletes = athletes.distinctBy { it.id }
@@ -245,25 +266,30 @@ class ReportsRepositoryImpl @Inject constructor(
             .groupBy { it.individualId to it.testId }
             .map { (_, results) -> results.maxBy { it.createdAt } }
 
-        val groupFlagsByAthlete = computeGroupFlags(group, distinctAthletes).groupBy { it.individualId }
+        val groupFlagsByAthlete = computeGroupFlagsInMemory(group, distinctAthletes, event, allResults).groupBy { it.individualId }
 
         // Build leaderboard per test with delta vs prior session for that athlete/test
+        val athleteNameById = distinctAthletes.associateBy({ it.id }, { it.fullName })
         val leaderboardByTest = mutableMapOf<String, List<LeaderboardRow>>()
         val absentByTest = mutableMapOf<String, List<LeaderboardRow>>()
         val missingByTest = mutableMapOf<String, List<String>>()
 
         for (test in distinctTests) {
-            val testResults = deduplicatedSessionResults.filter { it.testId == test.id }
-            val testedIds = testResults.map { it.individualId }.toSet()
+            val rows = mutableListOf<LeaderboardRow>()
+            val testedIds = mutableSetOf<String>()
 
-            val rows = testResults.map { r ->
-                val prevPct = previousResultPercentile(r.individualId, test.id, r.createdAt)
+            val testResults = deduplicatedSessionResults.filter { it.testId == test.id }
+            for (r in testResults) {
+                testedIds += r.individualId
                 val curPct = r.percentile
-                val delta = if (prevPct != null && curPct != null) curPct - prevPct else null
-                LeaderboardRow(
+                val prevPct = allResults
+                    .filter { it.individualId == r.individualId && it.testId == test.id && it.createdAt < event.date }
+                    .maxByOrNull { it.createdAt }?.percentile
+                val delta = if (curPct != null && prevPct != null) curPct - prevPct else null
+                rows += LeaderboardRow(
                     rank = 0,
                     individualId = r.individualId,
-                    athleteName = distinctAthletes.firstOrNull { it.id == r.individualId }?.fullName ?: "Unknown",
+                    athleteName = athleteNameById[r.individualId] ?: "Unknown",
                     rawScore = r.rawScore,
                     unit = test.unit,
                     percentile = curPct,
@@ -304,12 +330,8 @@ class ReportsRepositoryImpl @Inject constructor(
         for (test in distinctTests) {
             val byEvent = mutableListOf<Pair<Long, Float>>()
             for (ev in distinctSessions) {
-                // Get all results for this test in THIS specific event for members of THIS group
-                // We use first() here because we are already inside a combine block that re-triggers on any result change.
-                val eventResults = testing.getEventResults(ev.id).first()
-                    .filter { it.testId == test.id && distinctAthletes.any { a -> a.id == it.individualId } }
-                
-                // Keep only latest attempt per athlete if they did multiple in one session
+                val eventResults = allResults
+                    .filter { it.eventId == ev.id && it.testId == test.id && distinctAthletes.any { a -> a.id == it.individualId } }
                 val uniqueAthleteResults = eventResults.groupBy { it.individualId }
                     .map { (_, list) -> list.maxBy { it.createdAt } }
 
@@ -324,7 +346,7 @@ class ReportsRepositoryImpl @Inject constructor(
         SessionReportData(
             event = event,
             group = group,
-            groupSessions = distinctSessions.reversed(), // Latest first for switcher
+            groupSessions = distinctSessions.reversed(),
             tests = distinctTests,
             leaderboardByTest = leaderboardByTest,
             absentByTest = absentByTest,
@@ -341,24 +363,24 @@ class ReportsRepositoryImpl @Inject constructor(
         people.getIndividualFlow(athleteId),
         people.getGroupsForIndividual(athleteId),
         testing.getAllResultsForIndividual(athleteId),
-        testing.getAllEvents() // To pick/name the context session
-    ) { athlete, groups, allResults, allEvents ->
+        testing.getAllEvents(),
+        standards.getAllTests()
+    ) { athlete, groups, allResults, allEvents, allTests ->
         if (athlete == null) return@combine null
 
+        val testMap = allTests.associateBy { it.id }
         val ctxEvent = (contextSessionId?.let { cid -> allEvents.find { it.id == cid } })
             ?: allResults.maxByOrNull { it.createdAt }?.let { r -> allEvents.find { it.id == r.eventId } }
 
-        // Deduplicate allResults: latest per (test, event)
         val deduplicatedAllResults = allResults.groupBy { it.testId to it.eventId }
             .map { (_, list) -> list.maxBy { it.createdAt } }
 
         val sessionResults = if (ctxEvent != null) deduplicatedAllResults.filter { it.eventId == ctxEvent.id } else emptyList()
         val sessionAvg = calculateAthleteSessionAvg(sessionResults)
 
-        // Per-test tiles using LATEST result per test across history
         val resultsByTest = deduplicatedAllResults.groupBy { it.testId }
         val tiles = resultsByTest.mapNotNull { (testId, results) ->
-            val test = standards.getTestById(testId) ?: return@mapNotNull null
+            val test = testMap[testId] ?: return@mapNotNull null
             val sorted = results.sortedBy { it.createdAt }
             val latest = sorted.lastOrNull()
             val previous = if (sorted.size >= 2) sorted[sorted.size - 2] else null
@@ -375,16 +397,38 @@ class ReportsRepositoryImpl @Inject constructor(
             )
         }.sortedBy { it.test.name }
 
-        // Outstanding tests = tests for athlete's age/sex with norms but no result yet (full history)
-        val outstanding = computeOutstandingTests(athlete, ::cachedExpectedTests)
+        val athleteGroupIds = groups.map { it.id }.toSet()
+        val athleteGroupEvents = allEvents.filter { it.groupId != null && it.groupId in athleteGroupIds }
+        val athleteGroupEventIds = athleteGroupEvents.map { it.id }.toSet()
 
-        // Flags scoped to this athlete's groups (latest session each), excluding MISSING_DATA —
-        // we replace it with a history-aware version below so it clears once the athlete
-        // completes the outstanding tests in any session.
+        // Only tests that were actually performed in the athlete's group testing sessions
+        val testsConductedInGroupEvents = if (athleteGroupEventIds.isNotEmpty()) {
+            allResults
+                .filter { it.eventId in athleteGroupEventIds }
+                .map { it.testId }
+                .toSet()
+        } else {
+            emptySet()
+        }
+
+        val takenIds = allResults.filter { it.individualId == athleteId }.map { it.testId }.toSet()
+        // An athlete only has outstanding tests if their group performed them and this athlete missed them
+        val outstanding = if (testsConductedInGroupEvents.isNotEmpty()) {
+            val missedIds = testsConductedInGroupEvents - takenIds
+            allTests.filter { it.id in missedIds }
+        } else {
+            emptyList()
+        }
+
         val flags = mutableListOf<AthleteFlag>()
         for (g in groups) {
-            flags += computeSingleAthleteFlags(g, athlete)
-                .filter { it.type != FlagType.MISSING_DATA }
+            val latestSession = allEvents
+                .filter { it.groupId == g.id }
+                .maxByOrNull { it.date }
+            if (latestSession != null) {
+                flags += computeSingleAthleteFlagsInMemory(g, athlete, latestSession, allResults)
+                    .filter { it.type != FlagType.MISSING_DATA }
+            }
         }
 
         if (outstanding.isNotEmpty()) {
@@ -422,14 +466,14 @@ class ReportsRepositoryImpl @Inject constructor(
     ): Flow<AthleteTestDetailData?> = combine(
         people.getIndividualFlow(athleteId),
         testing.getHistoryForTest(athleteId, testId),
-        testing.getAllEvents()
-    ) { athlete, history, allEvents ->
-        val test = standards.getTestById(testId) ?: return@combine null
+        testing.getAllEvents(),
+        standards.getAllTests()
+    ) { athlete, history, allEvents, allTests ->
+        val test = allTests.find { it.id == testId } ?: return@combine null
         if (athlete == null) return@combine null
 
         val sortedHistory = history.sortedBy { it.createdAt }
 
-        // Build attempts
         val attempts = sortedHistory.mapIndexed { idx, r ->
             val prev = if (idx == 0) null else sortedHistory[idx - 1]
             val deltaRaw = prev?.let { r.rawScore - it.rawScore }
@@ -451,23 +495,35 @@ class ReportsRepositoryImpl @Inject constructor(
             )
         }
 
-        // Norm bands: for each attempt compute the raw score that would be p70 (superior) and p35 (healthy)
-        val bands = sortedHistory.map { r ->
-            val ageYears = r.ageAtTime
-            NormBandsForAge(
-                date = r.createdAt,
-                ageYears = ageYears,
-                superiorMin = approxRawAtPercentile(testId, athlete.sex, ageYears.toDouble(), 70, test.isHigherBetter),
-                healthyMin = approxRawAtPercentile(testId, athlete.sex, ageYears.toDouble(), 35, test.isHigherBetter),
-                needsMax = approxRawAtPercentile(testId, athlete.sex, ageYears.toDouble(), 34, test.isHigherBetter)
-            )
+        // Norm bands: in-memory evaluation using cached norm bands (0 probe sweeps!)
+        val bands = try {
+            sortedHistory.map { r ->
+                val ageYears = if (r.ageAtTime > 0f) r.ageAtTime else athlete.currentAge.toFloat()
+                val normBands = try {
+                    standards.getNormBandsForAthleteTest(testId, athlete.sex, ageYears.toDouble())
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                NormBandsForAge(
+                    date = r.createdAt,
+                    ageYears = ageYears,
+                    superiorMin = findScoreForPercentile(normBands, 70, test.isHigherBetter),
+                    healthyMin = findScoreForPercentile(normBands, 35, test.isHigherBetter),
+                    needsMax = findScoreForPercentile(normBands, 34, test.isHigherBetter)
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
         }
 
-        // Peer leaderboard for context session
         val ctxEvent = contextSessionId?.let { cid -> allEvents.find { it.id == cid } }
             ?: sortedHistory.lastOrNull()?.let { r -> allEvents.find { it.id == r.eventId } }
-        val peer = ctxEvent?.let { ev ->
-            ev.groupId?.let { gid -> buildPeerLeaderboard(ev.id, gid, test) }
+        val peer = try {
+            ctxEvent?.let { ev ->
+                ev.groupId?.let { gid -> buildPeerLeaderboard(ev.id, gid, test) }
+            }
+        } catch (_: Exception) {
+            null
         }
 
         AthleteTestDetailData(
@@ -482,45 +538,35 @@ class ReportsRepositoryImpl @Inject constructor(
 
     // ───────────────────────── Helpers ─────────────────────────
 
-    private suspend fun buildGroupCard(g: Group): GroupCardData {
-        val athletes = people.getIndividualsInGroup(g.id).first()
-        val athleteAvgs = athletes.map { ind ->
-            val latest = testing.getLatestResultPerTestForIndividual(ind.id)
-            calculateAthleteSessionAvg(latest)
-        }
-        val distribution = calculateGroupDistribution(athleteAvgs)
-        val lastSession = testing.getEventsForGroup(g.id).first().firstOrNull()?.date
-        return GroupCardData(g, athletes.size, distribution, lastSession)
+    private fun findScoreForPercentile(
+        normBands: List<NormReference>,
+        targetPercentile: Int,
+        isHigherBetter: Boolean
+    ): Double? {
+        if (normBands.isEmpty()) return null
+        val bestBand = normBands.minByOrNull { kotlin.math.abs(it.percentile - targetPercentile) } ?: return null
+        return if (isHigherBetter) bestBand.minScore else bestBand.maxScore
     }
 
-    private suspend fun buildRecentSessionRow(ev: TestingEvent, allGroups: List<Group>): RecentSessionRow {
-        val tests = testing.getTestsForEvent(ev.id).first()
-        val results = testing.getEventResults(ev.id).first()
-        val groupName = ev.groupId?.let { gid -> allGroups.firstOrNull { it.id == gid }?.name }
-        return RecentSessionRow(
-            event = ev,
-            groupId = ev.groupId,
-            groupName = groupName,
-            testCount = tests.size,
-            athleteTestedCount = results.map { it.individualId }.distinct().size
-        )
+    private suspend fun expectedTestsForAthlete(athlete: Individual): List<FitnessTest> {
+        val ageYears = athlete.currentAge.toDouble()
+        val all = standards.getAllTests().first()
+        val out = mutableListOf<FitnessTest>()
+        for (t in all) {
+            val normBands = standards.getNormBandsForAthleteTest(t.id, athlete.sex, ageYears)
+            if (normBands.isNotEmpty()) out += t
+        }
+        return out
     }
 
-    private val expectedTestsCache = java.util.concurrent.ConcurrentHashMap<Pair<BiologicalSex, Int>, List<FitnessTest>>()
-
-    private suspend fun cachedExpectedTests(athlete: Individual): List<FitnessTest> =
-        expectedTestsCache.getOrPut(athlete.sex to athlete.currentAge) {
-            expectedTestsForAthlete(athlete)
-        }
-
-    private suspend fun computeSingleAthleteFlags(
+    private suspend fun computeSingleAthleteFlagsInMemory(
         group: Group,
-        athlete: Individual
+        athlete: Individual,
+        latestSession: TestingEvent,
+        allResults: List<TestResult>
     ): List<AthleteFlag> {
-        val sessions = testing.getEventsForGroup(group.id).first()
-        val latest = sessions.firstOrNull() ?: return emptyList()
-        val latestResults = testing.getEventResults(latest.id).first()
-            .filter { it.individualId == athlete.id }
+        val latestResults = allResults
+            .filter { it.eventId == latestSession.id && it.individualId == athlete.id }
             .groupBy { it.testId }
             .map { (_, list) -> list.maxBy { it.createdAt } }
 
@@ -539,8 +585,9 @@ class ReportsRepositoryImpl @Inject constructor(
 
         val prevMap = mutableMapOf<Pair<String, String>, TestResult>()
         for (r in latestResults) {
-            val hist = testing.getHistoryForTest(athlete.id, r.testId).first()
-            val prev = hist.filter { it.createdAt < latest.date }.maxByOrNull { it.createdAt } ?: continue
+            val prev = allResults
+                .filter { it.individualId == athlete.id && it.testId == r.testId && it.createdAt < latestSession.date }
+                .maxByOrNull { it.createdAt } ?: continue
             prevMap[athlete.id to r.testId] = prev
         }
 
@@ -554,35 +601,32 @@ class ReportsRepositoryImpl @Inject constructor(
         )
     }
 
-    private suspend fun computeGroupFlags(
+    private suspend fun computeGroupFlagsInMemory(
         group: Group,
         athletes: List<Individual>,
-        expectedLookup: (suspend (Individual) -> List<FitnessTest>)? = null
+        latestSession: TestingEvent,
+        allResults: List<TestResult>
     ): List<AthleteFlag> {
         if (athletes.isEmpty()) return emptyList()
-        val sessions = testing.getEventsForGroup(group.id).first()
-        val latest = sessions.firstOrNull() ?: return emptyList()
-        // Dedupe to latest attempt per (athlete, test). Retakes insert new rows; without this
-        // an older failing attempt fires REGRESSION/BELOW_HEALTHY against the previous session
-        // even after a successful retake supersedes it.
-        val latestResults = testing.getEventResults(latest.id).first()
-            .filter { r -> athletes.any { a -> a.id == r.individualId } }
+        val athleteIds = athletes.map { it.id }.toSet()
+        val latestResults = allResults
+            .filter { it.eventId == latestSession.id && it.individualId in athleteIds }
             .groupBy { it.individualId to it.testId }
             .map { (_, list) -> list.maxBy { it.createdAt } }
 
-        // previous result per (athlete, test) before latest event
         val prevMap = mutableMapOf<Pair<String, String>, TestResult>()
+        val distinctTestsInEvent = latestResults.map { it.testId }.distinct()
         for (a in athletes) {
-            for (test in testing.getTestsForEvent(latest.id).first()) {
-                val hist = testing.getHistoryForTest(a.id, test.id).first()
-                val prev = hist.filter { it.createdAt < latest.date }.maxByOrNull { it.createdAt } ?: continue
-                prevMap[a.id to test.id] = prev
+            for (testId in distinctTestsInEvent) {
+                val prev = allResults
+                    .filter { it.individualId == a.id && it.testId == testId && it.createdAt < latestSession.date }
+                    .maxByOrNull { it.createdAt } ?: continue
+                prevMap[a.id to testId] = prev
             }
         }
 
         val expected = athletes.associate { a ->
-            val tests = expectedLookup?.invoke(a) ?: expectedTestsForAthlete(a)
-            a.id to tests.map { it.id }.toSet()
+            a.id to distinctTestsInEvent.toSet()
         }
 
         return getAthleteFlags(
@@ -595,27 +639,30 @@ class ReportsRepositoryImpl @Inject constructor(
         )
     }
 
-    private suspend fun computeSessionFlagCount(
+    private suspend fun computeSessionFlagCountInMemory(
         group: Group,
         athletes: List<Individual>,
         event: TestingEvent,
-        eventResults: List<TestResult>
+        eventResults: List<TestResult>,
+        allResults: List<TestResult>
     ): Int {
-        val tests = testing.getTestsForEvent(event.id).first()
-        // Dedupe to latest attempt per (athlete, test) — see note in computeGroupFlags.
+        val athleteIds = athletes.map { it.id }.toSet()
         val deduplicatedResults = eventResults
+            .filter { it.individualId in athleteIds }
             .groupBy { it.individualId to it.testId }
             .map { (_, list) -> list.maxBy { it.createdAt } }
         val prev = mutableMapOf<Pair<String, String>, TestResult>()
+        val distinctTestsInEvent = deduplicatedResults.map { it.testId }.distinct()
         for (a in athletes) {
-            for (test in tests) {
-                val hist = testing.getHistoryForTest(a.id, test.id).first()
-                val p = hist.filter { it.createdAt < event.date }.maxByOrNull { it.createdAt } ?: continue
-                prev[a.id to test.id] = p
+            for (testId in distinctTestsInEvent) {
+                val p = allResults
+                    .filter { it.individualId == a.id && it.testId == testId && it.createdAt < event.date }
+                    .maxByOrNull { it.createdAt } ?: continue
+                prev[a.id to testId] = p
             }
         }
         val expected = athletes.associate { a ->
-            a.id to expectedTestsForAthlete(a).map { it.id }.toSet()
+            a.id to distinctTestsInEvent.toSet()
         }
         return getAthleteFlags(
             groupId = group.id,
@@ -625,70 +672,6 @@ class ReportsRepositoryImpl @Inject constructor(
             athletesInGroup = athletes.map { it.id to it.fullName },
             expectedTestsByAthlete = expected
         ).distinctBy { it.individualId to it.type }.size
-    }
-
-    private suspend fun previousResultPercentile(
-        individualId: String,
-        testId: String,
-        beforeCreatedAt: Long
-    ): Int? {
-        val hist = testing.getHistoryForTest(individualId, testId).first()
-        return hist.filter { it.createdAt < beforeCreatedAt }.maxByOrNull { it.createdAt }?.percentile
-    }
-
-    /**
-     * Tests the athlete is "expected" to have completed (a norm exists for their age + sex)
-     * but has no result for in their entire history. Used by Athlete Profile and Insights
-     * "Needs Attention" so MISSING_DATA flags reflect the athlete's true current state and
-     * clear once any session records the missing tests.
-     */
-    private suspend fun computeOutstandingTests(
-        athlete: Individual,
-        expectedLookup: (suspend (Individual) -> List<FitnessTest>)? = null
-    ): List<FitnessTest> {
-        val allResults = testing.getAllResultsForIndividual(athlete.id).first()
-        val takenIds = allResults.map { it.testId }.toSet()
-        val expected = expectedLookup?.invoke(athlete) ?: expectedTestsForAthlete(athlete)
-        return expected.filter { it.id !in takenIds }
-    }
-
-    private suspend fun expectedTestsForAthlete(athlete: Individual): List<FitnessTest> {
-        // A test is "expected" if at least one norm row exists matching the athlete's age + sex
-        val ageYears = athlete.currentAge.toDouble()
-        val all = standards.getAllTests().first()
-        val out = mutableListOf<FitnessTest>()
-        for (t in all) {
-            // probe with a midpoint score; if any norm exists for the bracket the test is expected
-            val anyNorm = standards.getNormResult(t.id, athlete.sex, ageYears, Double.MIN_VALUE)
-                ?: standards.getNormResult(t.id, athlete.sex, ageYears, 0.0)
-                ?: standards.getNormResult(t.id, athlete.sex, ageYears, Double.MAX_VALUE)
-            if (anyNorm != null) out += t
-        }
-        return out
-    }
-
-    private suspend fun approxRawAtPercentile(
-        testId: String,
-        sex: BiologicalSex,
-        ageYears: Double,
-        percentile: Int,
-        @Suppress("UNUSED_PARAMETER") isHigherBetter: Boolean
-    ): Double? {
-        // We can't sweep the score space from the existing repo, so probe a few candidate raw scores
-        // and pick the one whose returned percentile is closest to the requested target.
-        // This is an approximation but stable across norm shapes.
-        val probes = listOf(0.0, 1.0, 2.0, 5.0, 10.0, 15.0, 20.0, 30.0, 45.0, 60.0, 90.0, 120.0, 200.0, 500.0)
-        var bestScore: Double? = null
-        var bestDiff = Int.MAX_VALUE
-        for (p in probes) {
-            val n = standards.getNormResult(testId, sex, ageYears, p) ?: continue
-            val diff = kotlin.math.abs(n.percentile - percentile)
-            if (diff < bestDiff) {
-                bestDiff = diff
-                bestScore = p
-            }
-        }
-        return bestScore
     }
 
     private suspend fun buildPeerLeaderboard(
@@ -730,5 +713,4 @@ class ReportsRepositoryImpl @Inject constructor(
             if (isHigherBetter) n else 1f - n
         }
     }
-
 }

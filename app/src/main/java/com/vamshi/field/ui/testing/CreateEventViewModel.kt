@@ -90,8 +90,7 @@ class CreateEventViewModel @Inject constructor(
                     state.copy(
                         categories = categories,
                         allTests = tests,
-                        // seed only on first arrival; don't collapse a category the coach already opened
-                        expandedCategoryId = state.expandedCategoryId ?: categories.firstOrNull()?.id,
+                        expandedCategoryId = state.expandedCategoryId,
                         presets = buildPresets(categories, tests)
                     )
                 }

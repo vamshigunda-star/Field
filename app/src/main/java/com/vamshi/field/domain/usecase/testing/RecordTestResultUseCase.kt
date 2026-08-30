@@ -31,6 +31,13 @@ class RecordTestResultUseCase @Inject constructor(
             // test here also means we have no isHigherBetter / interpretation hint.
             // Loud warning so it shows up in logcat instead of failing opaquely on insert.
             Log.w("RecordTestResult", "Unknown testId=$testId — proceeding without interpretation")
+        } else {
+            if (test.validMin != null && rawScore < test.validMin) {
+                throw IllegalArgumentException("Score $rawScore is below minimum valid value (${test.validMin}) for ${test.name}")
+            }
+            if (test.validMax != null && rawScore > test.validMax) {
+                throw IllegalArgumentException("Score $rawScore exceeds maximum valid value (${test.validMax}) for ${test.name}")
+            }
         }
 
         val percentileResult = when (test?.interpretationStrategy) {

@@ -35,8 +35,11 @@ import com.vamshi.field.domain.model.standards.MeasurementMethod
 import com.vamshi.field.domain.model.standards.ScoringBands
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.theme.PerformanceGreenText
+import com.vamshi.field.ui.theme.PerformanceGreenTextDark
 import com.vamshi.field.ui.theme.PerformanceRedText
+import com.vamshi.field.ui.theme.PerformanceRedTextDark
 import com.vamshi.field.ui.theme.PerformanceYellowText
+import com.vamshi.field.ui.theme.PerformanceYellowTextDark
 
 /** Units a coach is most likely to want, offered as one-tap chips. Free text still wins. */
 private val COMMON_UNITS = listOf("sec", "reps", "cm", "m", "kg", "laps", "level", "points")
@@ -742,11 +745,14 @@ private fun BoundaryField(
     }
 }
 
-/** Dot colour matching the zone the band's percentile lands in (60/30 thresholds). */
-private fun BandLevel.zoneColor(): Color = when (this) {
-    BandLevel.NEEDS_WORK -> PerformanceRedText
-    BandLevel.FAIR -> PerformanceYellowText
-    BandLevel.GOOD, BandLevel.EXCELLENT -> PerformanceGreenText
+@Composable
+private fun BandLevel.zoneColor(): Color {
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+    return when (this) {
+        BandLevel.NEEDS_WORK -> if (isDark) PerformanceRedTextDark else PerformanceRedText
+        BandLevel.FAIR -> if (isDark) PerformanceYellowTextDark else PerformanceYellowText
+        BandLevel.GOOD, BandLevel.EXCELLENT -> if (isDark) PerformanceGreenTextDark else PerformanceGreenText
+    }
 }
 
 private fun Double.display(): String =

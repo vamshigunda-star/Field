@@ -134,14 +134,12 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                 onNavigateToNewTest = { navController.navigate(Screen.CustomTest.createRoute()) },
                 onNavigateToQuickTest = { navController.navigate(Screen.QuickTest.createRoute()) },
                 onNavigateToIndividualTest = { navController.navigate(Screen.QuickTest.createRoute(mode = "individual")) },
-                onNavigateToTestingGrid = { eventId, groupId ->
-                    navController.navigate(Screen.TestingGrid.createRoute(eventId, groupId))
-                },
                 onNavigateToLeaderboard = { eventId, groupId, mode ->
                     navController.navigate(Screen.Leaderboard.createRoute(eventId, groupId, mode))
                 },
                 onNavigateToReports = { navController.navigate(Screen.Report.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToAiCoach = { navController.navigate(Screen.AiCoach.route) },
                 onNavigateToSignIn = {
                     navController.navigate(Screen.Unlock.route) {
                         popUpTo(0) { inclusive = true }
@@ -317,7 +315,7 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
             route = Screen.AthleteDashboard.route,
             arguments = listOf(
                 navArgument("athleteId") { type = NavType.StringType },
-                navArgument("contextSessionId") { type = NavType.StringType; nullable = true }
+                navArgument("contextSessionId") { type = NavType.StringType; nullable = true; defaultValue = null }
             )
         ) { backStackEntry ->
             val athleteId = backStackEntry.arguments?.getString("athleteId") ?: ""
@@ -346,7 +344,7 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
             arguments = listOf(
                 navArgument("athleteId") { type = NavType.StringType },
                 navArgument("testId") { type = NavType.StringType },
-                navArgument("contextSessionId") { type = NavType.StringType; nullable = true }
+                navArgument("contextSessionId") { type = NavType.StringType; nullable = true; defaultValue = null }
             )
         ) { backStackEntry ->
             val athleteId = backStackEntry.arguments?.getString("athleteId") ?: ""

@@ -33,6 +33,7 @@ import com.vamshi.field.domain.model.standards.FitnessTest
 // ── UI State ──────────────────────────────────────────────────────────────────
 
 data class ReportsHubUiState(
+    val athleteRoster: List<Pair<String, String>> = emptyList(),
     val homeData: ReportsHomeData? = null,
     val isLoadingHome: Boolean = true,
 
@@ -117,6 +118,16 @@ class ReportsHubViewModel @Inject constructor(
     private var eventJob: Job? = null
 
     init {
+        // 1. Immediately stream the athlete roster for instant search / dropdown opening (< 50ms)
+        viewModelScope.launch {
+            peopleRepository.getAllIndividuals()
+                .catch { /* non-fatal, fallback to empty */ }
+                .collect { list ->
+                    _uiState.update { it.copy(athleteRoster = list.map { ind -> ind.id to ind.fullName }) }
+                }
+        }
+
+        // 2. Observe home analytics metrics
         viewModelScope.launch {
             reports.observeHome()
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoadingHome = false) } }
@@ -126,6 +137,7 @@ class ReportsHubViewModel @Inject constructor(
                     // Auto-load first athlete from flags list if nothing selected yet
                     if (_uiState.value.selectedAthleteId == null) {
                         val firstId = data.flags.firstOrNull()?.individualId
+                            ?: _uiState.value.athleteRoster.firstOrNull()?.first
                         if (firstId != null) loadAthlete(firstId)
                     }
 
@@ -172,10 +184,23 @@ class ReportsHubViewModel @Inject constructor(
         val testId: String?
     )
 
+    private data class CachedEventReport(
+        val eventData: SessionReportData,
+        val testId: String?
+    )
+
     private val athleteCache = Collections.synchronizedMap(
         object : LinkedHashMap<String, CachedAthleteReport>(16, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedAthleteReport>?): Boolean {
                 return size > 25
+            }
+        }
+    )
+
+    private val eventCache = Collections.synchronizedMap(
+        object : LinkedHashMap<String, CachedEventReport>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedEventReport>?): Boolean {
+                return size > 15
             }
         }
     )
@@ -197,22 +222,21 @@ class ReportsHubViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     selectedAthleteId = id,
-                    isLoadingAthlete = true,
-                    athleteData = null,
-                    athleteRadarData = null,
-                    selectedAthleteTestId = null
+                    isLoadingAthlete = true
                 )
             }
         }
 
         athleteJob = viewModelScope.launch {
+            // Launch radar computation concurrently in parallel with dashboard flow
+            val radarDeferred = async {
+                try { getAthleteRadarData(id) } catch (_: Exception) { null }
+            }
+
             reports.observeAthleteDashboard(id, null)
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoadingAthlete = false) } }
                 .collect { data ->
                     if (data != null) {
-                        val radarDeferred = async {
-                            try { getAthleteRadarData(id) } catch (_: Exception) { null }
-                        }
                         val radar = radarDeferred.await()
                         val initialTestId = data.tiles.firstOrNull()?.test?.id
                         athleteCache[id] = CachedAthleteReport(data, radar, initialTestId)
@@ -233,25 +257,45 @@ class ReportsHubViewModel @Inject constructor(
 
     private fun loadEvent(eventId: String, groupId: String) {
         eventJob?.cancel()
-        _uiState.update {
-            it.copy(
-                selectedEventId = eventId,
-                selectedEventGroupId = groupId,
-                isLoadingEvent = true,
-                eventData = null,
-                selectedEventTestId = null
-            )
+        val cached = eventCache[eventId]
+        if (cached != null) {
+            _uiState.update {
+                it.copy(
+                    selectedEventId = eventId,
+                    selectedEventGroupId = groupId,
+                    eventData = cached.eventData,
+                    selectedEventTestId = cached.testId,
+                    isLoadingEvent = false
+                )
+            }
+        } else {
+            _uiState.update {
+                it.copy(
+                    selectedEventId = eventId,
+                    selectedEventGroupId = groupId,
+                    isLoadingEvent = true,
+                    eventData = null,
+                    selectedEventTestId = null
+                )
+            }
         }
+
         eventJob = viewModelScope.launch {
             reports.observeSessionReport(groupId, eventId)
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoadingEvent = false) } }
                 .collect { data ->
-                    _uiState.update { state ->
-                        state.copy(
-                            eventData = data,
-                            isLoadingEvent = false,
-                            selectedEventTestId = state.selectedEventTestId ?: data?.tests?.firstOrNull()?.id
-                        )
+                    if (data != null) {
+                        val initialTestId = data.tests.firstOrNull()?.id
+                        eventCache[eventId] = CachedEventReport(data, initialTestId)
+                        _uiState.update { state ->
+                            state.copy(
+                                eventData = data,
+                                isLoadingEvent = false,
+                                selectedEventTestId = state.selectedEventTestId ?: initialTestId
+                            )
+                        }
+                    } else {
+                        _uiState.update { it.copy(eventData = null, isLoadingEvent = false) }
                     }
                 }
         }

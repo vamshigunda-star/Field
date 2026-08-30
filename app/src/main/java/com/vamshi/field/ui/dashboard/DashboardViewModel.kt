@@ -2,6 +2,7 @@ package com.vamshi.field.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vamshi.field.data.storage.TourPreferencesStore
 import com.vamshi.field.domain.model.people.Group
 import com.vamshi.field.domain.model.testing.TestingEvent
 import com.vamshi.field.domain.repository.PeopleRepository
@@ -18,7 +19,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class DashboardUiState(
-    val recentEvents: List<TestingEvent> = emptyList(),
+    val availableEvents: List<TestingEvent> = emptyList(),
     val groups: List<Group> = emptyList(),
     val activeAthletes: Int = 0,
     val scheduledTestCount: Int = 0,
@@ -31,7 +32,23 @@ data class DashboardUiState(
     /** True after sign-out; screen navigates to SignIn via LaunchedEffect. */
     val navigateToSignIn: Boolean = false,
     /** True while the leaderboard event picker is open. */
-    val showLeaderboardPicker: Boolean = false
+    val showLeaderboardPicker: Boolean = false,
+    /** True while the tour selection bottom sheet is open. */
+    val showTourSelectionSheet: Boolean = false,
+    /** True while the 4-slide Welcome tour dialog is open. */
+    val showWelcomeTour: Boolean = false,
+    /** True while the 5-step Testing workflow tour dialog is open. */
+    val showTestingTour: Boolean = false,
+    /** Whether the user has dismissed the Getting Started checklist. */
+    val isGettingStartedDismissed: Boolean = false,
+    /** Whether the initial welcome tour has been seen. */
+    val hasSeenWelcomeTour: Boolean = true,
+    /** Whether the interactive spotlight walkthrough on the Dashboard is active. */
+    val showDashboardSpotlight: Boolean = false,
+    /** Whether the user has completed or dismissed the dashboard spotlight tour. */
+    val hasSeenDashboardSpotlight: Boolean = true,
+    /** True while the interactive pipeline workflow simulator is open. */
+    val showPipelineSimulator: Boolean = false
 )
 
 sealed interface DashboardAction {
@@ -42,16 +59,27 @@ sealed interface DashboardAction {
     data object OnTestLibraryClick : DashboardAction
     data object OnRecommendationsClick : DashboardAction
     data object OnNewTestClick : DashboardAction
-    data class OnEventClick(val eventId: String, val groupId: String) : DashboardAction
     data object OnSettingsClick : DashboardAction
     data object OnDismissError : DashboardAction
     data object OnLeaderboardClick : DashboardAction
     data object OnDismissLeaderboardPicker : DashboardAction
     data class OnPickLeaderboardEvent(val eventId: String, val groupId: String) : DashboardAction
     data object OnAnalyticsClick : DashboardAction
-    data object OnSeeAllEventsClick : DashboardAction
     data object OnSignOutClick : DashboardAction
     data object NavigationConsumed : DashboardAction
+    // Tours and Onboarding Actions
+    data object OnOpenTourMenuClick : DashboardAction
+    data object OnDismissTourMenu : DashboardAction
+    data object OnOpenWelcomeTour : DashboardAction
+    data object OnDismissWelcomeTour : DashboardAction
+    data object OnOpenTestingTour : DashboardAction
+    data object OnDismissTestingTour : DashboardAction
+    data object OnDismissGettingStarted : DashboardAction
+    data object OnResetGettingStarted : DashboardAction
+    data object OnStartDashboardSpotlight : DashboardAction
+    data object OnDismissDashboardSpotlight : DashboardAction
+    data object OnOpenPipelineSimulator : DashboardAction
+    data object OnDismissPipelineSimulator : DashboardAction
 }
 
 @HiltViewModel
@@ -59,7 +87,8 @@ class DashboardViewModel @Inject constructor(
     private val peopleRepository: PeopleRepository,
     private val testingRepository: TestingRepository,
     private val observeCurrentUser: ObserveCurrentUserUseCase,
-    private val signOutUseCase: SignOutUseCase
+    private val signOutUseCase: SignOutUseCase,
+    private val tourPreferencesStore: TourPreferencesStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -68,6 +97,7 @@ class DashboardViewModel @Inject constructor(
     init {
         loadDashboardData()
         observeCoachName()
+        observeTourPreferences()
     }
 
     fun onAction(action: DashboardAction) {
@@ -90,8 +120,85 @@ class DashboardViewModel @Inject constructor(
             DashboardAction.OnDismissLeaderboardPicker -> {
                 _uiState.update { it.copy(showLeaderboardPicker = false) }
             }
+            DashboardAction.OnOpenTourMenuClick -> {
+                _uiState.update { it.copy(showTourSelectionSheet = true) }
+            }
+            DashboardAction.OnDismissTourMenu -> {
+                _uiState.update { it.copy(showTourSelectionSheet = false) }
+            }
+            DashboardAction.OnOpenWelcomeTour -> {
+                _uiState.update { it.copy(showWelcomeTour = true, showTourSelectionSheet = false) }
+            }
+            DashboardAction.OnDismissWelcomeTour -> {
+                viewModelScope.launch {
+                    tourPreferencesStore.setHasSeenWelcomeTour(true)
+                }
+                _uiState.update { it.copy(showWelcomeTour = false) }
+            }
+            DashboardAction.OnOpenTestingTour -> {
+                _uiState.update { it.copy(showTestingTour = true, showTourSelectionSheet = false) }
+            }
+            DashboardAction.OnDismissTestingTour -> {
+                viewModelScope.launch {
+                    tourPreferencesStore.setHasSeenTestingTour(true)
+                }
+                _uiState.update { it.copy(showTestingTour = false) }
+            }
+            DashboardAction.OnDismissGettingStarted -> {
+                viewModelScope.launch {
+                    tourPreferencesStore.setGettingStartedDismissed(true)
+                }
+                _uiState.update { it.copy(isGettingStartedDismissed = true) }
+            }
+            DashboardAction.OnResetGettingStarted -> {
+                viewModelScope.launch {
+                    tourPreferencesStore.setGettingStartedDismissed(false)
+                }
+                _uiState.update { it.copy(isGettingStartedDismissed = false) }
+            }
+            DashboardAction.OnStartDashboardSpotlight -> {
+                _uiState.update { it.copy(showDashboardSpotlight = true, showTourSelectionSheet = false) }
+            }
+            DashboardAction.OnDismissDashboardSpotlight -> {
+                viewModelScope.launch {
+                    tourPreferencesStore.setHasSeenDashboardSpotlight(true)
+                }
+                _uiState.update { it.copy(showDashboardSpotlight = false) }
+            }
+            DashboardAction.OnOpenPipelineSimulator -> {
+                _uiState.update { it.copy(showPipelineSimulator = true, showTourSelectionSheet = false) }
+            }
+            DashboardAction.OnDismissPipelineSimulator -> {
+                _uiState.update { it.copy(showPipelineSimulator = false) }
+            }
             is DashboardAction.OnPickLeaderboardEvent -> Unit // navigation only, handled by the Screen
             else -> Unit
+        }
+    }
+
+    private fun observeTourPreferences() {
+        viewModelScope.launch {
+            tourPreferencesStore.observeHasSeenWelcomeTour()
+                .collect { seen ->
+                    _uiState.update {
+                        it.copy(
+                            hasSeenWelcomeTour = seen,
+                            showWelcomeTour = !seen && it.showWelcomeTour
+                        )
+                    }
+                }
+        }
+        viewModelScope.launch {
+            tourPreferencesStore.observeGettingStartedDismissed()
+                .collect { dismissed ->
+                    _uiState.update { it.copy(isGettingStartedDismissed = dismissed) }
+                }
+        }
+        viewModelScope.launch {
+            tourPreferencesStore.observeHasSeenDashboardSpotlight()
+                .collect { seen ->
+                    _uiState.update { it.copy(hasSeenDashboardSpotlight = seen) }
+                }
         }
     }
 
@@ -134,7 +241,7 @@ class DashboardViewModel @Inject constructor(
                 .collect { events ->
                     _uiState.update {
                         it.copy(
-                            recentEvents = events.sortedByDescending { it.date }.take(5),
+                            availableEvents = events.sortedByDescending { it.date },
                             scheduledTestCount = events.size,
                             isLoading = false
                         )

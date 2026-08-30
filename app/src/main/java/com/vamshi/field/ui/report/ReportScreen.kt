@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,6 +31,7 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,12 +50,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -75,8 +78,6 @@ import java.util.Date
 import java.util.Locale
 import com.vamshi.field.util.CsvExporter
 import com.vamshi.field.domain.model.reports.RecentSessionRow
-import com.vamshi.field.ui.theme.BackgroundLight
-import com.vamshi.field.ui.theme.OutlineGrey
 import com.vamshi.field.ui.theme.SportOrange
 
 @Composable
@@ -96,7 +97,7 @@ fun ReportScreen(
     val aiCoachState by aiCoachViewModel.uiState.collectAsState()
     val isAiCoachVisible = aiCoachState.status != AiCoachStatus.UNSUPPORTED
     
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
 
     LaunchedEffect(viewModel.exportEvent) {
@@ -113,6 +114,8 @@ fun ReportScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             AppTopBar(
                 title = {
@@ -313,7 +316,7 @@ private fun AthleteProfileTab(
         return
     }
 
-    val allAthletes = data.allAthletes
+    val allAthletes = uiState.athleteRoster.ifEmpty { data.allAthletes }
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (uiState.selectedAthleteId == null) {
@@ -335,11 +338,7 @@ private fun AthleteProfileTab(
             }
         }
 
-        if (uiState.isLoadingAthlete) {
-            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (uiState.selectedAthleteId != null) {
+        if (uiState.selectedAthleteId != null && uiState.athleteData != null) {
             val athleteState = AthleteDashboardUiState(
                 data = uiState.athleteData,
                 radarData = uiState.athleteRadarData,
@@ -347,29 +346,46 @@ private fun AthleteProfileTab(
                 errorMessage = uiState.errorMessage,
                 isExporting = uiState.isExporting
             )
-            AthleteBody(
-                uiState = athleteState,
-                padding = PaddingValues(0.dp),
-                onAction = { action ->
-                    when (action) {
-                        is com.vamshi.field.ui.athlete.AthleteDashboardAction.OnStartQuickTest -> {
-                            onAction(ReportsHubAction.OnStartQuickTest(uiState.selectedAthleteId, action.testIds))
+            Box(Modifier.fillMaxSize()) {
+                AthleteBody(
+                    uiState = athleteState,
+                    padding = PaddingValues(0.dp),
+                    onAction = { action ->
+                        when (action) {
+                            is com.vamshi.field.ui.athlete.AthleteDashboardAction.OnStartQuickTest -> {
+                                onAction(ReportsHubAction.OnStartQuickTest(uiState.selectedAthleteId, action.testIds))
+                            }
+                            is com.vamshi.field.ui.athlete.AthleteDashboardAction.OnNavigateToTest -> {
+                                val athleteId = uiState.selectedAthleteId
+                                if (!athleteId.isNullOrBlank() && action.testId.isNotBlank()) {
+                                    onNavigateToTest(athleteId, action.testId)
+                                }
+                            }
+                            else -> {}
                         }
-                        is com.vamshi.field.ui.athlete.AthleteDashboardAction.OnNavigateToTest -> {
-                            onNavigateToTest(uiState.selectedAthleteId, action.testId)
+                    },
+                    headerContent = {
+                        Column {
+                            if (uiState.isLoadingAthlete) {
+                                androidx.compose.material3.LinearProgressIndicator(
+                                    modifier = Modifier.fillMaxWidth().height(3.dp),
+                                    color = SportOrange
+                                )
+                            }
+                            AthletePickerRow(
+                                athletes = allAthletes,
+                                selectedId = uiState.selectedAthleteId,
+                                athleteData = uiState.athleteData,
+                                onSelect = { onAction(ReportsHubAction.SelectAthlete(it)) }
+                            )
                         }
-                        else -> {}
                     }
-                },
-                headerContent = {
-                    AthletePickerRow(
-                        athletes = allAthletes,
-                        selectedId = uiState.selectedAthleteId,
-                        athleteData = uiState.athleteData,
-                        onSelect = { onAction(ReportsHubAction.SelectAthlete(it)) }
-                    )
-                }
-            )
+                )
+            }
+        } else if (uiState.isLoadingAthlete) {
+            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
         } else {
             Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                 Text("Tap an athlete above to view their profile.", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -497,7 +513,35 @@ private fun AthletePickerRow(
             Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(selectedName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(selectedName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    if (athleteData != null && (athleteData.athlete.medicalAlert != null || athleteData.athlete.isRestricted)) {
+                        Spacer(Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.errorContainer
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = athleteData.athlete.medicalAlert ?: "Restricted",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
                 if (athleteData != null) {
                     val avg = athleteData.athleteSessionAvgPctile
                     val cls = when {
@@ -547,9 +591,9 @@ private fun AthletePickerRow(
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = BackgroundLight,
-                        focusedContainerColor = BackgroundLight,
-                        unfocusedBorderColor = OutlineGrey,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -573,8 +617,7 @@ private fun AthletePickerRow(
                     }
                 } else {
                     LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-                        items(filteredAthletes.size) { index ->
-                            val (id, name) = filteredAthletes[index]
+                        items(filteredAthletes, key = { it.first }) { (id, name) ->
                             ListItem(
                                 headlineContent = { Text(name, fontWeight = if (id == selectedId) FontWeight.Bold else FontWeight.Normal) },
                                 modifier = Modifier.clickable {

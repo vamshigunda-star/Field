@@ -9,7 +9,10 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(11)
+    jvmToolchain(17)
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
 // Room schema JSONs, one per DB version, committed to the repo. These are the
@@ -22,12 +25,12 @@ ksp {
 
 android {
     namespace = "com.vamshi.field"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.vamshi.field"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -45,20 +48,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
     }
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
-        }
-    }
     // Ship the exported schema JSONs into the androidTest APK so MigrationTestHelper
     // can read the "before" and "after" schemas for each migration under test.
-    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
 
     packaging {
         resources {
@@ -85,11 +83,12 @@ dependencies {
         }
     }
 
-    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.material)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
@@ -104,17 +103,17 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.room.runtime)
-    implementation("androidx.sqlite:sqlite-bundled:2.5.0")
-    implementation("androidx.sqlite:sqlite-framework:2.5.0")
+    implementation(libs.androidx.sqlite.bundled)
+    implementation(libs.androidx.sqlite.framework)
     implementation(libs.hilt.android)
     implementation(libs.gson)
     implementation(libs.coil.compose)
     ksp(libs.hilt.android.compiler)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
-    testImplementation("org.robolectric:robolectric:4.12")
-    testImplementation("androidx.compose.ui:ui-test-junit4")
-    testImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation(libs.robolectric)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.test.core.ktx)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -126,6 +125,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation(libs.aicore)
     implementation(libs.kotlinx.coroutines.guava)
+    implementation(libs.kotlinx.coroutines.play.services)
     
     // Backup & Sync dependencies
     implementation(libs.androidx.work.runtime.ktx)
@@ -139,6 +139,7 @@ dependencies {
 }
 
 tasks.register("generateColorsFromDesign") {
+    description = "Generates Compose Color.kt from design.md"
     val designFile = rootProject.file("design.md")
     val outputDir = file("src/main/java/com/vamshi/field/ui/theme")
     val outputFile = file("$outputDir/Color.kt")
@@ -188,6 +189,18 @@ tasks.register("generateColorsFromDesign") {
     }
 }
 
+tasks.register<Exec>("generatePrepackagedDb") {
+    description = "Compiles CSV files into the pre-packaged SQLite database asset alearning.db"
+    workingDir = rootDir
+    commandLine = listOf("python", "${rootDir}/tools/build_prepackaged_db.py")
+    
+    // Incremental build inputs/outputs
+    inputs.dir("${projectDir}/src/main/assets").withPropertyName("assetsDir")
+    inputs.file("${rootDir}/tools/build_prepackaged_db.py").withPropertyName("scriptFile")
+    outputs.file("${projectDir}/src/main/assets/database/alearning.db").withPropertyName("outputDb")
+}
+
 tasks.named("preBuild") {
     dependsOn("generateColorsFromDesign")
+    dependsOn("generatePrepackagedDb")
 }

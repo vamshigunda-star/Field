@@ -3,6 +3,7 @@ package com.vamshi.field.ui.settings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vamshi.field.data.storage.TourPreferencesStore
 import com.vamshi.field.domain.repository.BackupRepository
 import com.vamshi.field.domain.usecase.backup.BackupDataUseCase
 import com.vamshi.field.domain.usecase.backup.ListAvailableBackupsUseCase
@@ -15,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.vamshi.field.data.backup.DriveBackupHelper
-import com.google.android.gms.auth.api.signin.GoogleSignIn
+import androidx.core.content.edit
 import javax.inject.Inject
 
 @HiltViewModel
@@ -26,16 +27,18 @@ class SettingsViewModel @Inject constructor(
     private val restoreDataUseCase: RestoreDataUseCase,
     private val backupRepository: BackupRepository,
     private val driveBackupHelper: DriveBackupHelper,
+    private val tourPreferencesStore: TourPreferencesStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
-        // Determine initial connection state using GoogleSignIn
-        val account = GoogleSignIn.getLastSignedInAccount(context)
-        val isConnected = account != null
-        _uiState.update { it.copy(isDriveConnected = isConnected, connectedEmail = account?.email) }
+        // Determine initial connection state from saved prefs
+        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val savedEmail = prefs.getString("google_account_name", null)
+        val isConnected = savedEmail != null
+        _uiState.update { it.copy(isDriveConnected = isConnected, connectedEmail = savedEmail) }
 
         viewModelScope.launch {
             val timestamp = backupRepository.getLastBackupTimestamp()
@@ -60,18 +63,30 @@ class SettingsViewModel @Inject constructor(
             is SettingsAction.DismissRestoreConfirmation -> dismissRestoreConfirmation()
             is SettingsAction.SelectBackup -> _uiState.update { it.copy(selectedBackupId = action.backupId) }
             is SettingsAction.RestoreData -> handleRestoreData()
+            is SettingsAction.OnOpenWelcomeTour -> _uiState.update { it.copy(showWelcomeTour = true) }
+            is SettingsAction.OnDismissWelcomeTour -> _uiState.update { it.copy(showWelcomeTour = false) }
+            is SettingsAction.OnOpenTestingTour -> _uiState.update { it.copy(showTestingTour = true) }
+            is SettingsAction.OnDismissTestingTour -> _uiState.update { it.copy(showTestingTour = false) }
+            is SettingsAction.OnResetAllTours -> handleResetAllTours()
             is SettingsAction.NavigateBack -> Unit
+        }
+    }
+
+    private fun handleResetAllTours() {
+        viewModelScope.launch {
+            tourPreferencesStore.resetAllToursAndChecklists()
+            _uiState.update { it.copy(tourResetMessage = "All walkthroughs and onboarding tips have been reset.") }
         }
     }
 
     private fun handleDisconnectDrive() {
         val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        prefs.edit().remove("google_account_name").apply()
+        prefs.edit { remove("google_account_name") }
         _uiState.update { it.copy(isDriveConnected = false, connectedEmail = null, errorMessage = null) }
         viewModelScope.launch {
             try {
                 driveBackupHelper.signOut(context)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Ignore sign out errors
             }
         }
@@ -79,7 +94,7 @@ class SettingsViewModel @Inject constructor(
 
     private fun handleConnectDriveSuccess(accountName: String) {
         val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("google_account_name", accountName).apply()
+        prefs.edit { putString("google_account_name", accountName) }
         _uiState.update { it.copy(isDriveConnected = true, connectedEmail = accountName, errorMessage = null) }
     }
 

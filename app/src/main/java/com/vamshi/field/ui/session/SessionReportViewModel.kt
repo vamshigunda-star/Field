@@ -3,21 +3,22 @@ package com.vamshi.field.ui.session
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vamshi.field.data.storage.TourPreferencesStore
 import com.vamshi.field.domain.model.reports.SessionReportData
+import com.vamshi.field.domain.repository.PeopleRepository
+import com.vamshi.field.domain.repository.StandardsRepository
+import com.vamshi.field.domain.repository.TestingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-import com.vamshi.field.domain.repository.PeopleRepository
-import com.vamshi.field.domain.repository.TestingRepository
-import com.vamshi.field.domain.repository.StandardsRepository
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.first
 
 data class SessionReportUiState(
     val data: SessionReportData? = null,
@@ -28,7 +29,9 @@ data class SessionReportUiState(
     val errorMessage: String? = null,
     val showDeleteDialog: Boolean = false,
     val isDeleted: Boolean = false,
-    val isInsightSheetOpen: Boolean = false
+    val isInsightSheetOpen: Boolean = false,
+    val showTestingTour: Boolean = false,
+    val hasSeenCoachMark: Boolean = true
 )
 
 sealed interface SessionReportAction {
@@ -46,6 +49,9 @@ sealed interface SessionReportAction {
     data object OnRequestDelete : SessionReportAction
     data object OnConfirmDelete : SessionReportAction
     data object OnDismissDelete : SessionReportAction
+    data object OnOpenTestingTour : SessionReportAction
+    data object OnDismissTestingTour : SessionReportAction
+    data object OnDismissCoachMark : SessionReportAction
 }
 
 @HiltViewModel
@@ -54,7 +60,8 @@ class SessionReportViewModel @Inject constructor(
     private val observeSessionReport: com.vamshi.field.domain.usecase.reports.ObserveSessionReportUseCase,
     private val testingRepository: TestingRepository,
     private val peopleRepository: PeopleRepository,
-    private val standardsRepository: StandardsRepository
+    private val standardsRepository: StandardsRepository,
+    private val tourPreferencesStore: TourPreferencesStore
 ) : ViewModel() {
 
     val groupId: String = savedStateHandle["groupId"] ?: ""
@@ -63,7 +70,7 @@ class SessionReportViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SessionReportUiState())
     val uiState: StateFlow<SessionReportUiState> = _uiState.asStateFlow()
 
-    private val _exportEvent = kotlinx.coroutines.flow.MutableSharedFlow<ExportRequest>()
+    private val _exportEvent = MutableSharedFlow<ExportRequest>()
     val exportEvent = _exportEvent.asSharedFlow()
 
     sealed interface ExportRequest {
@@ -76,6 +83,12 @@ class SessionReportViewModel @Inject constructor(
 
     init {
         load(initialSessionId)
+        viewModelScope.launch {
+            tourPreferencesStore.observeHasSeenSessionReportCoachMark()
+                .collect { seen ->
+                    _uiState.update { it.copy(hasSeenCoachMark = seen) }
+                }
+        }
     }
 
     fun onAction(action: SessionReportAction) {
@@ -94,6 +107,14 @@ class SessionReportViewModel @Inject constructor(
             SessionReportAction.OnRequestDelete -> _uiState.update { it.copy(showDeleteDialog = true) }
             SessionReportAction.OnDismissDelete -> _uiState.update { it.copy(showDeleteDialog = false) }
             SessionReportAction.OnConfirmDelete -> deleteEvent()
+            SessionReportAction.OnOpenTestingTour -> _uiState.update { it.copy(showTestingTour = true) }
+            SessionReportAction.OnDismissTestingTour -> _uiState.update { it.copy(showTestingTour = false) }
+            SessionReportAction.OnDismissCoachMark -> {
+                viewModelScope.launch {
+                    tourPreferencesStore.setHasSeenSessionReportCoachMark(true)
+                }
+                _uiState.update { it.copy(hasSeenCoachMark = true) }
+            }
             is SessionReportAction.OnNavigateToAthlete,
             SessionReportAction.OnResumeTesting,
             SessionReportAction.OnNavigateBack -> Unit
@@ -152,4 +173,3 @@ class SessionReportViewModel @Inject constructor(
         }
     }
 }
-

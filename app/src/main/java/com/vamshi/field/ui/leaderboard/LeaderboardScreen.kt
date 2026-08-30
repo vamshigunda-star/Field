@@ -1,7 +1,6 @@
 package com.vamshi.field.ui.leaderboard
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,51 +10,59 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.usecase.testing.LeaderboardEntry
 import com.vamshi.field.ui.components.AppTopBar
-import com.vamshi.field.ui.theme.OutlineGrey
+import com.vamshi.field.ui.theme.ElectricBlue
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.vamshi.field.ui.theme.PerformanceGreen
+import com.vamshi.field.ui.theme.PerformanceGreenDark
 import com.vamshi.field.ui.theme.PerformanceGreenText
-import com.vamshi.field.ui.theme.PerformanceGrey
-import com.vamshi.field.ui.theme.PerformanceGreyText
+import com.vamshi.field.ui.theme.PerformanceGreenTextDark
 import com.vamshi.field.ui.theme.PerformanceRed
+import com.vamshi.field.ui.theme.PerformanceRedDark
 import com.vamshi.field.ui.theme.PerformanceRedText
+import com.vamshi.field.ui.theme.PerformanceRedTextDark
 import com.vamshi.field.ui.theme.PerformanceYellow
+import com.vamshi.field.ui.theme.PerformanceYellowDark
 import com.vamshi.field.ui.theme.PerformanceYellowText
-import com.vamshi.field.ui.theme.SportOrange
-import com.vamshi.field.ui.theme.SportOrangeContainer
+import com.vamshi.field.ui.theme.PerformanceYellowTextDark
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.vamshi.field.ui.components.tour.TestingTourDialog
 
 @Composable
 fun LeaderboardScreen(
@@ -63,9 +70,11 @@ fun LeaderboardScreen(
     viewModel: LeaderboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showTestingTour by remember { mutableStateOf(false) }
 
     LeaderboardContent(
         uiState = uiState,
+        onOpenTestingTour = { showTestingTour = true },
         onAction = { action ->
             when (action) {
                 is LeaderboardAction.OnNavigateBack -> onNavigateBack()
@@ -73,20 +82,37 @@ fun LeaderboardScreen(
             }
         }
     )
+
+    if (showTestingTour) {
+        TestingTourDialog(
+            onDismiss = { showTestingTour = false }
+        )
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LeaderboardContent(
     uiState: LeaderboardUiState,
+    onOpenTestingTour: () -> Unit = {},
     onAction: (LeaderboardAction) -> Unit
 ) {
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             AppTopBar(
                 title = if (uiState.mode == "event") "Event Leaderboard" else "All-Time Leaderboard",
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = { onAction(LeaderboardAction.OnNavigateBack) }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onOpenTestingTour) {
+                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Testing Guide")
                     }
                 }
             )
@@ -216,147 +242,139 @@ private fun LeaderboardBody(
     }
 }
 
-/**
- * Visual ranking hierarchy: Top 5 get the strongest emphasis, ranks 6-10 get
- * moderate emphasis, everything below is the standard leaderboard row.
- */
-private enum class RankTier { TOP_5, TOP_10, STANDARD }
-
-private fun tierFor(rank: Int): RankTier = when {
-    rank <= 5 -> RankTier.TOP_5
-    rank <= 10 -> RankTier.TOP_10
-    else -> RankTier.STANDARD
-}
-
 @Composable
 private fun LeaderboardEntryRow(entry: LeaderboardEntry) {
-    val (bgColor, textColor) = when {
-        entry.percentile == null -> PerformanceGrey to PerformanceGreyText
-        entry.percentile >= 60 -> PerformanceGreen to PerformanceGreenText
-        entry.percentile >= 30 -> PerformanceYellow to PerformanceYellowText
-        else -> PerformanceRed to PerformanceRedText
+    val isDark = isSystemInDarkTheme()
+
+    val rankBadgeBg = when (entry.rank) {
+        1 -> if (isDark) ElectricBlue.copy(alpha = 0.25f) else ElectricBlue.copy(alpha = 0.12f)
+        2 -> if (isDark) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+        3 -> if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDark) 0.4f else 0.4f)
     }
 
-    val tier = tierFor(entry.rank)
-
-    val cardElevation = when (tier) {
-        RankTier.TOP_5 -> 8.dp
-        RankTier.TOP_10 -> 3.dp
-        RankTier.STANDARD -> 1.dp
-    }
-    val cardBorder = when (tier) {
-        RankTier.TOP_5 -> BorderStroke(2.dp, SportOrange)
-        RankTier.TOP_10 -> BorderStroke(1.dp, SportOrange.copy(alpha = 0.4f))
-        RankTier.STANDARD -> null
-    }
-    val cardContainerColor = when (tier) {
-        RankTier.TOP_5 -> SportOrangeContainer
-        RankTier.TOP_10 -> MaterialTheme.colorScheme.surface
-        RankTier.STANDARD -> MaterialTheme.colorScheme.surface
-    }
-    val rowPadding = if (tier == RankTier.TOP_5) 20.dp else 16.dp
-    val rankBoxSize = when (tier) {
-        RankTier.TOP_5 -> 48.dp
-        RankTier.TOP_10 -> 40.dp
-        RankTier.STANDARD -> 40.dp
-    }
-    val nameStyle = when (tier) {
-        RankTier.TOP_5 -> MaterialTheme.typography.titleMedium
-        RankTier.TOP_10 -> MaterialTheme.typography.bodyLarge
-        RankTier.STANDARD -> MaterialTheme.typography.bodyLarge
-    }
-    val nameWeight = when (tier) {
-        RankTier.TOP_5 -> FontWeight.Bold
-        RankTier.TOP_10 -> FontWeight.SemiBold
-        RankTier.STANDARD -> FontWeight.Medium
+    val rankBadgeFg = when (entry.rank) {
+        1 -> ElectricBlue
+        2 -> MaterialTheme.colorScheme.onSurface
+        3 -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = cardContainerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = cardElevation),
-        border = cardBorder
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.40f else 0.65f)
+        ),
+        shadowElevation = 0.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(rowPadding),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Rank
-            Box(
-                modifier = if (tier == RankTier.TOP_5) {
-                    Modifier.size(rankBoxSize).background(SportOrange, CircleShape)
-                } else {
-                    Modifier.width(rankBoxSize)
-                },
-                contentAlignment = Alignment.Center
+            // Rank Squircle Badge (Clean Numeral, No Trophy)
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = rankBadgeBg,
+                modifier = Modifier.size(38.dp)
             ) {
-                if (entry.rank <= 3) {
-                    Icon(
-                        Icons.Default.EmojiEvents,
-                        contentDescription = "Rank ${entry.rank}",
-                        tint = when {
-                            tier == RankTier.TOP_5 -> Color.White
-                            entry.rank == 1 -> SportOrange
-                            entry.rank == 2 -> OutlineGrey
-                            else -> SportOrange.copy(alpha = 0.6f)
-                        },
-                        modifier = Modifier.size(28.dp)
-                    )
-                } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        "#${entry.rank}",
-                        style = if (tier == RankTier.TOP_5) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                        text = "${entry.rank}",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = if (tier == RankTier.TOP_5) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = rankBadgeFg
                     )
                 }
             }
 
-            Column(modifier = Modifier.weight(1f)) {
+            // Athlete Info (Bold Name + Subtitle)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
                 Text(
-                    entry.athleteName,
-                    style = nameStyle,
-                    fontWeight = nameWeight
+                    text = entry.athleteName,
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.5.sp),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val scoreStr = if (entry.rawScore % 1.0 == 0.0) entry.rawScore.toInt().toString() else String.format(java.util.Locale.US, "%.1f", entry.rawScore)
                     Text(
-                        "${entry.rawScore} ${entry.unit}",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "$scoreStr ${entry.unit}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp),
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    entry.classification?.let { cls ->
+
+                    if (!entry.classification.isNullOrBlank()) {
                         Text(
-                            " - $cls",
+                            text = "•",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.outlineVariant
                         )
+                        Surface(
+                            shape = RoundedCornerShape(5.dp),
+                            color = if (isDark) ElectricBlue.copy(alpha = 0.15f) else ElectricBlue.copy(alpha = 0.08f)
+                        ) {
+                            Text(
+                                text = entry.classification,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = ElectricBlue,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.5.dp)
+                            )
+                        }
                     }
                 }
             }
 
+            // Trend Arrow
             entry.isImproved?.let { improved ->
+                val improveColor = if (isDark) PerformanceGreenTextDark else PerformanceGreenText
+                val declineColor = if (isDark) PerformanceRedTextDark else PerformanceRedText
                 Icon(
-                    if (improved) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
+                    imageVector = if (improved) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                     contentDescription = if (improved) "Improved" else "Declined",
-                    tint = if (improved) PerformanceGreenText else PerformanceRedText,
-                    modifier = Modifier.size(20.dp)
+                    tint = if (improved) improveColor else declineColor,
+                    modifier = Modifier.size(18.dp)
                 )
             }
 
+            // Percentile Pill
             entry.percentile?.let { p ->
-                Box(
-                    modifier = Modifier
-                        .background(bgColor, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                val (bgColor, textColor) = when {
+                    p >= 60 -> if (isDark) PerformanceGreenDark to PerformanceGreenTextDark else PerformanceGreen to PerformanceGreenText
+                    p >= 30 -> if (isDark) PerformanceYellowDark to PerformanceYellowTextDark else PerformanceYellow to PerformanceYellowText
+                    else -> if (isDark) PerformanceRedDark to PerformanceRedTextDark else PerformanceRed to PerformanceRedText
+                }
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = bgColor
                 ) {
                     Text(
-                        "${p}%",
-                        style = MaterialTheme.typography.titleSmall,
+                        text = "$p%",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 11.5.sp,
                         color = textColor,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
             }

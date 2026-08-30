@@ -32,7 +32,6 @@ data class TestLibraryUiState(
     val categories: List<TestCategory> = emptyList(),
     val allTests: List<FitnessTest> = emptyList(),
     val expandedCategoryId: String? = null, // accordion: id of the single open category section, null = all collapsed
-    val searchQuery: String = "",
     val deleteDialog: DeleteTestDialogState? = null,
     /** One-shot toast-style confirmation after a delete/archive; screen shows and dismisses. */
     val snackbarMessage: String? = null,
@@ -42,7 +41,6 @@ data class TestLibraryUiState(
 
 sealed interface TestLibraryAction {
     data class OnToggleCategoryExpanded(val categoryId: String) : TestLibraryAction
-    data class OnSearchQueryChanged(val query: String) : TestLibraryAction
     /** Nav-only: handled by the screen, ignored by the ViewModel. */
     data class OnEditTest(val testId: String) : TestLibraryAction
     data class OnRequestDeleteTest(val testId: String) : TestLibraryAction
@@ -73,8 +71,7 @@ class TestLibraryViewModel @Inject constructor(
                         state.copy(
                             categories = categories,
                             allTests = tests,
-                            // seed only on first arrival; don't collapse a category the coach already opened
-                            expandedCategoryId = state.expandedCategoryId ?: categories.firstOrNull()?.id,
+                            expandedCategoryId = state.expandedCategoryId,
                             isLoading = false
                         )
                     }
@@ -89,7 +86,6 @@ class TestLibraryViewModel @Inject constructor(
                     it.copy(expandedCategoryId = if (it.expandedCategoryId == action.categoryId) null else action.categoryId)
                 }
             }
-            is TestLibraryAction.OnSearchQueryChanged -> _uiState.update { it.copy(searchQuery = action.query) }
             is TestLibraryAction.OnRequestDeleteTest -> requestDelete(action.testId)
             TestLibraryAction.OnConfirmDeleteTest -> confirmDelete()
             TestLibraryAction.OnDismissDeleteDialog -> _uiState.update { it.copy(deleteDialog = null) }

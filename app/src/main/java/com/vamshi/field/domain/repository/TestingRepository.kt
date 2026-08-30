@@ -42,6 +42,10 @@ interface TestingRepository {
 
     suspend fun getLatestResultPerTestForIndividual(individualId: String): List<TestResult>
 
+    fun getAllLatestResults(): Flow<List<TestResult>>
+
+    suspend fun getAllLatestResultsOnce(): List<TestResult>
+
     // --- Stopwatch Support ---
     suspend fun getAthletesInGroupOrdered(groupId: String): List<Individual>
     suspend fun getTrialCountForAthlete(eventId: String, individualId: String, testId: String): Int

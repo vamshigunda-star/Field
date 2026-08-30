@@ -1,10 +1,11 @@
 package com.vamshi.field.data.backup
 
 import android.content.Context
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
-import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.client.http.FileContent
@@ -15,6 +16,7 @@ import com.google.api.services.drive.DriveScopes
 import com.vamshi.field.domain.model.backup.BackupException
 import com.vamshi.field.domain.model.backup.DriveBackupSummary
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -26,30 +28,41 @@ class DriveBackupHelper @Inject constructor(
     private val deviceIdentifier: DeviceIdentifier
 ) {
 
-    private val BACKUP_FILE_NAME_PREFIX = "field_backup_"
-    private val BACKUP_FILE_MIME_TYPE = "application/json"
+    companion object {
+        private const val BACKUP_FILE_NAME_PREFIX = "field_backup_"
+        private const val BACKUP_FILE_MIME_TYPE = "application/json"
+    }
 
-    private fun getDriveService(context: Context): Drive {
-        val account = GoogleSignIn.getLastSignedInAccount(context)?.account
-            ?: throw BackupException.NotSignedIn
+    private suspend fun getDriveService(context: Context): Drive {
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(listOf(Scope(DriveScopes.DRIVE_APPDATA)))
+            .build()
 
-        val credential = GoogleAccountCredential.usingOAuth2(
-            context,
-            listOf(DriveScopes.DRIVE_APPDATA)
-        ).apply {
-            selectedAccount = account
+        val result = try {
+            Identity.getAuthorizationClient(context)
+                .authorize(request)
+                .await()
+        } catch (e: Exception) {
+            throw translate(e)
         }
+
+        if (result.hasResolution()) {
+            throw BackupException.ReauthRequired
+        }
+
+        val accessToken = result.accessToken ?: throw BackupException.NotSignedIn
 
         return Drive.Builder(
             NetHttpTransport(),
-            GsonFactory.getDefaultInstance(),
-            credential
-        )
+            GsonFactory.getDefaultInstance()
+        ) { httpRequest ->
+            httpRequest.headers.authorization = "Bearer $accessToken"
+        }
         .setApplicationName("Field Backup")
         .build()
     }
 
-    suspend fun uploadToDrive(context: Context, localBackupFile: File) = withContext(Dispatchers.IO) {
+    suspend fun uploadToDrive(context: Context, localBackupFile: File): Unit = withContext(Dispatchers.IO) {
         runCatching {
             val driveService = getDriveService(context)
             val fileName = deviceIdentifier.backupFileName
@@ -81,6 +94,7 @@ class DriveBackupHelper @Inject constructor(
                 // Create new file
                 driveService.files().create(fileMetadata, fileContent).execute()
             }
+            Unit
         }.getOrElse { throw translate(it) }
     }
 
@@ -105,7 +119,7 @@ class DriveBackupHelper @Inject constructor(
         }.getOrElse { throw translate(it) }
     }
 
-    suspend fun downloadFromDrive(context: Context, targetLocalFile: File, backupId: String) =
+    suspend fun downloadFromDrive(context: Context, targetLocalFile: File, backupId: String): Unit =
         withContext(Dispatchers.IO) {
             runCatching {
                 val driveService = getDriveService(context)
@@ -130,12 +144,12 @@ class DriveBackupHelper @Inject constructor(
         else -> BackupException.Unknown(error)
     }
 
-    suspend fun signOut(context: Context) = withContext(Dispatchers.IO) {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestEmail()
-            .requestScopes(Scope(DriveScopes.DRIVE_APPDATA))
-            .build()
-        val client = GoogleSignIn.getClient(context, gso)
-        client.signOut()
+    suspend fun signOut(context: Context): Unit = withContext(Dispatchers.IO) {
+        val credentialManager = CredentialManager.create(context)
+        try {
+            credentialManager.clearCredentialState(ClearCredentialStateRequest())
+        } catch (_: Exception) {
+            // Ignore sign out errors
+        }
     }
 }

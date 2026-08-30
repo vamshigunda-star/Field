@@ -4,6 +4,7 @@ import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
+import androidx.room3.Upsert
 import com.vamshi.field.data.local.entities.people.IndividualEntity
 import com.vamshi.field.data.local.entities.standards.FitnessTestEntity
 import com.vamshi.field.data.local.entities.testing.EventTestCrossRef
@@ -66,7 +67,7 @@ interface TestingDao {
     fun getHistoryForTest(individualId: String, testId: String): Flow<List<TestResultEntity>>
 
     // Feature: Leaderboard (All results for a specific event)
-    @Query("SELECT * FROM test_results WHERE eventId = :eventId")
+    @Query("SELECT * FROM test_results WHERE eventId = :eventId ORDER BY createdAt DESC")
     fun getEventResults(eventId: String): Flow<List<TestResultEntity>>
 
     @Query("SELECT * FROM test_results")
@@ -89,6 +90,30 @@ interface TestingDao {
         WHERE inner_results.individualId = :individualId
         AND inner_results.testId = test_results.testId)""")
     suspend fun getLatestResultPerTestForIndividual(individualId: String): List<TestResultEntity>
+
+    @Query("""
+    SELECT r.* FROM test_results r
+    INNER JOIN (
+        SELECT individualId, testId, MAX(createdAt) AS maxCreated
+        FROM test_results
+        GROUP BY individualId, testId
+    ) latest ON r.individualId = latest.individualId 
+            AND r.testId = latest.testId 
+            AND r.createdAt = latest.maxCreated
+    """)
+    fun getAllLatestResults(): Flow<List<TestResultEntity>>
+
+    @Query("""
+    SELECT r.* FROM test_results r
+    INNER JOIN (
+        SELECT individualId, testId, MAX(createdAt) AS maxCreated
+        FROM test_results
+        GROUP BY individualId, testId
+    ) latest ON r.individualId = latest.individualId 
+            AND r.testId = latest.testId 
+            AND r.createdAt = latest.maxCreated
+    """)
+    suspend fun getAllLatestResultsOnce(): List<TestResultEntity>
 
     @Query("""
     SELECT test_results.* FROM test_results
@@ -116,6 +141,9 @@ interface TestingDao {
         WHERE eventId = :eventId AND individualId = :individualId AND testId = :testId
     """)
     suspend fun getTrialCountForAthlete(eventId: String, individualId: String, testId: String): Int
+
+    @Upsert
+    suspend fun insertResults(results: List<TestResultEntity>)
 
     @Query("DELETE FROM test_results WHERE id = :resultId")
     suspend fun deleteResultById(resultId: String)

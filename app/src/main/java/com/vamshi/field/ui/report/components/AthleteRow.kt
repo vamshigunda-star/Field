@@ -3,132 +3,162 @@ package com.vamshi.field.ui.report.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.vamshi.field.domain.model.reports.LeaderboardRow
-import com.vamshi.field.ui.theme.SportOrange
-import com.vamshi.field.ui.theme.SportOrangeContainer
+import com.vamshi.field.ui.theme.ElectricBlue
 
-/**
- * Visual ranking hierarchy: Top 5 get the strongest emphasis, ranks 6-10 get
- * moderate emphasis, everything below is the standard row styling.
- */
-private enum class LeaderRankTier { TOP_5, TOP_10, STANDARD }
-
-private fun leaderTierFor(rank: Int): LeaderRankTier = when {
-    rank <= 5 -> LeaderRankTier.TOP_5
-    rank <= 10 -> LeaderRankTier.TOP_10
-    else -> LeaderRankTier.STANDARD
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AthleteLeaderRow(
     row: LeaderboardRow,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val tier = leaderTierFor(row.rank)
-    val cardElevation = when (tier) {
-        LeaderRankTier.TOP_5 -> 6.dp
-        LeaderRankTier.TOP_10 -> 2.dp
-        LeaderRankTier.STANDARD -> 1.dp
-    }
-    val cardBorder = when (tier) {
-        LeaderRankTier.TOP_5 -> BorderStroke(2.dp, SportOrange)
-        LeaderRankTier.TOP_10 -> BorderStroke(1.dp, SportOrange.copy(alpha = 0.4f))
-        LeaderRankTier.STANDARD -> null
-    }
-    val cardContainerColor = if (tier == LeaderRankTier.TOP_5) SportOrangeContainer else Color.White
-    val rowPadding = if (tier == LeaderRankTier.TOP_5) 14.dp else 8.dp
+    val isDark = isSystemInDarkTheme()
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = cardContainerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = cardElevation),
-        border = cardBorder,
-        shape = RoundedCornerShape(12.dp)
+    val rankBadgeBg = when (row.rank) {
+        1 -> if (isDark) ElectricBlue.copy(alpha = 0.25f) else ElectricBlue.copy(alpha = 0.12f)
+        2 -> if (isDark) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+        3 -> if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDark) 0.4f else 0.4f)
+    }
+
+    val rankBadgeFg = when (row.rank) {
+        1 -> ElectricBlue
+        2 -> MaterialTheme.colorScheme.onSurface
+        3 -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.40f else 0.65f)
+        ),
+        shadowElevation = 0.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = rowPadding),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (tier == LeaderRankTier.TOP_5) {
+            // Rank Squircle Badge (Clean Numeral, No Trophy)
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = rankBadgeBg,
+                modifier = Modifier.size(38.dp)
+            ) {
                 Box(
-                    modifier = Modifier.size(24.dp).background(SportOrange, CircleShape),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "${row.rank}",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White
+                        text = "${row.rank}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = rankBadgeFg
                     )
                 }
-            } else {
-                Text(
-                    "${row.rank}",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Black,
-                    color = if (tier == LeaderRankTier.TOP_10) SportOrange else Color(0xFF90A4AE),
-                    modifier = Modifier.width(24.dp)
-                )
             }
-            Spacer(Modifier.width(if (tier == LeaderRankTier.TOP_5) 8.dp else 0.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+
+            // Athlete Info (Bold Name + Subtitle)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     Text(
-                        row.athleteName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (tier == LeaderRankTier.TOP_5) FontWeight.Bold else FontWeight.SemiBold
+                        text = row.athleteName,
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.5.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     if (row.flagged) {
-                        Box(modifier = Modifier.size(6.dp).background(Color(0xFFF57F17), CircleShape))
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(MaterialTheme.colorScheme.error, CircleShape)
+                        )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val scoreText = if (row.rawScore != null) "${formatScore(row.rawScore)} ${row.unit}" else "Absent"
                     Text(
-                        if (row.rawScore != null) "${formatScore(row.rawScore)} ${row.unit}" else "Absent",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
+                        text = scoreText,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp),
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    DeltaArrow(deltaPercentile = row.deltaPercentile)
+
+                    val classificationText = row.classificationLabel?.takeIf { it.isNotBlank() }
+                        ?: row.classification?.let { zoneLabel(it) }
+                    if (!classificationText.isNullOrBlank()) {
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(5.dp),
+                            color = if (isDark) ElectricBlue.copy(alpha = 0.15f) else ElectricBlue.copy(alpha = 0.08f)
+                        ) {
+                            Text(
+                                text = classificationText,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = ElectricBlue,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.5.dp)
+                            )
+                        }
+                    }
                 }
             }
-            Spacer(Modifier.width(8.dp))
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                ZoneChip(
-                    classification = row.classification,
-                    label = row.classificationLabel?.takeIf { it.isNotBlank() }
-                        ?: com.vamshi.field.ui.report.components.zoneLabel(row.classification)
-                )
+
+            // Trailing Section (Trend + Percentile)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                DeltaArrow(deltaPercentile = row.deltaPercentile)
+
                 if (row.percentile != null) {
-                    Text(
-                        "${row.percentile}%ile",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
-                    )
+                    PercentileChip(percentile = row.percentile)
                 }
             }
         }

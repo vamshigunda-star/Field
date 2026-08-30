@@ -34,6 +34,8 @@ class StandardsRepositoryImpl @Inject constructor(
         return dao.getTestById(testId)?.toDomain()
     }
 
+    private val normBandsCache = java.util.concurrent.ConcurrentHashMap<Triple<String, BiologicalSex, Int>, List<NormReference>>()
+
     // --- INTERPRETATION ---
     override suspend fun getNormResult(
         testId: String,
@@ -44,16 +46,36 @@ class StandardsRepositoryImpl @Inject constructor(
         return dao.findNormResult(testId, sex.name, age, score)?.toDomain()
     }
 
+    override suspend fun getNormBandsForAthleteTest(
+        testId: String,
+        sex: BiologicalSex,
+        age: Double
+    ): List<NormReference> {
+        val ageInt = age.toInt()
+        val key = Triple(testId, sex, ageInt)
+        return normBandsCache.getOrPut(key) {
+            val direct = dao.getNormBandsForAthleteTest(testId, sex.name, age).map { it.toDomain() }
+            if (direct.isNotEmpty()) {
+                direct
+            } else {
+                dao.getNormBandsClosestToAge(testId, sex.name, age).map { it.toDomain() }
+            }
+        }
+    }
+
+
     // --- SETUP / IMPORT ---
     override suspend fun importStandards(
         categories: List<TestCategory>,
         tests: List<FitnessTest>
     ) {
+        normBandsCache.clear()
         categories.forEach { dao.insertCategory(it.toEntity()) }
         tests.forEach { dao.insertTest(it.toEntity()) }
     }
 
     override suspend fun replaceSeedNorms(norms: List<NormReference>) {
+        normBandsCache.clear()
         dao.replaceSeedNorms(norms.map { it.toEntity() })
     }
 
@@ -72,6 +94,7 @@ class StandardsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun saveCustomTest(test: FitnessTest, norms: List<NormReference>) {
+        normBandsCache.clear()
         dao.saveUserTestWithNorms(
             test = test.toEntity(),
             norms = norms.map { it.toEntity() }
@@ -87,10 +110,12 @@ class StandardsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun archiveCustomTest(testId: String) {
+        normBandsCache.clear()
         dao.archiveUserTest(testId, System.currentTimeMillis())
     }
 
     override suspend fun deleteCustomTest(testId: String) {
+        normBandsCache.clear()
         dao.deleteUserTest(testId)
     }
 }

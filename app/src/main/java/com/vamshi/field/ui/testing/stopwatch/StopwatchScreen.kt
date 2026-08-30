@@ -3,6 +3,7 @@
 package com.vamshi.field.ui.testing.stopwatch
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -287,7 +288,7 @@ private fun ModeTabButton(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(8.dp),
-        color = if (isSelected) NavyPrimary else Color.Transparent,
+        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
         shadowElevation = if (isSelected) 2.dp else 0.dp,
         modifier = modifier.height(36.dp)
     ) {
@@ -321,6 +322,7 @@ private fun buildSessionContextLine(uiState: StopwatchUiState): String {
 
 @Composable
 private fun SaveProgressIndicator(completedCount: Int, totalCount: Int) {
+    val isDark = isSystemInDarkTheme()
     val progress = if (totalCount > 0) completedCount.toFloat() / totalCount else 0f
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
@@ -330,26 +332,29 @@ private fun SaveProgressIndicator(completedCount: Int, totalCount: Int) {
         LinearProgressIndicator(
             progress = { progress },
             modifier = Modifier.weight(1f).height(8.dp).padding(end = 12.dp),
-            color = SportBlue,
-            trackColor = SportBlue.copy(alpha = 0.15f),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
             strokeCap = StrokeCap.Round
         )
+        val successBg = if (isDark) PerformanceGreenDark else PerformanceGreen.copy(alpha = 0.15f)
+        val successBorder = if (isDark) PerformanceGreenBorderDark else PerformanceGreen
+        val successText = if (isDark) PerformanceGreenTextDark else PerformanceGreenText
         Surface(
-            color = PerformanceGreen.copy(alpha = 0.15f),
+            color = successBg,
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, PerformanceGreen)
+            border = BorderStroke(1.dp, successBorder)
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = PerformanceGreenText)
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = successText)
                 Text(
                     "$completedCount of $totalCount Saved",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = PerformanceGreenText
+                    color = successText
                 )
             }
         }
@@ -360,7 +365,7 @@ private fun SaveProgressIndicator(completedCount: Int, totalCount: Int) {
 private fun SubmitBar(pendingCount: Int, isSubmitting: Boolean, onSubmit: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = NavyPrimary,
+        color = MaterialTheme.colorScheme.primary,
         shadowElevation = 8.dp
     ) {
         Row(
@@ -385,13 +390,13 @@ private fun SubmitBar(pendingCount: Int, isSubmitting: Boolean, onSubmit: () -> 
                 enabled = !isSubmitting,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
-                    contentColor = NavyPrimary
+                    contentColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 if (isSubmitting) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
-                        color = NavyPrimary,
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 2.dp
                     )
                     Spacer(Modifier.width(8.dp))
@@ -517,7 +522,12 @@ private fun IndividualModeContent(
         ) {
             if (uiState.completedAthletes.isNotEmpty()) {
                 item(key = "section_completed") {
-                    AthleteSectionHeader(icon = "✅", label = "Completed", count = uiState.completedAthletes.size, tint = PerformanceGreenText)
+                    AthleteSectionHeader(
+                        icon = "✅",
+                        label = "Completed",
+                        count = uiState.completedAthletes.size,
+                        tint = if (isSystemInDarkTheme()) PerformanceGreenTextDark else PerformanceGreenText
+                    )
                 }
                 items(uiState.completedAthletes, key = { it.athleteId }) { athlete ->
                     IndividualAthleteRow(
@@ -531,7 +541,12 @@ private fun IndividualModeContent(
             }
             if (uiState.upcomingAthletes.isNotEmpty()) {
                 item(key = "section_upcoming") {
-                    AthleteSectionHeader(icon = "⏳", label = "Upcoming", count = uiState.upcomingAthletes.size, tint = SportBlue)
+                    AthleteSectionHeader(
+                        icon = "⏳",
+                        label = "Upcoming",
+                        count = uiState.upcomingAthletes.size,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
                 items(uiState.upcomingAthletes, key = { it.athleteId }) { athlete ->
                     IndividualAthleteRow(
@@ -572,6 +587,8 @@ private fun CompletionSummaryCard(
     totalCount: Int,
     onFinish: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val completedColor = if (isDark) PerformanceGreenTextDark else PerformanceGreenText
     ElevatedCard(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp)
@@ -587,7 +604,7 @@ private fun CompletionSummaryCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                SummaryStat(label = "Completed", value = completedCount, color = PerformanceGreenText)
+                SummaryStat(label = "Completed", value = completedCount, color = completedColor)
                 SummaryStat(label = "Absent", value = absentCount, color = MaterialTheme.colorScheme.error)
                 SummaryStat(label = "Pending", value = pendingCount, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -701,7 +718,7 @@ private fun AthleteTimingRow(
     trailing: @Composable () -> Unit
 ) {
     val borderColor = if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
-    val bgColor = if (muted) Color.LightGray.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface
+    val bgColor = if (muted) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface
 
     Surface(
         modifier = Modifier
@@ -747,6 +764,8 @@ private fun IndividualAthleteRow(
     onEditTrial: (String?) -> Unit,
     onToggleAbsent: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val completedColor = if (isDark) PerformanceGreenTextDark else PerformanceGreenText
     val isAbsent = athlete.status == AthleteStatus.ABSENT
     val isCompleted = athlete.status == AthleteStatus.COMPLETED
     val trials = athlete.displayTrials.take(athlete.totalTrials)
@@ -773,14 +792,14 @@ private fun IndividualAthleteRow(
                     style = MaterialTheme.typography.titleMedium,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    color = PerformanceGreenText
+                    color = completedColor
                 )
                 athlete.status == AthleteStatus.CAPTURED && athlete.capturedTimeMs != null -> Text(
                     formatTimeDisplay(athlete.capturedTimeMs),
                     style = MaterialTheme.typography.titleMedium,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    color = SportBlue
+                    color = MaterialTheme.colorScheme.primary
                 )
                 isSelected -> Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(6.dp)) {
                     Text(
@@ -813,6 +832,8 @@ private fun GroupAthleteRow(
     onCapture: () -> Unit,
     onEdit: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val completedColor = if (isDark) PerformanceGreenTextDark else PerformanceGreenText
     val isAbsent = athlete.status == AthleteStatus.ABSENT
     val isDone = athlete.status == AthleteStatus.CAPTURED || athlete.status == AthleteStatus.COMPLETED
 
@@ -835,7 +856,7 @@ private fun GroupAthleteRow(
                     style = MaterialTheme.typography.titleMedium,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    color = PerformanceGreenText
+                    color = completedColor
                 )
                 !isRunning -> Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Absent?", style = MaterialTheme.typography.labelSmall)

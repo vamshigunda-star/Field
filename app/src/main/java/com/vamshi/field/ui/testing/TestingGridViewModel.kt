@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vamshi.field.data.storage.TourPreferencesStore
 import com.vamshi.field.domain.model.people.Individual
 import com.vamshi.field.domain.model.standards.FitnessTest
 import com.vamshi.field.domain.model.testing.TestResult
@@ -32,6 +33,9 @@ data class TestingGridUiState(
     val timingChoiceCell: TimingChoiceCell? = null,
     val testCapturePreferences: Map<String, CaptureMethodPreference> = emptyMap(),
     val deleteCandidate: DeleteCandidate? = null,
+    val showCompletionDialog: Boolean = false,
+    val showTestingTour: Boolean = false,
+    val hasSeenCoachMark: Boolean = true,
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val failedAction: FailedGridAction? = null
@@ -84,6 +88,11 @@ sealed interface TestingGridAction {
     data object OnDismissDelete : TestingGridAction
     data object OnDismissError : TestingGridAction
     data object OnRetryFailedAction : TestingGridAction
+    data object OnRequestSaveSession : TestingGridAction
+    data object OnDismissCompletionDialog : TestingGridAction
+    data object OnOpenTestingTour : TestingGridAction
+    data object OnDismissTestingTour : TestingGridAction
+    data object OnDismissCoachMark : TestingGridAction
     
     // Navigation actions — handled by the screen composable
     data object OnNavigateBack : TestingGridAction
@@ -105,7 +114,8 @@ class TestingGridViewModel @Inject constructor(
     private val testingRepository: TestingRepository,
     private val peopleRepository: PeopleRepository,
     private val getGridData: GetTestingGridDataUseCase,
-    private val recordTestResult: RecordTestResultUseCase
+    private val recordTestResult: RecordTestResultUseCase,
+    private val tourPreferencesStore: TourPreferencesStore
 ) : ViewModel() {
 
     val eventId: String = savedStateHandle["eventId"] ?: ""
@@ -127,48 +137,44 @@ class TestingGridViewModel @Inject constructor(
                         _uiState.update { it.copy(gridData = data, isLoading = false) }
                     }
             }
+            viewModelScope.launch {
+                tourPreferencesStore.observeHasSeenTestingGridCoachMark()
+                    .collect { seen ->
+                        _uiState.update { it.copy(hasSeenCoachMark = seen) }
+                    }
+            }
         }
     }
 
     fun onAction(action: TestingGridAction) {
-        Log.d("TestingGridViewModel", "onAction: $action")
         when (action) {
             is TestingGridAction.OnSelectTestTab -> {
                 _uiState.update { it.copy(selectedTestIndex = action.index) }
             }
             is TestingGridAction.OnStartEditing -> {
-                val state = _uiState.value
-                val currentResult = state.gridData?.results?.find {
+                val currentResult = _uiState.value.gridData?.results?.find {
                     it.individualId == action.athlete.id && it.testId == action.test.id
                 }
                 _uiState.update {
                     it.copy(
-                        editingCell = EditingCell(
-                            athlete = action.athlete,
-                            test = action.test,
-                            currentResult = currentResult
-                        )
+                        editingCell = EditingCell(action.athlete, action.test, currentResult),
+                        timingChoiceCell = null
                     )
                 }
             }
-            is TestingGridAction.OnDismissEditing -> {
+            TestingGridAction.OnDismissEditing -> {
                 _uiState.update { it.copy(editingCell = null) }
-            }
-            is TestingGridAction.OnSaveScore -> {
-                val cell = _uiState.value.editingCell ?: return
-                saveScore(cell.athlete, cell.test, action.rawScore, moveToNext = false)
-            }
-            is TestingGridAction.OnSaveAndNext -> {
-                val cell = _uiState.value.editingCell ?: return
-                saveScore(cell.athlete, cell.test, action.rawScore, moveToNext = true)
-            }
-            is TestingGridAction.OnRequestBack -> {
-                onAction(TestingGridAction.OnNavigateBack)
             }
             is TestingGridAction.OnRequestTimingChoice -> {
                 _uiState.update {
-                    it.copy(timingChoiceCell = TimingChoiceCell(action.athlete, action.test))
+                    it.copy(
+                        timingChoiceCell = TimingChoiceCell(action.athlete, action.test),
+                        editingCell = null
+                    )
                 }
+            }
+            TestingGridAction.OnDismissTimingChoice -> {
+                _uiState.update { it.copy(timingChoiceCell = null) }
             }
             is TestingGridAction.OnSelectTimingMethod -> {
                 _uiState.update {
@@ -177,8 +183,17 @@ class TestingGridViewModel @Inject constructor(
                     )
                 }
             }
-            is TestingGridAction.OnDismissTimingChoice -> {
-                _uiState.update { it.copy(timingChoiceCell = null) }
+            is TestingGridAction.OnSaveScore -> {
+                val cell = _uiState.value.editingCell
+                if (cell != null) {
+                    saveScore(cell.athlete, cell.test, action.rawScore, moveToNext = false)
+                }
+            }
+            is TestingGridAction.OnSaveAndNext -> {
+                val cell = _uiState.value.editingCell
+                if (cell != null) {
+                    saveScore(cell.athlete, cell.test, action.rawScore, moveToNext = true)
+                }
             }
             is TestingGridAction.OnRequestDelete -> {
                 _uiState.update {
@@ -188,27 +203,48 @@ class TestingGridViewModel @Inject constructor(
                     )
                 }
             }
-            is TestingGridAction.OnConfirmDelete -> deleteResult()
-            is TestingGridAction.OnDismissDelete -> _uiState.update { it.copy(deleteCandidate = null) }
-            is TestingGridAction.OnDismissError -> _uiState.update { it.copy(errorMessage = null, failedAction = null) }
-            is TestingGridAction.OnRetryFailedAction -> {
-                when (val f = _uiState.value.failedAction) {
-                    is FailedGridAction.Save -> saveScore(f.athlete, f.test, f.rawScore, f.moveToNext)
-                    is FailedGridAction.Delete -> retryDelete(f)
+            TestingGridAction.OnConfirmDelete -> {
+                deleteResult()
+            }
+            TestingGridAction.OnDismissDelete -> {
+                _uiState.update { it.copy(deleteCandidate = null) }
+            }
+            TestingGridAction.OnDismissError -> {
+                _uiState.update { it.copy(errorMessage = null) }
+            }
+            TestingGridAction.OnRetryFailedAction -> {
+                val failed = _uiState.value.failedAction
+                when (failed) {
+                    is FailedGridAction.Save -> saveScore(failed.athlete, failed.test, failed.rawScore, failed.moveToNext)
+                    is FailedGridAction.Delete -> retryDelete(failed)
                     null -> Unit
                 }
             }
-            // Navigation actions handled by screen composable
-            is TestingGridAction.OnNavigateBack,
-            is TestingGridAction.OnNavigateToAthleteReport,
-            is TestingGridAction.OnNavigateToLeaderboard,
-            is TestingGridAction.OnNavigateToGroupReport,
-            is TestingGridAction.OnNavigateToStopwatch -> Unit
+            TestingGridAction.OnRequestSaveSession -> {
+                _uiState.update { it.copy(showCompletionDialog = true) }
+            }
+            TestingGridAction.OnDismissCompletionDialog -> {
+                _uiState.update { it.copy(showCompletionDialog = false) }
+            }
+            TestingGridAction.OnOpenTestingTour -> {
+                _uiState.update { it.copy(showTestingTour = true) }
+            }
+            TestingGridAction.OnDismissTestingTour -> {
+                _uiState.update { it.copy(showTestingTour = false) }
+            }
+            TestingGridAction.OnDismissCoachMark -> {
+                viewModelScope.launch {
+                    tourPreferencesStore.setHasSeenTestingGridCoachMark(true)
+                }
+                _uiState.update { it.copy(hasSeenCoachMark = true) }
+            }
+            else -> Unit
         }
     }
 
     private fun saveScore(athlete: Individual, test: FitnessTest, rawScore: Double, moveToNext: Boolean) {
         val gridData = _uiState.value.gridData ?: return
+        val currentResult = _uiState.value.editingCell?.currentResult
 
         // A fresh attempt supersedes any prior failure.
         _uiState.update { it.copy(failedAction = null) }
@@ -220,6 +256,11 @@ class TestingGridViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
+                // If editing an existing score, delete the previous result so the updated score replaces it cleanly
+                if (currentResult != null) {
+                    testingRepository.deleteResultById(currentResult.id)
+                }
+
                 // Get full athlete data to calculate age
                 val fullAthlete = peopleRepository.getIndividualById(athlete.id)
                 if (fullAthlete != null) {

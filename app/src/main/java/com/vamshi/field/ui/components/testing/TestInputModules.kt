@@ -43,12 +43,13 @@ fun PercentileGauge(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.weight(1f)) {
+            val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             Canvas(modifier = Modifier.size(160.dp, 90.dp)) {
                 val strokeWidth = 8.dp.toPx()
                 
                 // Background Arc (Track)
                 drawArc(
-                    color = Color.LightGray.copy(alpha = 0.3f),
+                    color = trackColor,
                     startAngle = 180f,
                     sweepAngle = 180f,
                     useCenter = false,
@@ -78,13 +79,13 @@ fun PercentileGauge(
                     text = if (percentile != null) "${percentile}%" else "--",
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Black,
-                    color = if (percentile == null) Color.Gray else Color.Black
+                    color = if (percentile == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "PERCENTILE",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -150,17 +151,17 @@ private fun NumericInputModule(
             enabled = isValid,
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF22C55E),
+                containerColor = Color(0xFF16A34A),
                 contentColor = Color.White,
-                disabledContainerColor = Color(0xFFE5E7EB),
-                disabledContentColor = Color(0xFF6B7280)
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
             ),
             elevation = ButtonDefaults.buttonElevation(
                 defaultElevation = 4.dp,
                 pressedElevation = 8.dp,
                 disabledElevation = 0.dp
             ),
-            border = if (!isValid) BorderStroke(1.dp, Color(0xFFD1D5DB)) else null
+            border = if (!isValid) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
         ) {
             Icon(Icons.Default.Check, null)
             Spacer(Modifier.width(8.dp))
@@ -186,9 +187,12 @@ private fun IncrementalInputModule(
             FilledTonalIconButton(
                 onClick = { if (count > 0) onValueChange((count - 1).toString()) },
                 modifier = Modifier.size(72.dp),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color(0xFFFEE2E2))
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                )
             ) {
-                Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(32.dp), tint = Color(0xFFB91C1C))
+                Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(32.dp))
             }
 
             Text(
@@ -200,9 +204,12 @@ private fun IncrementalInputModule(
             FilledIconButton(
                 onClick = { onValueChange((count + 1).toString()) },
                 modifier = Modifier.size(72.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color(0xFFDCFCE7))
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(32.dp), tint = Color(0xFF15803D))
+                Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(32.dp))
             }
         }
 
@@ -213,17 +220,17 @@ private fun IncrementalInputModule(
             enabled = isValid,
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF22C55E),
+                containerColor = Color(0xFF16A34A),
                 contentColor = Color.White,
-                disabledContainerColor = Color(0xFFE5E7EB),
-                disabledContentColor = Color(0xFF6B7280)
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
             ),
             elevation = ButtonDefaults.buttonElevation(
                 defaultElevation = 4.dp,
                 pressedElevation = 8.dp,
                 disabledElevation = 0.dp
             ),
-            border = if (!isValid) BorderStroke(1.dp, Color(0xFFD1D5DB)) else null
+            border = if (!isValid) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
         ) {
             Icon(Icons.Default.Check, null)
             Spacer(Modifier.width(8.dp))
@@ -267,17 +274,17 @@ private fun StageInputModule(
             enabled = isValid,
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF22C55E),
+                containerColor = Color(0xFF16A34A),
                 contentColor = Color.White,
-                disabledContainerColor = Color(0xFFE5E7EB),
-                disabledContentColor = Color(0xFF6B7280)
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
             ),
             elevation = ButtonDefaults.buttonElevation(
                 defaultElevation = 4.dp,
                 pressedElevation = 8.dp,
                 disabledElevation = 0.dp
             ),
-            border = if (!isValid) BorderStroke(1.dp, Color(0xFFD1D5DB)) else null
+            border = if (!isValid) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
         ) {
             Icon(Icons.Default.Check, null)
             Spacer(Modifier.width(8.dp))
@@ -299,7 +306,7 @@ private fun PickerColumn(
         Spacer(modifier = Modifier.height(8.dp))
         Card(
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, Color.LightGray)
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(8.dp)) {
                 IconButton(onClick = onIncrement) { Icon(Icons.Default.Add, null) }

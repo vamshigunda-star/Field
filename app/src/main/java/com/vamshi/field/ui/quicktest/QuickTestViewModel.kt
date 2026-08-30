@@ -123,8 +123,7 @@ class QuickTestViewModel @Inject constructor(
                         state.copy(
                             categories = categories,
                             allTests = tests,
-                            // seed only on first arrival; don't collapse a category the coach already opened
-                            expandedCategoryId = state.expandedCategoryId ?: categories.firstOrNull()?.id
+                            expandedCategoryId = state.expandedCategoryId
                         )
                     }
                 }
@@ -205,7 +204,13 @@ class QuickTestViewModel @Inject constructor(
             }
             is QuickTestAction.OnSaveScore -> saveScore(action.testId, action.rawScore)
             is QuickTestAction.OnDeleteScore -> deleteScore(action.testId)
-            is QuickTestAction.OnCompleteTest -> _uiState.update { it.copy(step = QuickTestStep.COMPLETE) }
+            is QuickTestAction.OnCompleteTest -> {
+                if (_uiState.value.recordedResults.isEmpty()) {
+                    _uiState.update { it.copy(errorMessage = "Enter a test result before completing this test.") }
+                } else {
+                    _uiState.update { it.copy(step = QuickTestStep.COMPLETE) }
+                }
+            }
             is QuickTestAction.OnRequestDelete -> _uiState.update { it.copy(showDeleteConfirmation = true) }
             is QuickTestAction.OnConfirmDelete -> confirmDelete()
             is QuickTestAction.OnDismissDelete -> _uiState.update { it.copy(showDeleteConfirmation = false) }

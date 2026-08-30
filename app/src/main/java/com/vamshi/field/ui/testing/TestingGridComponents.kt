@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,9 +25,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -83,11 +87,11 @@ fun TimingChoiceDialog(
         onDismissRequest = onDismiss,
         title = {
             Column {
-                Text("Select Timing Mode", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
+                Text("Select Timing Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(2.dp))
                 Text(
                     "$athleteName • $testName ($unit)",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -95,25 +99,25 @@ fun TimingChoiceDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 TimingOptionCard(
-                    title = "Individual Stopwatch",
-                    description = "Time one athlete at a time with dedicated Start/Stop timer",
+                    title = "Individual Timer",
+                    description = "Dedicated timer for one athlete",
                     icon = Icons.Default.Person,
-                    isSuggested = suggestedMode == TimingMode.INDIVIDUAL,
+                    isSuggested = suggestedMode != TimingMode.GROUP_START,
                     onClick = onSelectIndividualStopwatch
                 )
                 TimingOptionCard(
-                    title = "Group / Heat Stopwatch",
-                    description = "Time multiple athletes together with mass start and split tap capture",
+                    title = "Group / Heat Timer",
+                    description = "Mass start with split tap capture",
                     icon = Icons.Default.Groups,
                     isSuggested = suggestedMode == TimingMode.GROUP_START,
                     onClick = onSelectGroupStopwatch
                 )
                 TimingOptionCard(
                     title = "Manual Keypad Entry",
-                    description = "Type in a pre-recorded score using the keypad",
+                    description = "Type in pre-recorded score numbers",
                     icon = Icons.Default.Edit,
                     isSuggested = false,
                     onClick = onEnterManually
@@ -140,28 +144,28 @@ private fun TimingOptionCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
-        color = if (isSuggested) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = if (isSuggested) BorderStroke(1.5.dp, NavyPrimary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        color = if (isSuggested) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        border = if (isSuggested) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
-                    .background(if (isSuggested) NavyPrimary else MaterialTheme.colorScheme.surface),
+                    .background(if (isSuggested) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = if (isSuggested) Color.White else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
             Spacer(Modifier.width(12.dp))
@@ -170,31 +174,30 @@ private fun TimingOptionCard(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     if (isSuggested) {
                         Spacer(Modifier.width(6.dp))
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = NavyPrimary.copy(alpha = 0.15f)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                         ) {
                             Text(
                                 text = "Default",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = NavyPrimary,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                             )
                         }
                     }
                 }
-                Spacer(Modifier.height(2.dp))
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 16.sp
+                    lineHeight = 14.sp
                 )
             }
         }
@@ -255,28 +258,12 @@ fun LiveEntryPhase(
             totalTestsCompleted = gridData.results.size
         )
 
-        // Helper Text
-        Text(
-            "?? Press and hold any saved score to edit it",
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.Gray,
-            textAlign = TextAlign.Center
-        )
-
         // Test-Centric Tabs
         ScrollableTabRow(
             selectedTabIndex = uiState.selectedTestIndex,
             edgePadding = 16.dp,
             containerColor = MaterialTheme.colorScheme.surface,
-            indicator = { tabPositions ->
-                if (uiState.selectedTestIndex < tabPositions.size) {
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.selectedTestIndex]),
-                        color = NavyPrimary
-                    )
-                }
-            },
+            indicator = {},
             divider = {}
         ) {
             gridData.tests.forEachIndexed { index, test ->
@@ -287,17 +274,17 @@ fun LiveEntryPhase(
                     text = {
                         Surface(
                             shape = RoundedCornerShape(24.dp),
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                            shadowElevation = if (isSelected) 2.dp else 0.dp,
-                            modifier = Modifier.padding(vertical = 4.dp)
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shadowElevation = if (isSelected) 4.dp else 0.dp,
+                            modifier = Modifier.padding(vertical = 6.dp)
                         ) {
                             Text(
                                 text = test.name,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else Color.Gray,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
                             )
                         }
                     }
@@ -326,7 +313,8 @@ fun LiveEntryPhase(
                     onCellClick = { testToLog ->
                         Log.d("TestingGridComponents", "Cell clicked for athlete ${athlete.id}, test ${testToLog.id}")
                         if (savedResult != null) {
-                            // Do nothing on regular click if saved, prevents accidental opening.
+                            // Tapping a saved result directly opens the score editor
+                            onAction(TestingGridAction.OnStartEditing(athlete, testToLog))
                         } else {
                             handleCellAction(testToLog, athlete, eventId, groupId, uiState, onAction)
                         }
@@ -334,6 +322,11 @@ fun LiveEntryPhase(
                     onCellLongPress = { testToLog ->
                         if (savedResult != null) {
                             // Long press to edit logic
+                            onAction(TestingGridAction.OnStartEditing(athlete, testToLog))
+                        } else if (testToLog.canUseStopwatch) {
+                            // Long press on an unsaved timed test allows explicitly choosing mode or manual entry
+                            onAction(TestingGridAction.OnRequestTimingChoice(athlete, testToLog))
+                        } else {
                             onAction(TestingGridAction.OnStartEditing(athlete, testToLog))
                         }
                     },
@@ -364,7 +357,13 @@ private fun handleCellAction(
                 onAction(TestingGridAction.OnStartEditing(athlete, test))
             }
             null -> {
-                onAction(TestingGridAction.OnRequestTimingChoice(athlete, test))
+                // Automatically preselect and launch the most appropriate timing mode immediately
+                val defaultMode = if (test.timingMode == TimingMode.GROUP_START) {
+                    TimingMode.GROUP_START
+                } else {
+                    TimingMode.INDIVIDUAL
+                }
+                onAction(TestingGridAction.OnNavigateToStopwatch(eventId, test.id, groupId, athlete.id, defaultMode.name))
             }
         }
     } else {
@@ -403,7 +402,7 @@ fun AthleteRow(
             ) {
                 // Initial Circle Avatar
                 Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(NavyPrimary),
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -419,28 +418,30 @@ fun AthleteRow(
                         if (athlete.isRestricted || athlete.medicalAlert != null) {
                             Icon(
                                 Icons.Default.Warning,
-                                contentDescription = "Medical alert",
+                                contentDescription = "Restricted or Medical Alert",
                                 tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(16.dp).padding(end = 2.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
                         }
                         Text(
-                            "${athlete.firstName} ${athlete.lastName}", 
-                            fontSize = 14.sp, 
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2, 
-                            overflow = TextOverflow.Ellipsis
+                            text = athlete.fullName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
+                    Text(
+                        text = athlete.sex.name.lowercase().replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             
-            // Score Cell
-            Box(modifier = Modifier.width(140.dp)) {
+            // Score Input / Display
+            Box(modifier = Modifier.width(130.dp)) {
                 ScoreCell(
                     savedResult = savedResult,
                     onClick = { onCellClick(test) },
@@ -460,45 +461,81 @@ fun ScoreCell(
     onLongPress: () -> Unit,
     isFailed: Boolean = false
 ) {
+    val isDark = isSystemInDarkTheme()
     val (bgColor, textColor) = when {
-        isFailed -> PerformanceRed.copy(alpha = 0.7f) to PerformanceRedText
-        savedResult == null -> Color(0xFFF3F4F6) to Color.Gray
-        savedResult.percentile == null -> PerformanceGrey to Color.Black
-        savedResult.percentile >= 60 -> PerformanceGreen.copy(alpha = 0.7f) to PerformanceGreenText
-        savedResult.percentile >= 30 -> PerformanceYellow.copy(alpha = 0.7f) to PerformanceYellowText
-        else -> PerformanceRed.copy(alpha = 0.7f) to PerformanceRedText
+        isFailed -> if (isDark) PerformanceRedDark to PerformanceRedTextDark else PerformanceRed.copy(alpha = 0.7f) to PerformanceRedText
+        savedResult == null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) to MaterialTheme.colorScheme.primary
+        savedResult.percentile == null -> if (isDark) PerformanceGreyDark to PerformanceGreyTextDark else PerformanceGrey to MaterialTheme.colorScheme.onSurface
+        savedResult.percentile >= 60 -> if (isDark) PerformanceGreenDark to PerformanceGreenTextDark else PerformanceGreen.copy(alpha = 0.7f) to PerformanceGreenText
+        savedResult.percentile >= 30 -> if (isDark) PerformanceYellowDark to PerformanceYellowTextDark else PerformanceYellow.copy(alpha = 0.7f) to PerformanceYellowText
+        else -> if (isDark) PerformanceRedDark to PerformanceRedTextDark else PerformanceRed.copy(alpha = 0.7f) to PerformanceRedText
     }
 
-    Box(
+    val cellBorder = when {
+        isFailed -> BorderStroke(2.dp, MaterialTheme.colorScheme.error)
+        savedResult == null -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+        else -> null
+    }
+
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(bgColor)
-            .then(
-                if (isFailed) Modifier.border(2.dp, MaterialTheme.colorScheme.error, RoundedCornerShape(8.dp))
-                else Modifier
-            )
             .acceleratorClick(onClick = onClick, onLongClick = onLongPress),
-        contentAlignment = Alignment.Center
+        shape = RoundedCornerShape(8.dp),
+        color = bgColor,
+        border = cellBorder,
+        shadowElevation = if (savedResult != null) 1.dp else 0.dp
     ) {
-        if (isFailed) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(
-                    Icons.Default.ErrorOutline,
-                    contentDescription = "Save failed",
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text("Failed", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isFailed) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(
+                        Icons.Default.ErrorOutline,
+                        contentDescription = "Save failed",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text("Failed", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                }
+            } else if (savedResult != null) {
+                Box(modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 4.dp)) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit score",
+                        tint = textColor.copy(alpha = 0.45f),
+                        modifier = Modifier.size(11.dp).align(Alignment.TopEnd)
+                    )
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(String.format(Locale.getDefault(), "%.1f", savedResult.rawScore), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
+                        savedResult.percentile?.let { p -> Text("${p}%", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = textColor.copy(alpha = 0.8f)) }
+                    }
+                }
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        "Enter Result",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
-        } else if (savedResult != null) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(String.format(Locale.getDefault(), "%.1f", savedResult.rawScore), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
-                savedResult.percentile?.let { p -> Text("${p}%", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = textColor.copy(alpha = 0.8f)) }
-            }
-        } else {
-            Text("--", color = Color.LightGray, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -592,7 +629,7 @@ fun ScoreEntryDialog(
 @Composable
 fun TestingProgressBanner(totalAthletes: Int, testedAthletes: Int, totalTestsCompleted: Int) {
     val progress = if (totalAthletes > 0) testedAthletes.toFloat() / totalAthletes else 0f
-    Surface(modifier = Modifier.fillMaxWidth(), color = Color(0xFFF3F4F6)) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -604,18 +641,32 @@ fun TestingProgressBanner(totalAthletes: Int, testedAthletes: Int, totalTestsCom
             ) {
                 Text("Test Progress", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Text(
-                    "$testedAthletes / $totalAthletes Athletes � $totalTestsCompleted Tests Saved", 
+                    "$testedAthletes / $totalAthletes Athletes • $totalTestsCompleted Tests Saved", 
                     style = MaterialTheme.typography.labelMedium, 
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape), color = NavyPrimary)
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Tap a cell to record or edit a score. Long press a cell to enter data manually.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
     }
 }
 
 @Composable
-fun LoadingState() { Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(color = NavyPrimary) } }
+fun LoadingState() {
+    Box(Modifier.fillMaxSize(), Alignment.Center) {
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+    }
+}
 
 @Composable
 fun ErrorState(message: String, onDismiss: () -> Unit) {
@@ -627,3 +678,102 @@ fun ErrorState(message: String, onDismiss: () -> Unit) {
         }
     }
 }
+
+@Composable
+fun TestingCompleteDialog(
+    athleteCount: Int,
+    testsRecordedCount: Int,
+    onViewReport: () -> Unit,
+    onBackToDashboard: () -> Unit,
+    onContinueTesting: () -> Unit
+) {
+    val isDark = isSystemInDarkTheme()
+    AlertDialog(
+        onDismissRequest = onContinueTesting,
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF16A34A)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = "Success",
+                    tint = Color.White,
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+        },
+        title = {
+            Text(
+                "Testing Complete",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (isDark) PerformanceGreenDark else Color(0xFFF0FDF4),
+                    border = BorderStroke(1.dp, if (isDark) PerformanceGreenBorderDark else Color(0xFFBBF7D0)),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            "$athleteCount ${if (athleteCount == 1) "Athlete" else "Athletes"} Tested",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) PerformanceGreenTextDark else Color(0xFF166534)
+                        )
+                        Text(
+                            "$testsRecordedCount ${if (testsRecordedCount == 1) "Test" else "Tests"} Recorded Successfully",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isDark) PerformanceGreenTextDark else Color(0xFF15803D)
+                        )
+                    }
+                }
+                Text(
+                    "All recorded testing session scores have been saved to athlete records.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onViewReport,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("View Session Report")
+            }
+        },
+        dismissButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(onClick = onContinueTesting) {
+                    Text("Continue Editing")
+                }
+                TextButton(onClick = onBackToDashboard) {
+                    Text("Dashboard")
+                }
+            }
+        }
+    )
+}
+

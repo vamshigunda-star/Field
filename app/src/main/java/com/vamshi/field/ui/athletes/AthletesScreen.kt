@@ -22,17 +22,28 @@ import com.vamshi.field.ui.roster.RosterDialogs
 import com.vamshi.field.ui.roster.RosterViewModel
 import com.vamshi.field.ui.theme.SportOrange
 
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+
+import androidx.compose.foundation.layout.WindowInsets
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AthletesScreen(
     onNavigateToAthleteReport: (String) -> Unit,
     viewModel: RosterViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             AppTopBar(
                 title = "Athletes",
+                scrollBehavior = scrollBehavior,
                 actions = {
                     IconButton(onClick = { viewModel.onAction(RosterAction.OnShowRegisterAthleteDialog) }) {
                         Icon(Icons.Default.PersonAdd, contentDescription = "Register Athlete")

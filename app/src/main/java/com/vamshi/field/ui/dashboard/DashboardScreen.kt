@@ -8,13 +8,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChevronRight
@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Recommend
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,7 +40,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -52,11 +52,18 @@ import com.vamshi.field.ui.theme.PeachIconBg
 import com.vamshi.field.ui.theme.BlueIconBg
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import com.vamshi.field.ui.components.tour.GettingStartedCard
+import com.vamshi.field.ui.components.tour.TourSelectionSheet
+import com.vamshi.field.ui.components.tour.WelcomeTourDialog
+import com.vamshi.field.ui.components.tour.TestingTourDialog
+import com.vamshi.field.ui.components.tour.PipelineWorkflowSimulatorDialog
+import com.vamshi.field.ui.components.spotlight.SpotlightOverlay
+import com.vamshi.field.ui.components.spotlight.SpotlightShape
+import com.vamshi.field.ui.components.spotlight.rememberSpotlightState
+import com.vamshi.field.ui.components.spotlight.spotlightTarget
 import java.util.Date
 import java.util.Locale
 
-/** Local-only tint for the light header's icon-button chips. Not promoted to Color.kt per design system rules. */
-private val HeaderIconChipBg = Color(0xFFF1F5FF)
 
 @Composable
 fun DashboardScreen(
@@ -68,10 +75,10 @@ fun DashboardScreen(
     onNavigateToCreateEvent: () -> Unit,
     onNavigateToQuickTest: () -> Unit,
     onNavigateToIndividualTest: () -> Unit,
-    onNavigateToTestingGrid: (String, String) -> Unit,
     onNavigateToLeaderboard: (eventId: String, groupId: String, mode: String) -> Unit,
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToAiCoach: () -> Unit = {},
     onNavigateToSignIn: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
@@ -87,6 +94,9 @@ fun DashboardScreen(
     DashboardContent(
         modifier = modifier,
         uiState = uiState,
+        onNavigateToRoster = onNavigateToRoster,
+        onNavigateToTestLibrary = onNavigateToTestLibrary,
+        onNavigateToAiCoach = onNavigateToAiCoach,
         onAction = {
             when (it) {
                 DashboardAction.OnCreateEventClick -> onNavigateToCreateEvent()
@@ -96,13 +106,11 @@ fun DashboardScreen(
                 DashboardAction.OnTestLibraryClick -> onNavigateToTestLibrary()
                 DashboardAction.OnRecommendationsClick -> onNavigateToRecommendations()
                 DashboardAction.OnNewTestClick -> onNavigateToNewTest()
-                is DashboardAction.OnEventClick -> onNavigateToTestingGrid(it.eventId, it.groupId)
                 is DashboardAction.OnPickLeaderboardEvent -> {
                     viewModel.onAction(DashboardAction.OnDismissLeaderboardPicker)
                     onNavigateToLeaderboard(it.eventId, it.groupId, "event")
                 }
                 DashboardAction.OnAnalyticsClick -> onNavigateToReports()
-                DashboardAction.OnSeeAllEventsClick -> onNavigateToReports()
                 DashboardAction.OnSettingsClick -> onNavigateToSettings()
                 else -> viewModel.onAction(it)
             }
@@ -115,174 +123,237 @@ fun DashboardScreen(
 fun DashboardContent(
     modifier: Modifier = Modifier,
     uiState: DashboardUiState,
+    onNavigateToRoster: () -> Unit = {},
+    onNavigateToTestLibrary: () -> Unit = {},
+    onNavigateToAiCoach: () -> Unit = {},
     onAction: (DashboardAction) -> Unit
 ) {
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            DashboardHeader(
-                onSettingsClick = { onAction(DashboardAction.OnSettingsClick) },
-                onSignOutClick = { onAction(DashboardAction.OnSignOutClick) }
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 150.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 16.dp,
-                bottom = 80.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                ContextHeaderCard(
-                    athleteCount = uiState.activeAthletes,
-                    eventCount = uiState.scheduledTestCount,
-                    coachFirstName = uiState.coachFirstName,
-                    coachLastName = uiState.coachLastName
-                )
-            }
+    val spotlightState = rememberSpotlightState()
 
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                HeroCard {
-                    onAction(DashboardAction.OnCreateEventClick)
-                }
-            }
+    LaunchedEffect(uiState.showDashboardSpotlight) {
+        if (uiState.showDashboardSpotlight) {
+            spotlightState.startTour()
+        } else {
+            spotlightState.dismiss()
+        }
+    }
 
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                PrimaryActionCard(
-                    title = "Individual Test",
-                    subtitle = "Test a registered athlete for analytics",
-                    icon = Icons.Default.Person,
-                    accentColor = SportBlue,
-                    accentContainerColor = BlueIconBg,
-                    buttonLabel = "Start",
-                    buttonIcon = Icons.Default.PlayArrow,
-                    onClick = { onAction(DashboardAction.OnIndividualTestClick) }
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                DashboardHeader(
+                    onTourClick = { onAction(DashboardAction.OnOpenTourMenuClick) },
+                    onSettingsClick = { onAction(DashboardAction.OnSettingsClick) },
+                    onSignOutClick = { onAction(DashboardAction.OnSignOutClick) }
                 )
-            }
-
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Text(
-                    "Quick Actions",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-
-            item {
-                QuickActionCard(
-                    icon = Icons.Default.Bolt,
-                    label = "Quick Test",
-                    tint = SportOrange,
-                    iconBg = PeachIconBg,
-                    onClick = { onAction(DashboardAction.OnQuickTestClick) }
-                )
-            }
-            item {
-                QuickActionCard(
-                    icon = Icons.Default.Group,
-                    label = "Roster",
-                    tint = SportBlue,
-                    iconBg = BlueIconBg,
-                    onClick = { onAction(DashboardAction.OnRosterClick) }
-                )
-            }
-            item {
-                QuickActionCard(
-                    icon = Icons.AutoMirrored.Filled.LibraryBooks,
-                    label = "Tests Library",
-                    tint = MaterialTheme.colorScheme.primary,
-                    iconBg = BlueIconBg,
-                    onClick = { onAction(DashboardAction.OnTestLibraryClick) }
-                )
-            }
-            item {
-                QuickActionCard(
-                    icon = Icons.Default.EmojiEvents,
-                    label = "Leaderboard",
-                    tint = SportOrange,
-                    iconBg = PeachIconBg,
-                    onClick = { onAction(DashboardAction.OnLeaderboardClick) }
-                )
-            }
-            item {
-                QuickActionCard(
-                    icon = Icons.AutoMirrored.Filled.Assignment,
-                    label = "Recommendations",
-                    tint = SportBlue,
-                    iconBg = BlueIconBg,
-                    onClick = { onAction(DashboardAction.OnRecommendationsClick) }
-                )
-            }
-            item {
-                QuickActionCard(
-                    icon = Icons.Default.AddCircleOutline,
-                    label = "New Test",
-                    tint = SportOrange,
-                    iconBg = PeachIconBg,
-                    onClick = { onAction(DashboardAction.OnNewTestClick) }
-                )
-            }
-
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Recent Events",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+            },
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        ) { paddingValues ->
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 150.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom = 16.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    ContextHeaderCard(
+                        athleteCount = uiState.activeAthletes,
+                        eventCount = uiState.scheduledTestCount,
+                        coachFirstName = uiState.coachFirstName,
+                        coachLastName = uiState.coachLastName
                     )
-                    TextButton(onClick = { onAction(DashboardAction.OnSeeAllEventsClick) }) {
-                        Text("See All")
+                }
+
+                if (!uiState.isGettingStartedDismissed) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        GettingStartedCard(
+                            activeAthletes = uiState.activeAthletes,
+                            scheduledTestCount = uiState.scheduledTestCount,
+                            onNavigateToRoster = onNavigateToRoster,
+                            onNavigateToTestLibrary = onNavigateToTestLibrary,
+                            onOpenTestingTour = { onAction(DashboardAction.OnOpenTestingTour) },
+                            onNavigateToAiCoach = onNavigateToAiCoach,
+                            onOpenPipelineSimulator = { onAction(DashboardAction.OnOpenPipelineSimulator) },
+                            onDismiss = { onAction(DashboardAction.OnDismissGettingStarted) }
+                        )
                     }
                 }
-            }
 
-            if (uiState.recentEvents.isEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    EmptyState(
-                        icon = Icons.Default.Event,
-                        title = "No recent events",
-                        message = "Create one to get started!",
-                        actionLabel = "Create Event",
-                        onAction = { onAction(DashboardAction.OnCreateEventClick) }
+                    HeroCard(
+                        modifier = Modifier.spotlightTarget(
+                            id = "hero_group_event",
+                            stepIndex = 2,
+                            title = "3. Start Group Testing Event",
+                            description = "Launch live testing sessions to record multiple athletes across tests in high-speed spreadsheet grids with heat stopwatches.",
+                            state = spotlightState,
+                            shape = SpotlightShape.ROUNDED_RECT
+                        ),
+                        onClick = { onAction(DashboardAction.OnCreateEventClick) }
                     )
                 }
-            } else {
-                items(
-                    items = uiState.recentEvents,
-                    span = { GridItemSpan(maxLineSpan) }
-                ) { event ->
-                    RecentEventItem(
-                        event = event,
-                        onClick = {
-                            event.groupId?.let {
-                                onAction(DashboardAction.OnEventClick(event.id, it))
-                            }
-                        }
+
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    PrimaryActionCard(
+                        title = "Individual Test",
+                        subtitle = "Test a registered athlete for analytics",
+                        icon = Icons.Default.Person,
+                        accentColor = SportBlue,
+                        accentContainerColor = BlueIconBg,
+                        buttonLabel = "Start",
+                        buttonIcon = Icons.Default.PlayArrow,
+                        onClick = { onAction(DashboardAction.OnIndividualTestClick) }
+                    )
+                }
+
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        "Quick Actions",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
+                item {
+                    QuickActionCard(
+                        modifier = Modifier.spotlightTarget(
+                            id = "qa_roster",
+                            stepIndex = 0,
+                            title = "1. Manage Squad Rosters",
+                            description = "Add squads, register athlete profiles, and view high-visibility medical alerts before testing begins.",
+                            state = spotlightState,
+                            shape = SpotlightShape.ROUNDED_RECT
+                        ),
+                        icon = Icons.Default.Group,
+                        label = "Roster",
+                        tint = SportBlue,
+                        iconBg = BlueIconBg,
+                        onClick = { onAction(DashboardAction.OnRosterClick) }
+                    )
+                }
+                item {
+                    QuickActionCard(
+                        modifier = Modifier.spotlightTarget(
+                            id = "qa_tests",
+                            stepIndex = 1,
+                            title = "2. Standard Tests & Batteries",
+                            description = "Browse standardized normative fitness protocols, age-graded benchmarks, and custom tests.",
+                            state = spotlightState,
+                            shape = SpotlightShape.ROUNDED_RECT
+                        ),
+                        icon = Icons.AutoMirrored.Filled.LibraryBooks,
+                        label = "Tests Library",
+                        tint = MaterialTheme.colorScheme.primary,
+                        iconBg = BlueIconBg,
+                        onClick = { onAction(DashboardAction.OnTestLibraryClick) }
+                    )
+                }
+                item {
+                    QuickActionCard(
+                        modifier = Modifier.spotlightTarget(
+                            id = "qa_reports",
+                            stepIndex = 3,
+                            title = "4. Analytics & Reports",
+                            description = "Explore individual athlete historical reports, normative physiological curves (Green/Yellow/Red), and AI Coach recommendations.",
+                            state = spotlightState,
+                            shape = SpotlightShape.ROUNDED_RECT
+                        ),
+                        icon = Icons.AutoMirrored.Filled.TrendingUp,
+                        label = "Reports",
+                        tint = SportOrange,
+                        iconBg = PeachIconBg,
+                        onClick = { onAction(DashboardAction.OnAnalyticsClick) }
+                    )
+                }
+                item {
+                    QuickActionCard(
+                        icon = Icons.Default.EmojiEvents,
+                        label = "Leaderboard",
+                        tint = SportOrange,
+                        iconBg = PeachIconBg,
+                        onClick = { onAction(DashboardAction.OnLeaderboardClick) }
+                    )
+                }
+                item {
+                    QuickActionCard(
+                        icon = Icons.Default.Recommend,
+                        label = "Recommendations",
+                        tint = SportBlue,
+                        iconBg = BlueIconBg,
+                        onClick = { onAction(DashboardAction.OnRecommendationsClick) }
+                    )
+                }
+                item {
+                    QuickActionCard(
+                        icon = Icons.Default.Bolt,
+                        label = "Quick Test",
+                        tint = SportOrange,
+                        iconBg = PeachIconBg,
+                        onClick = { onAction(DashboardAction.OnQuickTestClick) }
                     )
                 }
             }
         }
+
+        // Spotlight Cutout Scrim Layer
+        SpotlightOverlay(
+            state = spotlightState,
+            onDismiss = { onAction(DashboardAction.OnDismissDashboardSpotlight) },
+            onComplete = { onAction(DashboardAction.OnDismissDashboardSpotlight) }
+        )
     }
 
     if (uiState.showLeaderboardPicker) {
         LeaderboardEventPickerSheet(
-            events = uiState.recentEvents.filter { it.groupId != null },
+            events = uiState.availableEvents.filter { it.groupId != null },
             onPick = { event -> onAction(DashboardAction.OnPickLeaderboardEvent(event.id, event.groupId!!)) },
             onDismiss = { onAction(DashboardAction.OnDismissLeaderboardPicker) }
+        )
+    }
+
+    if (uiState.showTourSelectionSheet) {
+        TourSelectionSheet(
+            onDismiss = { onAction(DashboardAction.OnDismissTourMenu) },
+            onOpenWelcomeTour = { onAction(DashboardAction.OnOpenWelcomeTour) },
+            onOpenTestingTour = { onAction(DashboardAction.OnOpenTestingTour) },
+            onOpenPipelineSimulator = { onAction(DashboardAction.OnOpenPipelineSimulator) },
+            onStartSpotlightTour = { onAction(DashboardAction.OnStartDashboardSpotlight) },
+            onResetChecklist = { onAction(DashboardAction.OnResetGettingStarted) }
+        )
+    }
+
+    if (uiState.showWelcomeTour) {
+        WelcomeTourDialog(
+            onDismiss = { onAction(DashboardAction.OnDismissWelcomeTour) },
+            onStartTestingTour = { onAction(DashboardAction.OnOpenTestingTour) },
+            onStartPipelineSimulator = { onAction(DashboardAction.OnOpenPipelineSimulator) }
+        )
+    }
+
+    if (uiState.showTestingTour) {
+        TestingTourDialog(
+            onDismiss = { onAction(DashboardAction.OnDismissTestingTour) },
+            onStartEventClick = { onAction(DashboardAction.OnCreateEventClick) }
+        )
+    }
+
+    if (uiState.showPipelineSimulator) {
+        PipelineWorkflowSimulatorDialog(
+            onDismiss = { onAction(DashboardAction.OnDismissPipelineSimulator) },
+            onStartEventClick = {
+                onAction(DashboardAction.OnDismissPipelineSimulator)
+                onAction(DashboardAction.OnCreateEventClick)
+            }
         )
     }
 }
@@ -363,13 +434,18 @@ private fun LeaderboardEventPickerSheet(
  */
 @Composable
 private fun DashboardHeader(
+    onTourClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    onSignOutClick: () -> Unit
+    onSignOutClick: () -> Unit,
+    helpButtonModifier: Modifier = Modifier
 ) {
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(SurfaceWhite)
+            .background(MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier
@@ -390,10 +466,10 @@ private fun DashboardHeader(
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = buildAnnotatedString {
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = TextPrimary)) {
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = onSurfaceColor)) {
                             append("Field")
                         }
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.Normal, color = TextSecondary)) {
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Normal, color = onSurfaceVariantColor)) {
                             append(" — Testing")
                         }
                     },
@@ -401,6 +477,12 @@ private fun DashboardHeader(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DashboardHeaderIconButton(
+                    modifier = helpButtonModifier,
+                    icon = Icons.AutoMirrored.Filled.HelpOutline,
+                    contentDescription = "Guided Tours & Help",
+                    onClick = onTourClick
+                )
                 DashboardHeaderIconButton(
                     icon = Icons.Default.Settings,
                     contentDescription = "Settings",
@@ -413,7 +495,7 @@ private fun DashboardHeader(
                 )
             }
         }
-        HorizontalDivider(color = OutlineGrey, thickness = 1.dp)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), thickness = 1.dp)
     }
 }
 
@@ -421,19 +503,20 @@ private fun DashboardHeader(
 private fun DashboardHeaderIconButton(
     icon: ImageVector,
     contentDescription: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(40.dp)
-            .background(HeaderIconChipBg, CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             icon,
             contentDescription = contentDescription,
-            tint = ElectricBlue,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp)
         )
     }
@@ -486,7 +569,7 @@ private fun ContextHeaderCard(
             Text(
                 dateStr.uppercase(),
                 style = MaterialTheme.typography.labelMedium,
-                color = SportOrange,
+                color = Color.White.copy(alpha = 0.85f),
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
@@ -508,8 +591,12 @@ private fun ContextHeaderCard(
 }
 
 @Composable
-private fun HeroCard(onClick: () -> Unit) {
+private fun HeroCard(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     PrimaryActionCard(
+        modifier = modifier,
         title = "Start Group Testing Event",
         subtitle = "Create and launch a test session",
         icon = Icons.Default.PlayArrow,
@@ -517,6 +604,7 @@ private fun HeroCard(onClick: () -> Unit) {
         accentContainerColor = SportOrangeContainer,
         buttonLabel = "Start",
         buttonIcon = Icons.Default.PlayArrow,
+        isHero = true,
         onClick = onClick
     )
 }
@@ -530,31 +618,46 @@ private fun PrimaryActionCard(
     accentContainerColor: Color,
     buttonLabel: String,
     buttonIcon: ImageVector,
+    modifier: Modifier = Modifier,
+    isHero: Boolean = false,
     onClick: () -> Unit
 ) {
+    val cardPaddingHorizontal = if (isHero) 17.dp else 16.dp
+    val cardPaddingVertical = if (isHero) 15.dp else 12.dp
+    val iconContainerSize = if (isHero) 48.dp else 44.dp
+    val iconSize = if (isHero) 26.dp else 24.dp
+    val titleStyle = if (isHero) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleMedium
+    val subtitleStyle = if (isHero) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
+    val buttonPaddingHorizontal = if (isHero) 15.dp else 12.dp
+    val buttonPaddingVertical = if (isHero) 9.dp else 8.dp
+    val buttonIconSize = if (isHero) 16.dp else 15.dp
+    val buttonTextStyle = if (isHero) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium
+    val baseElevation = if (isHero) 2.dp else 1.dp
+    val cardRadius = 22.dp
+
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .minimumInteractiveComponentSize()
             .pressInteraction(
-                shape = RoundedCornerShape(24.dp),
-                baseElevation = 2.dp,
+                shape = RoundedCornerShape(cardRadius),
+                baseElevation = baseElevation,
                 onClick = onClick
             ),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(cardRadius),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp) // Handled by pressInteraction
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 18.dp, vertical = 16.dp)
+                .padding(horizontal = cardPaddingHorizontal, vertical = cardPaddingVertical)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(iconContainerSize)
                     .background(accentContainerColor, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
@@ -562,43 +665,43 @@ private fun PrimaryActionCard(
                     icon,
                     contentDescription = null,
                     tint = accentColor,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(iconSize)
                 )
             }
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(modifier = Modifier.width(13.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
+                    style = titleStyle,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
+                    style = subtitleStyle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(11.dp))
             Surface(
                 shape = RoundedCornerShape(50),
                 color = accentColor
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = buttonPaddingHorizontal, vertical = buttonPaddingVertical),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         buttonIcon,
                         contentDescription = buttonLabel,
                         tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(buttonIconSize)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         buttonLabel,
-                        style = MaterialTheme.typography.labelLarge,
+                        style = buttonTextStyle,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
@@ -659,62 +762,6 @@ private fun QuickActionCard(
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RecentEventItem(event: TestingEvent, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(80.dp)
-            .pressInteraction(
-                shape = RoundedCornerShape(20.dp),
-                baseElevation = 2.dp,
-                onClick = onClick
-            ),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Event,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = event.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = formatEventMetadata(event.date),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = "Details",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -794,7 +841,7 @@ private fun DashboardContentPreview() {
             uiState = DashboardUiState(
                 activeAthletes = 25,
                 scheduledTestCount = 4,
-                recentEvents = listOf(
+                availableEvents = listOf(
                     TestingEvent(
                         id = "1",
                         name = "Max-Out Day",

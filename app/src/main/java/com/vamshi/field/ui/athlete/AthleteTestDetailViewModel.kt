@@ -7,6 +7,7 @@ import com.vamshi.field.domain.model.reports.AthleteTestDetailData
 import com.vamshi.field.domain.model.reports.AttemptRow
 import com.vamshi.field.domain.repository.TestingRepository
 import com.vamshi.field.domain.usecase.reports.ObserveAthleteTestDetailUseCase
+import com.vamshi.field.ui.report.components.ChartRangeFilter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +24,8 @@ data class AthleteTestDetailUiState(
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val isDeleting: Boolean = false,
-    val deleteCandidate: AttemptRow? = null
+    val deleteCandidate: AttemptRow? = null,
+    val selectedRange: ChartRangeFilter = ChartRangeFilter.ALL
 )
 
 sealed interface AthleteTestDetailAction {
@@ -34,6 +36,7 @@ sealed interface AthleteTestDetailAction {
     data object OnConfirmDelete : AthleteTestDetailAction
     data object OnDismissDelete : AthleteTestDetailAction
     data object OnDismissError : AthleteTestDetailAction
+    data class OnSelectRange(val range: ChartRangeFilter) : AthleteTestDetailAction
 }
 
 @HiltViewModel
@@ -55,6 +58,14 @@ class AthleteTestDetailViewModel @Inject constructor(
 
     private var loadJob: Job? = null
 
+    private val testDetailCache = java.util.Collections.synchronizedMap(
+        object : LinkedHashMap<String, AthleteTestDetailData>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AthleteTestDetailData>?): Boolean {
+                return size > 30
+            }
+        }
+    )
+
     init {
         athleteId = savedStateHandle.get<String>("athleteId") ?: ""
         testId = savedStateHandle.get<String>("testId") ?: ""
@@ -64,15 +75,32 @@ class AthleteTestDetailViewModel @Inject constructor(
         }
     }
 
-    private fun loadDetail(athleteId: String, testId: String, contextSessionId: String?) {
+    fun loadDetail(athleteId: String, testId: String, contextSessionId: String?) {
+        if (this.athleteId == athleteId && this.testId == testId && this.contextSessionId == contextSessionId && _uiState.value.data != null) {
+            return
+        }
         this.athleteId = athleteId
         this.testId = testId
         this.contextSessionId = contextSessionId
         loadJob?.cancel()
+
+        val cacheKey = "$athleteId-$testId-$contextSessionId"
+        val cached = testDetailCache[cacheKey]
+        if (cached != null) {
+            _uiState.update { it.copy(data = cached, isLoading = false) }
+        } else {
+            _uiState.update { it.copy(isLoading = true, data = null) }
+        }
+
         loadJob = viewModelScope.launch {
             observeAthleteTestDetail(athleteId, testId, contextSessionId)
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoading = false) } }
-                .collect { d -> _uiState.update { it.copy(data = d, isLoading = false) } }
+                .collect { d ->
+                    if (d != null) {
+                        testDetailCache[cacheKey] = d
+                    }
+                    _uiState.update { it.copy(data = d, isLoading = false) }
+                }
         }
     }
 
@@ -84,6 +112,7 @@ class AthleteTestDetailViewModel @Inject constructor(
             is AthleteTestDetailAction.OnRequestDelete -> _uiState.update { it.copy(deleteCandidate = action.attempt) }
             AthleteTestDetailAction.OnDismissDelete -> _uiState.update { it.copy(deleteCandidate = null) }
             AthleteTestDetailAction.OnConfirmDelete -> confirmDelete()
+            is AthleteTestDetailAction.OnSelectRange -> _uiState.update { it.copy(selectedRange = action.range) }
             AthleteTestDetailAction.OnNavigateBack -> Unit
         }
     }

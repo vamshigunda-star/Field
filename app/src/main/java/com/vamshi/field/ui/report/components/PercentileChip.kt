@@ -21,12 +21,23 @@ import com.vamshi.field.ui.theme.PerformanceRedText
 import com.vamshi.field.ui.theme.PerformanceYellow
 import com.vamshi.field.ui.theme.PerformanceYellowText
 
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.vamshi.field.ui.theme.PerformanceGreenDark
+import com.vamshi.field.ui.theme.PerformanceGreenTextDark
+import com.vamshi.field.ui.theme.PerformanceGreyDark
+import com.vamshi.field.ui.theme.PerformanceGreyTextDark
+import com.vamshi.field.ui.theme.PerformanceRedDark
+import com.vamshi.field.ui.theme.PerformanceRedTextDark
+import com.vamshi.field.ui.theme.PerformanceYellowDark
+import com.vamshi.field.ui.theme.PerformanceYellowTextDark
+
 private val classifyPercentile = ClassifyPercentileUseCase()
 
 @Composable
 fun PercentileChip(percentile: Int?, modifier: Modifier = Modifier) {
+    val isDark = isSystemInDarkTheme()
     val label = percentile?.let { "${ordinal(it)}" } ?: "—"
-    val (bg, fg) = percentileChipColors(classifyPercentile(percentile))
+    val (bg, fg) = percentileChipColors(classifyPercentile(percentile), isDark)
     Text(
         text = label,
         modifier = modifier
@@ -38,11 +49,11 @@ fun PercentileChip(percentile: Int?, modifier: Modifier = Modifier) {
     )
 }
 
-private fun percentileChipColors(classification: Classification): Pair<Color, Color> = when (classification) {
-    Classification.NO_DATA -> PerformanceGrey to PerformanceGreyText
-    Classification.SUPERIOR -> PerformanceGreen to PerformanceGreenText
-    Classification.HEALTHY -> PerformanceYellow to PerformanceYellowText
-    Classification.NEEDS_IMPROVEMENT -> PerformanceRed to PerformanceRedText
+private fun percentileChipColors(classification: Classification, isDark: Boolean): Pair<Color, Color> = when (classification) {
+    Classification.NO_DATA -> if (isDark) PerformanceGreyDark to PerformanceGreyTextDark else PerformanceGrey to PerformanceGreyText
+    Classification.SUPERIOR -> if (isDark) PerformanceGreenDark to PerformanceGreenTextDark else PerformanceGreen to PerformanceGreenText
+    Classification.HEALTHY -> if (isDark) PerformanceYellowDark to PerformanceYellowTextDark else PerformanceYellow to PerformanceYellowText
+    Classification.NEEDS_IMPROVEMENT -> if (isDark) PerformanceRedDark to PerformanceRedTextDark else PerformanceRed to PerformanceRedText
 }
 
 private fun ordinal(n: Int): String {

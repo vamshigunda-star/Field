@@ -19,19 +19,19 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        Log.d("MainActivity", "onCreate started")
-        val splashScreen = installSplashScreen()
+        Log.e("MainActivity", "onCreate started")
+        installSplashScreen()
         super.onCreate(savedInstanceState)
-        Log.d("MainActivity", "super.onCreate finished")
+        Log.e("MainActivity", "super.onCreate finished")
         enableEdgeToEdge()
         setContent {
-            Log.d("MainActivity", "setContent started")
+            Log.e("MainActivity", "setContent started")
             FieldTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Log.d("MainActivity", "Surface composed")
+                    Log.e("MainActivity", "Surface composed")
                     val navController = rememberNavController()
                     AdaptiveNavigationWrapper(navController = navController) { modifier ->
                         ALearningNavGraph(

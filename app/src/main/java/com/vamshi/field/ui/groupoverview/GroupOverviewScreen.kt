@@ -53,8 +53,11 @@ import com.vamshi.field.domain.model.reports.TestTrendStrip
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.report.components.DistributionBar
 import com.vamshi.field.ui.report.components.MiniSparkline
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.vamshi.field.ui.theme.PerformanceRed
+import com.vamshi.field.ui.theme.PerformanceRedDark
 import com.vamshi.field.ui.theme.PerformanceRedText
+import com.vamshi.field.ui.theme.PerformanceRedTextDark
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -193,11 +196,16 @@ private fun GroupHealthSnapshot(memberCount: Int, distribution: Distribution) {
                 Text("$memberCount athletes", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             DistributionBar(distribution = distribution)
+            val isDark = isSystemInDarkTheme()
+            val supColor = if (isDark) Color(0xFF4ADE80) else Color(0xFF1B5E20)
+            val hlthColor = if (isDark) Color(0xFFFDE047) else Color(0xFFF57F17)
+            val needsColor = if (isDark) Color(0xFFF87171) else Color(0xFFB71C1C)
+            val noDataColor = MaterialTheme.colorScheme.outlineVariant
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                CountLabel("Superior", distribution.superior, Color(0xFF1B5E20))
-                CountLabel("Healthy", distribution.healthy, Color(0xFF0D47A1))
-                CountLabel("Needs Imp.", distribution.needsImprovement, Color(0xFFB71C1C))
-                if (distribution.noData > 0) CountLabel("No Data", distribution.noData, Color(0xFF607D8B))
+                CountLabel("Superior", distribution.superior, supColor)
+                CountLabel("Healthy", distribution.healthy, hlthColor)
+                CountLabel("Needs Imp.", distribution.needsImprovement, needsColor)
+                if (distribution.noData > 0) CountLabel("No Data", distribution.noData, noDataColor)
             }
         }
     }
@@ -207,13 +215,16 @@ private fun GroupHealthSnapshot(memberCount: Int, distribution: Distribution) {
 private fun CountLabel(label: String, count: Int, color: Color) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(modifier = Modifier.size(8.dp).background(color, RoundedCornerShape(2.dp)))
-        Text("$count $label", style = MaterialTheme.typography.labelSmall)
+        Text("$count $label", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
 @Composable
 private fun SessionListRow(row: SessionRow, onClick: () -> Unit) {
     val df = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
+    val isDark = isSystemInDarkTheme()
+    val flagBg = if (isDark) PerformanceRedDark else PerformanceRed
+    val flagText = if (isDark) PerformanceRedTextDark else PerformanceRedText
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -232,8 +243,8 @@ private fun SessionListRow(row: SessionRow, onClick: () -> Unit) {
                 )
             }
             if (row.flagCount > 0) {
-                Box(modifier = Modifier.background(PerformanceRed, RoundedCornerShape(999.dp)).padding(horizontal = 10.dp, vertical = 4.dp)) {
-                    Text("${row.flagCount} flag${if (row.flagCount == 1) "" else "s"}", style = MaterialTheme.typography.labelSmall, color = PerformanceRedText, fontWeight = FontWeight.SemiBold)
+                Box(modifier = Modifier.background(flagBg, RoundedCornerShape(999.dp)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                    Text("${row.flagCount} flag${if (row.flagCount == 1) "" else "s"}", style = MaterialTheme.typography.labelSmall, color = flagText, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -263,14 +274,15 @@ private fun TestTrendChartSheet(trend: TestTrendStrip) {
 
 @Composable
 private fun TrendLineChart(points: List<Pair<Long, Float>>, modifier: Modifier = Modifier) {
+    val isDark = isSystemInDarkTheme()
     val textMeasurer = rememberTextMeasurer()
-    val labelStyle = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+    val labelStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
     val df = remember { SimpleDateFormat("MMM d", Locale.getDefault()) }
 
-    val lineColor = Color(0xFF0D47A1)
-    val gridColor = Color(0xFFE0E0E0)
-    val healthyColor = Color(0xFF0D47A1).copy(alpha = 0.08f)
-    val superiorColor = Color(0xFF1B5E20).copy(alpha = 0.08f)
+    val lineColor = MaterialTheme.colorScheme.primary
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    val healthyColor = if (isDark) Color(0x33FDE047) else Color(0x1AF57F17)
+    val superiorColor = if (isDark) Color(0x334ADE80) else Color(0x1A1B5E20)
 
     Canvas(modifier = modifier) {
         val totalWidth = size.width
