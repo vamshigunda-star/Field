@@ -21,7 +21,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
@@ -30,8 +32,10 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -95,8 +99,7 @@ fun RosterScreen(
                         contextSessionId = null,
                         onNavigateBack = { navigator.navigateBack() },
                         onNavigateToTest = onNavigateToTest,
-                        onStartQuickTest = { _, _ -> /* no-op in detail pane or handle if needed */ },
-                        onNavigateToAiCoach = {}
+                        onStartQuickTest = { _, _ -> /* no-op in detail pane or handle if needed */ }
                     )
                 } else {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -114,9 +117,34 @@ fun RosterContent(
     uiState: RosterUiState,
     onAction: (RosterAction) -> Unit
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.userMessage) {
+        uiState.userMessage?.let { msg ->
+            snackbarHostState.showSnackbar(
+                message = msg,
+                duration = SnackbarDuration.Short,
+                withDismissAction = true
+            )
+            onAction(RosterAction.OnDismissUserMessage)
+        }
+    }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short,
+                withDismissAction = true
+            )
+            onAction(RosterAction.OnDismissError)
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             AppTopBar(
                 title = "Roster",
@@ -182,20 +210,6 @@ fun RosterContent(
                     )
                 }
             }
-        }
-    }
-
-    // Floating error message
-    if (uiState.errorMessage != null) {
-        Snackbar(
-            modifier = Modifier.padding(16.dp),
-            action = {
-                TextButton(onClick = { onAction(RosterAction.OnDismissError) }) {
-                    Text("Dismiss")
-                }
-            }
-        ) {
-            Text(uiState.errorMessage)
         }
     }
 }

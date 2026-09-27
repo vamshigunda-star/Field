@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.map
  * a generic [AuthError.InvalidCredentials] on failed [signIn]/[unlock] (no username-
  * enumeration leak), most-recently-created-wins account resolution — without touching
  * Room, SharedPreferences, or PBKDF2. Used to unit-test the use cases in this package
- * in isolation from the data layer, the same way [com.vamshi.field.ui.aicoach.AiCoachViewModelTest]
- * uses a hand-written fake instead of a mocking framework (none is on the test classpath).
+ * in isolation from the data layer, using a hand-written fake instead of a
+ * mocking framework (none is on the test classpath).
  */
 class FakeAuthRepository : AuthRepository {
 

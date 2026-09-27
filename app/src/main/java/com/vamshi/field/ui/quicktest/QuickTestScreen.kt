@@ -1004,8 +1004,8 @@ private fun zoneFor(percentile: Int?): Triple<Color, Color, String> {
     val isDark = isSystemInDarkTheme()
     return when {
         percentile == null -> if (isDark) Triple(PerformanceGreyDark, PerformanceGreyTextDark, "No Norm") else Triple(PerformanceGrey, PerformanceGreyText, "No Norm")
-        percentile >= 60 -> if (isDark) Triple(PerformanceGreenDark, PerformanceGreenTextDark, "Superior") else Triple(PerformanceGreen, PerformanceGreenText, "Superior")
-        percentile >= 30 -> if (isDark) Triple(PerformanceYellowDark, PerformanceYellowTextDark, "Healthy") else Triple(PerformanceYellow, PerformanceYellowText, "Healthy")
+        percentile >= 80 -> if (isDark) Triple(PerformanceGreenDark, PerformanceGreenTextDark, "Superior") else Triple(PerformanceGreen, PerformanceGreenText, "Superior")
+        percentile >= 40 -> if (isDark) Triple(PerformanceYellowDark, PerformanceYellowTextDark, "Healthy") else Triple(PerformanceYellow, PerformanceYellowText, "Healthy")
         else -> if (isDark) Triple(PerformanceRedDark, PerformanceRedTextDark, "Needs Improvement") else Triple(PerformanceRed, PerformanceRedText, "Needs Improvement")
     }
 }

@@ -37,7 +37,7 @@ class SeedDataManager @Inject constructor(
         // Bumping this key re-runs seedIfNeeded() on next launch.
         // This is non-destructive for user data: catalog tests/categories are upserted in place,
         // and norm_references and recommendation tables are safely updated.
-        private const val KEY_SEEDED_VERSION = "data_seeded_version_v28"
+        private const val KEY_SEEDED_VERSION = "data_seeded_version_v29"
         private const val SEED_SOURCE = "SEED"
     }
 
@@ -51,30 +51,29 @@ class SeedDataManager @Inject constructor(
             }
 
             val testCount = try { database.standardsDao().getAllTestsOnce().size } catch (_: Exception) { 0 }
+            val normCount = try { database.standardsDao().getNormCount() } catch (_: Exception) { 0 }
             val athleteCount = try { database.peopleDao().getIndividualCount() } catch (_: Exception) { 0 }
 
-            Log.d(TAG, "seedIfNeeded: isAlreadySeeded=$isAlreadySeeded, testCount=$testCount, athleteCount=$athleteCount")
+            Log.d(TAG, "seedIfNeeded: isAlreadySeeded=$isAlreadySeeded, testCount=$testCount, normCount=$normCount, athleteCount=$athleteCount")
 
-            // Fast path: Database already has pre-packaged catalog and data
-            if (testCount > 0 && athleteCount > 0) {
-                if (!isAlreadySeeded) {
-                    prefs.edit().putBoolean(KEY_SEEDED_VERSION, true).apply()
-                }
-                Log.d(TAG, "Pre-packaged database detected with $testCount tests and $athleteCount athletes. Skipping runtime CSV seeding.")
+            // Fast path: Database already has pre-packaged catalog with full norms (>= 2500 norms)
+            if (isAlreadySeeded && normCount >= 2500 && testCount >= 80 && athleteCount > 0) {
+                Log.d(TAG, "Pre-packaged database detected with $testCount tests and $normCount norms. Skipping runtime CSV seeding.")
                 return
             }
-                Log.d(TAG, "Starting standards and recommendations seeding from CSV...")
 
-                // 1. Seed Test Library from CSV
-                try {
-                    val categoryMaps = com.vamshi.field.util.CsvParser.parse(context.assets.open("test_categories.csv"))
-                    val testMaps = com.vamshi.field.util.CsvParser.parse(context.assets.open("tests.csv"))
-                    val normsStream = try {
-                        context.assets.open("norms_v2.csv")
-                    } catch (_: Exception) {
-                        context.assets.open("norms.csv")
-                    }
-                    val normMaps = com.vamshi.field.util.CsvParser.parse(normsStream)
+            Log.d(TAG, "Starting standards and recommendations seeding from CSV...")
+
+            // 1. Seed Test Library from CSV
+            try {
+                val categoryMaps = com.vamshi.field.util.CsvParser.parse(context.assets.open("test_categories.csv"))
+                val testMaps = com.vamshi.field.util.CsvParser.parse(context.assets.open("tests.csv"))
+                val normsStream = try {
+                    context.assets.open("norms.csv")
+                } catch (_: Exception) {
+                    context.assets.open("norms_v2.csv")
+                }
+                val normMaps = com.vamshi.field.util.CsvParser.parse(normsStream)
 
 
                     Log.d(TAG, "Parsed ${categoryMaps.size} categories, ${testMaps.size} tests, ${normMaps.size} norms")

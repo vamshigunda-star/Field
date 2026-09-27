@@ -6,9 +6,6 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
-    <!-- aicore declares minSdk 31; we guard AI features at runtime so override is safe -->
-    <uses-sdk tools:overrideLibrary="com.google.ai.edge.aicore" />
-
     <application
         android:name=".FieldApplication"
         android:allowBackup="true"

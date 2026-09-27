@@ -90,7 +90,7 @@ class SaveCustomTestUseCaseTest {
     @Test
     fun `a test with bands is stored as NORM_LOOKUP with its norms`() = runTest {
         val result = save(
-            draft().copy(scoring = ScoringBands(sameForAllSexes = true, shared = listOf(8.0, 6.5, 5.5)))
+            draft().copy(scoring = ScoringBands(sameForAllSexes = true, shared = listOf(8.0, 6.5)))
         )
 
         val id = (result as SaveCustomTestResult.Success).testId
@@ -98,14 +98,14 @@ class SaveCustomTestUseCaseTest {
             InterpretationStrategy.NORM_LOOKUP,
             repository.storedTest(id)!!.interpretationStrategy
         )
-        assertEquals("4 bands x 3 sexes", 12, repository.normsByTest[id]!!.size)
+        assertEquals("3 bands x 3 sexes", 9, repository.normsByTest[id]!!.size)
     }
 
     @Test
     fun `switching an existing test back to raw scores clears its norms`() = runTest {
-        val id = (save(draft().copy(scoring = ScoringBands(shared = listOf(8.0, 6.5, 5.5))))
+        val id = (save(draft().copy(scoring = ScoringBands(shared = listOf(8.0, 6.5))))
             as SaveCustomTestResult.Success).testId
-        assertEquals(12, repository.normsByTest[id]!!.size)
+        assertEquals(9, repository.normsByTest[id]!!.size)
 
         save(draft().copy(id = id, scoring = null))
 
@@ -120,7 +120,7 @@ class SaveCustomTestUseCaseTest {
     fun `an invalid band ladder blocks the save entirely`() = runTest {
         // Lower-is-better with ascending cut points.
         val result = save(
-            draft().copy(isHigherBetter = false, scoring = ScoringBands(shared = listOf(5.5, 6.5, 8.0)))
+            draft().copy(isHigherBetter = false, scoring = ScoringBands(shared = listOf(5.5, 6.5)))
         )
 
         assertTrue(result is SaveCustomTestResult.Invalid)
@@ -130,7 +130,7 @@ class SaveCustomTestUseCaseTest {
     @Test
     fun `a saved band ladder round-trips back into the edit form`() = runTest {
         val hydrate = GetCustomTestDraftUseCase(repository)
-        val cuts = listOf(8.0, 6.5, 5.5)
+        val cuts = listOf(8.0, 6.5)
         val id = (save(draft().copy(isHigherBetter = false, scoring = ScoringBands(shared = cuts)))
             as SaveCustomTestResult.Success).testId
 
@@ -150,8 +150,8 @@ class SaveCustomTestUseCaseTest {
                 isHigherBetter = true,
                 scoring = ScoringBands(
                     sameForAllSexes = false,
-                    male = listOf(25.0, 35.0, 45.0),
-                    female = listOf(20.0, 30.0, 40.0)
+                    male = listOf(25.0, 35.0),
+                    female = listOf(20.0, 30.0)
                 )
             )
         ) as SaveCustomTestResult.Success).testId
@@ -159,8 +159,8 @@ class SaveCustomTestUseCaseTest {
         val reloaded = hydrate(id)!!.scoring!!
 
         assertEquals(false, reloaded.sameForAllSexes)
-        assertEquals(listOf(25.0, 35.0, 45.0), reloaded.male)
-        assertEquals(listOf(20.0, 30.0, 40.0), reloaded.female)
+        assertEquals(listOf(25.0, 35.0), reloaded.male)
+        assertEquals(listOf(20.0, 30.0), reloaded.female)
     }
 
     @Test

@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -61,8 +60,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.vamshi.field.domain.repository.AiCoachStatus
-import com.vamshi.field.ui.aicoach.AiCoachViewModel
 import com.vamshi.field.ui.athlete.AthleteBody
 import com.vamshi.field.ui.athlete.AthleteDashboardUiState
 import com.vamshi.field.ui.components.AppFilterChip
@@ -87,15 +84,11 @@ fun ReportScreen(
     onNavigateToSession: (String, String) -> Unit,
     onNavigateToAthlete: (String) -> Unit,
     onNavigateToTest: (String, String) -> Unit = { _, _ -> },
-    onNavigateToAiCoach: (String?) -> Unit = {},
     onStartQuickTest: (String, List<String>) -> Unit = { _, _ -> },
     onResumeTesting: (String, String?, String?, List<String>?) -> Unit = { _, _, _, _ -> },
-    viewModel: ReportsHubViewModel = hiltViewModel(),
-    aiCoachViewModel: AiCoachViewModel = hiltViewModel()
+    viewModel: ReportsHubViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val aiCoachState by aiCoachViewModel.uiState.collectAsState()
-    val isAiCoachVisible = aiCoachState.status != AiCoachStatus.UNSUPPORTED
     
     var selectedTab by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
@@ -134,19 +127,6 @@ fun ReportScreen(
                 },
                 actions = {
                     if (selectedTab == 0 && uiState.athleteData != null) {
-                        if (isAiCoachVisible) {
-                            AppTopBarActionButton(
-                                icon = Icons.Default.AutoAwesome,
-                                contentDescription = "AI Coach",
-                                onClick = {
-                                    val contextString = uiState.athleteData?.let { d ->
-                                        "Athlete: ${d.athlete.fullName}\nAge: ${d.athlete.currentAge}\nAvg Percentile: ${d.athleteSessionAvgPctile}\nTest Results:\n" +
-                                        d.tiles.joinToString("\n") { t -> "${t.test.name}: ${t.latestResult?.rawScore} ${t.test.unit} (${t.latestResult?.percentile}th percentile)" }
-                                    }
-                                    onNavigateToAiCoach(contextString)
-                                }
-                            )
-                        }
                         if (uiState.isExporting) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
                         } else {
@@ -162,19 +142,6 @@ fun ReportScreen(
                                 icon = Icons.Default.Lightbulb,
                                 contentDescription = "Coach Insight",
                                 onClick = { viewModel.onAction(ReportsHubAction.OnOpenInsight) }
-                            )
-                        }
-                        if (isAiCoachVisible) {
-                            AppTopBarActionButton(
-                                icon = Icons.Default.AutoAwesome,
-                                contentDescription = "AI Coach",
-                                onClick = {
-                                    val contextString = uiState.eventData?.let { d ->
-                                        "Session: ${d.event.name}\nTotal Athletes: ${d.totalAthletes}\n" +
-                                        "Tests:\n" + d.tests.joinToString("\n") { it.name }
-                                    }
-                                    onNavigateToAiCoach(contextString)
-                                }
                             )
                         }
                         if (uiState.isExporting) {
@@ -246,7 +213,7 @@ fun ReportScreen(
             val activeRows = activeTestId?.let { uiState.eventData!!.leaderboardByTest[it] }.orEmpty()
             CoachInsightSheet(
                 test = activeTest,
-                redZoneAthletes = activeRows.filter { it.percentile != null && it.percentile < 30 },
+                redZoneAthletes = activeRows.filter { it.percentile != null && it.percentile < 40 },
                 onDismiss = { viewModel.onAction(ReportsHubAction.OnDismissInsight) }
             )
         }
@@ -307,34 +274,26 @@ private fun AthleteProfileTab(
         return
     }
 
-    if (data == null || data.groups.isEmpty()) {
+    val allAthletes = uiState.athleteRoster.ifEmpty { data?.allAthletes ?: emptyList() }
+
+    if (allAthletes.isEmpty()) {
         EmptyState(
             icon = "👤",
             title = "No Athletes Yet",
-            subtitle = "Add athletes to a group using the Roster tab to see their performance profiles here."
+            subtitle = "Register athletes or add them to a group using the Roster tab to see their performance profiles here."
         )
         return
     }
 
-    val allAthletes = uiState.athleteRoster.ifEmpty { data.allAthletes }
-
     Column(modifier = Modifier.fillMaxSize()) {
         if (uiState.selectedAthleteId == null) {
             Box(modifier = Modifier.padding(16.dp)) {
-                if (allAthletes.isNotEmpty()) {
-                    AthletePickerRow(
-                        athletes = allAthletes,
-                        selectedId = uiState.selectedAthleteId,
-                        athleteData = null,
-                        onSelect = { onAction(ReportsHubAction.SelectAthlete(it)) }
-                    )
-                } else {
-                    Text(
-                        "Select an athlete from the Roster tab to view their profile.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                AthletePickerRow(
+                    athletes = allAthletes,
+                    selectedId = uiState.selectedAthleteId,
+                    athleteData = null,
+                    onSelect = { onAction(ReportsHubAction.SelectAthlete(it)) }
+                )
             }
         }
 
@@ -360,6 +319,12 @@ private fun AthleteProfileTab(
                                 if (!athleteId.isNullOrBlank() && action.testId.isNotBlank()) {
                                     onNavigateToTest(athleteId, action.testId)
                                 }
+                            }
+                            is com.vamshi.field.ui.athlete.AthleteDashboardAction.OnExportCsv -> {
+                                onAction(ReportsHubAction.ExportAthleteCsv)
+                            }
+                            is com.vamshi.field.ui.athlete.AthleteDashboardAction.OnDismissError -> {
+                                onAction(ReportsHubAction.DismissError)
                             }
                             else -> {}
                         }
@@ -438,7 +403,7 @@ private fun EventReportTab(
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        } else if (uiState.selectedEventId != null) {
+        } else if (uiState.selectedEventId != null && uiState.eventData != null) {
             val sessionState = SessionReportUiState(
                 data = uiState.eventData,
                 selectedTestId = uiState.selectedEventTestId,
@@ -480,6 +445,10 @@ private fun EventReportTab(
                     )
                 }
             )
+        } else if (uiState.selectedEventId != null && uiState.eventData == null) {
+            Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                Text("Unable to load report for the selected event.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         } else {
             Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                 Text("Select an event above to view the report.", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -546,8 +515,8 @@ private fun AthletePickerRow(
                     val avg = athleteData.athleteSessionAvgPctile
                     val cls = when {
                         avg == null -> com.vamshi.field.domain.model.reports.Classification.NO_DATA
-                        avg >= 60 -> com.vamshi.field.domain.model.reports.Classification.SUPERIOR
-                        avg >= 30 -> com.vamshi.field.domain.model.reports.Classification.HEALTHY
+                        avg >= 80 -> com.vamshi.field.domain.model.reports.Classification.SUPERIOR
+                        avg >= 40 -> com.vamshi.field.domain.model.reports.Classification.HEALTHY
                         else -> com.vamshi.field.domain.model.reports.Classification.NEEDS_IMPROVEMENT
                     }
                     val healthText = com.vamshi.field.ui.report.components.zoneLabel(cls)

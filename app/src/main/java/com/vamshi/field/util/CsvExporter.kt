@@ -22,8 +22,13 @@ import java.util.Locale
 
 object CsvExporter {
 
+    private fun escapeCsv(value: String): String =
+        "\"" + value.replace("\"", "\"\"") + "\""
+
     fun exportAthleteResults(context: Context, athlete: Individual, results: List<TestResult>, tests: Map<String, FitnessTest>) {
-        val fileName = "Athlete_${athlete.lastName}_${athlete.firstName}_Export.csv"
+        val safeLast = athlete.lastName.replace(Regex("[^a-zA-Z0-9_-]"), "")
+        val safeFirst = athlete.firstName.replace(Regex("[^a-zA-Z0-9_-]"), "")
+        val fileName = "Athlete_${safeLast}_${safeFirst}_Export.csv"
         val header = "Test Name,Date,Score,Unit,Percentile,Classification\n"
 
         val df = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
@@ -36,7 +41,7 @@ object CsvExporter {
             val percentile = result.percentile ?: ""
             val classification = result.classification ?: ""
 
-            "\"${test?.name ?: "Unknown"}\",$date,$score,\"$unit\",$percentile,$classification"
+            "${escapeCsv(test?.name ?: "Unknown")},$date,$score,${escapeCsv(unit)},$percentile,${escapeCsv(classification)}"
         }
 
         val csvData = header + content
@@ -44,7 +49,8 @@ object CsvExporter {
     }
 
     fun exportEventResults(context: Context, eventName: String, results: List<Pair<Individual, TestResult>>, tests: Map<String, FitnessTest>) {
-        val fileName = "Event_${eventName.replace(" ", "_")}_Export.csv"
+        val safeEvent = eventName.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+        val fileName = "Event_${safeEvent}_Export.csv"
         val header = "Athlete Name,Test Name,Date,Score,Unit,Percentile,Classification\n"
 
         val df = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
@@ -57,7 +63,7 @@ object CsvExporter {
             val percentile = result.percentile ?: ""
             val classification = result.classification ?: ""
 
-            "\"${athlete.fullName}\",\"${test?.name ?: "Unknown"}\",$date,$score,\"$unit\",$percentile,$classification"
+            "${escapeCsv(athlete.fullName)},${escapeCsv(test?.name ?: "Unknown")},$date,$score,${escapeCsv(unit)},$percentile,${escapeCsv(classification)}"
         }
 
         val csvData = header + content

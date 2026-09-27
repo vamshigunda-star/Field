@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Field** is an offline-first fitness testing and performance tracking app for coaches and fitness professionals.
 **Primary user:** A single coach managing multiple athlete groups.
 **Platform:** Android (Kotlin, Jetpack Compose, Material 3).
-**Data:** Fully offline. Room database (Current Version: 13).
+**Data:** Fully offline. Room database (Current Version: 15).
 
 ---
 
@@ -39,9 +39,9 @@ Presentation (ui/) → Domain (domain/) ← Data (data/)
 ---
 
 ## Database & Seeding
-- **Version:** Room database is currently at **Version 12**.
-- **Seeding:** Data is seeded from CSVs in `assets/` on first launch.
-- **Seed Flag:** Guarded by a versioned SharedPreferences key (`KEY_DATA_SEEDED` in `SeedDataManager`, currently `data_seeded_csv_v14`).
+- **Version:** Room database is currently at **Version 15**.
+- **Seeding:** The DB ships prepackaged (`createFromAsset("database/alearning.db")`, built by `tools/build_prepackaged_db.py` from the CSVs in `assets/`). `SeedDataManager` then tops up from those CSVs unless the prepackaged catalog is already present.
+- **Seed Flag:** Guarded by a versioned SharedPreferences key (`KEY_SEEDED_VERSION` in `SeedDataManager`, currently `data_seeded_version_v29`).
 - **Reseeding is safe:** bumping the seed key re-imports the catalog by upserting `test_categories`/`fitness_tests` and wholesale-replacing `norm_references` and the recommendation tables. It must NEVER delete user-generated data (`testing_events`, `test_results`, `event_test_cross_ref`, athletes, groups).
 
 ---
@@ -49,8 +49,8 @@ Presentation (ui/) → Domain (domain/) ← Data (data/)
 ## Presentation / UI Component Rules
 - Use adaptive layouts (`ListDetailPaneScaffold`) for dynamic screen sizing (Tablets vs Mobile).
 - Performance color zones are strictly defined:
-  - Green (≥ 60th percentile)
-  - Yellow (30-59th percentile)
-  - Red (< 30th percentile)
+  - Green / Superior (≥ 80th percentile)
+  - Yellow / Healthy-Average (40-79th percentile)
+  - Red / Needs Improvement (< 40th percentile)
 - Lists inside Compose MUST use `key = { it.id }` to avoid `O(N)` recomposition lag.
 - Complex state derivations (like O(N) list find operations) must be hoisted to the ViewModel/UseCase and never computed in the Composable render phase.

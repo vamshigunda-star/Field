@@ -77,7 +77,7 @@ sealed interface CustomTestAction {
     data object OnToggleAdvanced : CustomTestAction
     data class OnScoringEnabledChange(val enabled: Boolean) : CustomTestAction
     data class OnSameForAllSexesChange(val same: Boolean) : CustomTestAction
-    /** [sex] is null for the shared ladder; [index] is 0..2, worst→best. */
+    /** [sex] is null for the shared ladder; [index] is 0..1, worst→best. */
     data class OnCutPointChange(
         val sex: BiologicalSex?,
         val index: Int,

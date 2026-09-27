@@ -89,11 +89,6 @@ sealed class Screen(val route: String) {
     data object Unlock : Screen("unlock")
     /** Pre-auth Google Drive restore, reachable from both Onboarding and Unlock. Replaces ResetPassword. */
     data object RestoreBackup : Screen("restore_backup")
-    
-    data object AiCoach : Screen("ai_coach?context={context}") {
-        fun createRoute(contextString: String?) = if (contextString != null) "ai_coach?context=${android.net.Uri.encode(contextString)}" else "ai_coach"
-    }
-
     data object Settings : Screen("settings")
 }
 

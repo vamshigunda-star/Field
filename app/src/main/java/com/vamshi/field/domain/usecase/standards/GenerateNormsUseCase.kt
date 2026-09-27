@@ -10,9 +10,9 @@ import java.util.UUID
 import javax.inject.Inject
 
 /**
- * Expands a coach's three cut points into the [NormReference] rows the lookup queries.
+ * Expands a coach's two cut points into the [NormReference] rows the lookup queries.
  *
- * Shape mirrors the seeded `norms.csv`: four score bands per sex over a single wide age
+ * Shape mirrors the seeded `norms.csv`: three score bands per sex over a single wide age
  * band. Age is not split, because the seeded data doesn't split it either (8 of its 9
  * tests use one 1.0–99.0 band) and asking a coach for per-age-year standards would make
  * the feature unusable in a gym.

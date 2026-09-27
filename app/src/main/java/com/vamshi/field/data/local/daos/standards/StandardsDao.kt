@@ -109,6 +109,9 @@ interface StandardsDao {
     @Query("SELECT * FROM norm_references WHERE testId = :testId ORDER BY sex, ageMin, minScore")
     suspend fun getNormsForTest(testId: String): List<NormReferenceEntity>
 
+    @Query("SELECT COUNT(*) FROM norm_references")
+    suspend fun getNormCount(): Int
+
     // --- COACH-AUTHORED TESTS (Custom Test Builder) ---
     //
     // Every mutating query below is guarded with `source = 'USER'`. That guard is the

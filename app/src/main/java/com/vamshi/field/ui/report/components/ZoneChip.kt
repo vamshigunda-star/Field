@@ -32,8 +32,8 @@ import com.vamshi.field.ui.theme.PerformanceYellowTextDark
 
 data class ZoneColors(val bg: Color, val fg: Color)
 
-// Maps engine Classification onto the four-zone color contract.
-// HEALTHY is the mid (Yellow 30–59) zone — never blue.
+// Maps engine Classification onto the three performance categories (grey = no data, not a category).
+// HEALTHY is the mid (Yellow 40–79) zone — never blue.
 fun zoneColors(c: Classification, isDark: Boolean = false): ZoneColors = when (c) {
     Classification.SUPERIOR -> if (isDark) ZoneColors(PerformanceGreenDark, PerformanceGreenTextDark) else ZoneColors(PerformanceGreen, PerformanceGreenText)
     Classification.HEALTHY -> if (isDark) ZoneColors(PerformanceYellowDark, PerformanceYellowTextDark) else ZoneColors(PerformanceYellow, PerformanceYellowText)

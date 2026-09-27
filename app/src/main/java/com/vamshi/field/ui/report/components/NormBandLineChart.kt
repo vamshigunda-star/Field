@@ -227,15 +227,20 @@ fun NormBandLineChart(
             val scoreValues = filteredPoints.map { it.rawScore }
             val benchmarkValues = listOfNotNull(avgSuperior, avgHealthy)
             val allValues = scoreValues + benchmarkValues
+            val rawMinY = allValues.minOrNull() ?: 0.0
             val rawMaxY = allValues.maxOrNull() ?: 10.0
-            val effectiveMinY = 0.0
-            val rangeSpan = rawMaxY.let { if (it <= 0.001) 10.0 else it }
+            val rangeSpan = (rawMaxY - rawMinY).let { if (it <= 0.001) (rawMaxY.takeIf { m -> m > 0 } ?: 10.0) else it }
             val yPadding = rangeSpan * 0.15
+            val effectiveMinY = (rawMinY - yPadding).coerceAtLeast(0.0)
             val effectiveMaxY = rawMaxY + yPadding
             val effectiveSpan = (effectiveMaxY - effectiveMinY).coerceAtLeast(1.0)
 
             fun getY(score: Double): Float {
-                val ratio = ((score - effectiveMinY) / effectiveSpan).toFloat().coerceIn(0f, 1f)
+                val ratio = if (isHigherBetter) {
+                    ((score - effectiveMinY) / effectiveSpan).toFloat().coerceIn(0f, 1f)
+                } else {
+                    ((effectiveMaxY - score) / effectiveSpan).toFloat().coerceIn(0f, 1f)
+                }
                 return topPaddingPx + (chartHeight * (1f - ratio))
             }
 
@@ -250,7 +255,11 @@ fun NormBandLineChart(
             // 1. Horizontal Grid Lines & Y-Axis Labels
             val ySteps = 4
             for (i in 0..ySteps) {
-                val score = effectiveMinY + (effectiveSpan * (i.toDouble() / ySteps))
+                val score = if (isHigherBetter) {
+                    effectiveMinY + (effectiveSpan * (i.toDouble() / ySteps))
+                } else {
+                    effectiveMaxY - (effectiveSpan * (i.toDouble() / ySteps))
+                }
                 val y = getY(score)
 
                 drawLine(

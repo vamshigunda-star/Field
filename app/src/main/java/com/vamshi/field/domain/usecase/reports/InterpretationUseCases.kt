@@ -7,9 +7,10 @@ import com.vamshi.field.domain.model.reports.FlagType
 import com.vamshi.field.domain.model.testing.TestResult
 import com.vamshi.field.domain.repository.StandardsRepository
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 class ClassifyPercentileUseCase @Inject constructor() {
-    // Simplified three-zone color contract: Green ≥80 (Superior), Yellow 40–79 (Healthy), Red <40 (Needs Improvement), Grey = no data.
+    // ALearning classification contract — three categories: Superior ≥80 (Green), Healthy/Average 40–79 (Yellow), Needs Improvement <40 (Red). Grey is the absence of data, not a category.
     operator fun invoke(percentile: Int?): Classification = when {
         percentile == null -> Classification.NO_DATA
         percentile >= 80 -> Classification.SUPERIOR
@@ -22,12 +23,12 @@ class CalculateAthleteSessionAvgUseCase @Inject constructor() {
     operator fun invoke(sessionResults: List<TestResult>): Int? {
         val pctiles = sessionResults.mapNotNull { it.percentile }
         if (pctiles.isEmpty()) return null
-        return pctiles.average().toInt()
+        return pctiles.average().roundToInt()
     }
 }
 
 class CalculateGroupDistributionUseCase @Inject constructor(
-    private val classifyPercentile: ClassifyPercentileUseCase
+    private val classifyPercentile: ClassifyPercentileUseCase,
 ) {
     operator fun invoke(athleteSessionAvgPctiles: List<Int?>): Distribution {
         var sup = 0; var hea = 0; var ni = 0; var nd = 0
@@ -75,9 +76,9 @@ class GetAthleteFlagsUseCase @Inject constructor(
                 continue
             }
 
-            // BELOW HEALTHY (athlete-session average < 30 — Red zone per CLAUDE.md)
+            // BELOW HEALTHY (athlete-session average < 40 — Red zone per CLAUDE.md)
             val avg = calculateAthleteSessionAvg(mine)
-            if (avg != null && avg < 30) {
+            if ((avg != null) && (avg < 40)) {
                 flags += AthleteFlag(
                     individualId = athleteId,
                     athleteName = athleteName,
@@ -114,7 +115,7 @@ class GetAthleteFlagsUseCase @Inject constructor(
 
             // MISSING DATA (expected tests for age missing)
             val expected = expectedTestsByAthlete[athleteId].orEmpty()
-            val taken = mine.map { it.testId }.toSet()
+            val taken = mine.asSequence().map { it.testId }.toSet()
             val missing = expected - taken
             if (expected.isNotEmpty() && missing.isNotEmpty()) {
                 val missingNames = missing.map { id ->

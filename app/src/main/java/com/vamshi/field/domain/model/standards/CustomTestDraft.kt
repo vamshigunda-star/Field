@@ -39,34 +39,33 @@ enum class MeasurementMethod(
 }
 
 /**
- * The four performance bands, worst to best, with the percentile each one stores.
+ * The three performance bands, worst to best, with the percentile each one stores.
  *
  * The percentiles are chosen to land squarely inside the app's zone thresholds
- * (`ClassifyPercentileUseCase`: ≥60 green, 30–59 yellow, <30 red) rather than near an
+ * (`ClassifyPercentileUseCase`: ≥80 green, 40–79 yellow, <40 red) rather than near an
  * edge, so a band always renders as the colour its label implies.
  */
 enum class BandLevel(val label: String, val percentile: Int) {
-    NEEDS_WORK("Needs work", 15),   // red
-    FAIR("Fair", 45),               // yellow
-    GOOD("Good", 70),               // green
-    EXCELLENT("Excellent", 90);     // green
+    NEEDS_IMPROVEMENT("Needs improvement", 20),  // red
+    HEALTHY("Healthy", 60),                      // yellow
+    SUPERIOR("Superior", 90);                    // green
 
     companion object {
-        /** Boundaries between adjacent bands — three cut points produce four bands. */
-        const val CUT_POINT_COUNT = 3
+        /** Boundaries between adjacent bands — two cut points produce three bands. */
+        const val CUT_POINT_COUNT = 2
     }
 }
 
 /**
  * Coach-entered performance standards for a custom test.
  *
- * Modelled as **three cut points**, not four explicit ranges. That is the whole reason
- * this is viable to fill in on a phone: the seeded `norms.csv` uses only 4 score bands
- * per sex over a single age band, so matching its resolution takes three numbers, not a
+ * Modelled as **two cut points**, not three explicit ranges. That is the whole reason
+ * this is viable to fill in on a phone: the seeded `norms.csv` uses only 3 score bands
+ * per sex over a single age band, so matching its resolution takes two numbers, not a
  * grid. [com.vamshi.field.domain.usecase.standards.GenerateNormsUseCase] expands them.
  *
  * Cut points are ordered worst→best, so for a lower-is-better test they descend
- * (8.0, 6.5, 5.5) and for higher-is-better they ascend (20, 30, 40).
+ * (8.0, 6.5) and for higher-is-better they ascend (20, 30).
  */
 data class ScoringBands(
     /**

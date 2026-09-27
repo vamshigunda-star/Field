@@ -72,4 +72,15 @@ fun RosterDialogs(
             onDismiss = { onAction(RosterAction.OnDismissRemoveMemberConfirmation) }
         )
     }
+
+    uiState.showDeleteGroupConfirmation?.let { group ->
+        ConfirmationDialog(
+            title = "Delete Group",
+            message = "Are you sure you want to delete \"${group.name}\"? Athletes in this group will remain in your roster, and past testing events will become ungrouped.",
+            confirmText = "Delete",
+            isDestructive = true,
+            onConfirm = { onAction(RosterAction.OnConfirmDeleteGroup(group)) },
+            onDismiss = { onAction(RosterAction.OnDismissDeleteGroupConfirmation) }
+        )
+    }
 }

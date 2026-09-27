@@ -99,10 +99,7 @@ import com.vamshi.field.ui.theme.PerformanceRedText
 import com.vamshi.field.ui.theme.PerformanceRedTextDark
 import com.vamshi.field.ui.theme.PerformanceYellowText
 import com.vamshi.field.ui.theme.PerformanceYellowTextDark
-import com.vamshi.field.ui.theme.getCategoryVisual
-import com.vamshi.field.domain.repository.AiCoachStatus
 import com.vamshi.field.domain.usecase.testing.AthleteRadarData
-import com.vamshi.field.ui.aicoach.AiCoachViewModel
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.AppTopBarSubtitleColor
 import com.vamshi.field.ui.components.charts.RadarChart
@@ -125,9 +122,7 @@ fun AthleteDashboardScreen(
     onNavigateBack: () -> Unit,
     onNavigateToTest: (String, String, String?) -> Unit,
     onStartQuickTest: (String, List<String>) -> Unit, // (athleteId, testIds)
-    onNavigateToAiCoach: (String?) -> Unit,
-    viewModel: AthleteDashboardViewModel = hiltViewModel(),
-    aiCoachViewModel: AiCoachViewModel = hiltViewModel()
+    viewModel: AthleteDashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -157,9 +152,7 @@ fun AthleteDashboardScreen(
                     onStartQuickTest(viewModel.athleteId, action.testIds)
                 else -> viewModel.onAction(action)
             }
-        },
-        aiCoachViewModel = aiCoachViewModel,
-        onNavigateToAiCoach = onNavigateToAiCoach
+        }
     )
 }
 
@@ -167,12 +160,8 @@ fun AthleteDashboardScreen(
 @Composable
 fun AthleteDashboardContent(
     uiState: AthleteDashboardUiState,
-    aiCoachViewModel: AiCoachViewModel,
-    onNavigateToAiCoach: (String?) -> Unit = {},
     onAction: (AthleteDashboardAction) -> Unit
 ) {
-    val aiCoachState by aiCoachViewModel.uiState.collectAsState()
-    val isAiCoachVisible = aiCoachState.status != AiCoachStatus.UNSUPPORTED
     val data = uiState.data
     Scaffold(
         topBar = {
@@ -215,8 +204,8 @@ fun AthleteDashboardContent(
                             val avg = data.athleteSessionAvgPctile
                             val cls = when {
                                 avg == null -> Classification.NO_DATA
-                                avg >= 60 -> Classification.SUPERIOR
-                                avg >= 30 -> Classification.HEALTHY
+                                avg >= 80 -> Classification.SUPERIOR
+                                avg >= 40 -> Classification.HEALTHY
                                 else -> Classification.NEEDS_IMPROVEMENT
                             }
                             val healthText = zoneLabel(cls)
@@ -258,17 +247,6 @@ fun AthleteDashboardContent(
                 }
                 else -> AthleteBody(uiState = uiState, padding = PaddingValues(0.dp), onAction = onAction)
             }
-
-            com.vamshi.field.ui.aicoach.components.DraggableAiFab(
-                isVisible = isAiCoachVisible,
-                onClick = {
-                    val contextString = data?.let { d ->
-                        "Athlete: ${d.athlete.fullName}\nAge: ${d.athlete.currentAge}\nAvg Percentile: ${d.athleteSessionAvgPctile}\nTest Results:\n" +
-                        d.tiles.joinToString("\n") { t -> "${t.test.name}: ${t.latestResult?.rawScore} ${t.test.unit} (${t.latestResult?.percentile}th percentile)" }
-                    }
-                    onNavigateToAiCoach(contextString)
-                }
-            )
         }
     }
 }

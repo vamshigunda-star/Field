@@ -7,6 +7,7 @@ import com.vamshi.field.domain.model.people.Group
 import com.vamshi.field.domain.model.people.Individual
 import com.vamshi.field.domain.repository.PeopleRepository
 import com.vamshi.field.domain.usecase.people.CreateGroupUseCase
+import com.vamshi.field.domain.usecase.people.DeleteGroupUseCase
 import com.vamshi.field.domain.usecase.people.ManageRosterUseCase
 import com.vamshi.field.domain.usecase.people.RegisterAthleteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -58,6 +59,8 @@ data class RosterUiState(
     val showManageMembersDialog: String? = null, // Group ID
     val showDeleteAthleteConfirmation: String? = null,
     val showRemoveMemberConfirmation: Pair<String, String>? = null,
+    val showDeleteGroupConfirmation: Group? = null,
+    val userMessage: String? = null,
     val isLoading: Boolean = true,
     val errorMessage: String? = null
 ) {
@@ -93,6 +96,9 @@ sealed interface RosterAction {
     data object OnShowAddGroupDialog : RosterAction
     data object OnDismissAddGroupDialog : RosterAction
     data class OnCreateGroup(val name: String, val location: String?, val cycle: String?) : RosterAction
+    data class OnDeleteGroup(val group: Group) : RosterAction
+    data class OnConfirmDeleteGroup(val group: Group) : RosterAction
+    data object OnDismissDeleteGroupConfirmation : RosterAction
     data object OnShowRegisterAthleteDialog : RosterAction
     data object OnDismissRegisterAthleteDialog : RosterAction
     data class OnRegisterAthlete(
@@ -116,6 +122,7 @@ sealed interface RosterAction {
     data class OnNavigateToAthleteReport(val individualId: String) : RosterAction
     data object OnNavigateBack : RosterAction
     data object OnDismissError : RosterAction
+    data object OnDismissUserMessage : RosterAction
 }
 
 @HiltViewModel
@@ -123,6 +130,7 @@ class RosterViewModel @Inject constructor(
     private val peopleRepository: PeopleRepository,
     private val registerAthlete: RegisterAthleteUseCase,
     private val createGroup: CreateGroupUseCase,
+    private val deleteGroupUseCase: DeleteGroupUseCase,
     private val manageRoster: ManageRosterUseCase
 ) : ViewModel() {
 
@@ -211,6 +219,9 @@ class RosterViewModel @Inject constructor(
             is RosterAction.OnShowAddGroupDialog -> _uiState.update { it.copy(showAddGroupDialog = true) }
             is RosterAction.OnDismissAddGroupDialog -> _uiState.update { it.copy(showAddGroupDialog = false) }
             is RosterAction.OnCreateGroup -> addGroup(action.name, action.location, action.cycle)
+            is RosterAction.OnDeleteGroup -> _uiState.update { it.copy(showDeleteGroupConfirmation = action.group) }
+            is RosterAction.OnConfirmDeleteGroup -> deleteGroup(action.group)
+            is RosterAction.OnDismissDeleteGroupConfirmation -> _uiState.update { it.copy(showDeleteGroupConfirmation = null) }
             is RosterAction.OnShowRegisterAthleteDialog -> _uiState.update { it.copy(showRegisterAthleteDialog = true) }
             is RosterAction.OnDismissRegisterAthleteDialog -> _uiState.update { it.copy(showRegisterAthleteDialog = false) }
             is RosterAction.OnRegisterAthlete -> registerNewAthlete(action)
@@ -225,6 +236,7 @@ class RosterViewModel @Inject constructor(
             is RosterAction.OnDismissRemoveMemberConfirmation -> _uiState.update { it.copy(showRemoveMemberConfirmation = null) }
             
             is RosterAction.OnDismissError -> _uiState.update { it.copy(errorMessage = null) }
+            is RosterAction.OnDismissUserMessage -> _uiState.update { it.copy(userMessage = null) }
             // Navigation actions handled by the screen composable
             is RosterAction.OnNavigateToAthleteReport -> Unit
             is RosterAction.OnNavigateBack -> Unit
@@ -311,6 +323,30 @@ class RosterViewModel @Inject constructor(
                 peopleRepository.deleteIndividual(athlete)
             }
             _uiState.update { it.copy(showDeleteAthleteConfirmation = null) }
+        }
+    }
+
+    private fun deleteGroup(group: Group) {
+        viewModelScope.launch {
+            deleteGroupUseCase(group)
+                .onSuccess {
+                    _uiState.update { current ->
+                        current.copy(
+                            showDeleteGroupConfirmation = null,
+                            expandedGroupIds = current.expandedGroupIds - group.id,
+                            selectedGroup = if (current.selectedGroup?.id == group.id) null else current.selectedGroup,
+                            userMessage = "${group.name} deleted"
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { current ->
+                        current.copy(
+                            showDeleteGroupConfirmation = null,
+                            errorMessage = error.message ?: "Failed to delete group"
+                        )
+                    }
+                }
         }
     }
 }

@@ -749,9 +749,9 @@ private fun BoundaryField(
 private fun BandLevel.zoneColor(): Color {
     val isDark = androidx.compose.foundation.isSystemInDarkTheme()
     return when (this) {
-        BandLevel.NEEDS_WORK -> if (isDark) PerformanceRedTextDark else PerformanceRedText
-        BandLevel.FAIR -> if (isDark) PerformanceYellowTextDark else PerformanceYellowText
-        BandLevel.GOOD, BandLevel.EXCELLENT -> if (isDark) PerformanceGreenTextDark else PerformanceGreenText
+        BandLevel.NEEDS_IMPROVEMENT -> if (isDark) PerformanceRedTextDark else PerformanceRedText
+        BandLevel.HEALTHY -> if (isDark) PerformanceYellowTextDark else PerformanceYellowText
+        BandLevel.SUPERIOR -> if (isDark) PerformanceGreenTextDark else PerformanceGreenText
     }
 }
 

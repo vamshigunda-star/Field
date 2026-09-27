@@ -21,7 +21,6 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.vamshi.field.ui.aicoach.AiCoachScreen
 import com.vamshi.field.ui.athlete.AthleteDashboardScreen
 import com.vamshi.field.ui.athlete.AthleteTestDetailScreen
 import com.vamshi.field.ui.auth.AuthGateState
@@ -139,7 +138,6 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                 },
                 onNavigateToReports = { navController.navigate(Screen.Report.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                onNavigateToAiCoach = { navController.navigate(Screen.AiCoach.route) },
                 onNavigateToSignIn = {
                     navController.navigate(Screen.Unlock.route) {
                         popUpTo(0) { inclusive = true }
@@ -259,9 +257,6 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                 onNavigateToTest = { athleteId, testId ->
                     navController.navigate(Screen.AthleteTestDetail.createRoute(athleteId, testId, null))
                 },
-                onNavigateToAiCoach = { contextString -> 
-                    navController.navigate(Screen.AiCoach.createRoute(contextString)) 
-                },
                 onStartQuickTest = { athleteId, testIds ->
                     navController.navigate(Screen.QuickTest.createRoute(athleteId = athleteId, testIds = testIds))
                 },
@@ -306,8 +301,7 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                     } else {
                         navController.navigate(Screen.QuickTest.createRoute(athleteId = athleteId, testIds = testIds ?: emptyList(), eventId = eventId))
                     }
-                },
-                onNavigateToAiCoach = { contextString -> navController.navigate(Screen.AiCoach.createRoute(contextString)) }
+                }
             )
         }
 
@@ -329,12 +323,6 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                 },
                 onStartQuickTest = { aId, testIds ->
                     navController.navigate(Screen.QuickTest.createRoute(aId, testIds))
-                },
-                onNavigateToAiCoach = { contextData ->
-                    if (contextData != null) {
-                        navController.currentBackStackEntry?.savedStateHandle?.set("ai_coach_context", contextData)
-                    }
-                    navController.navigate(Screen.AiCoach.route)
                 }
             )
         }
@@ -414,16 +402,6 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
 
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(
-            route = Screen.AiCoach.route,
-            arguments = listOf(navArgument("context") { nullable = true; type = NavType.StringType })
-        ) {
-            AiCoachScreen(
-                viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() }
             )
         }

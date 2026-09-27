@@ -345,7 +345,8 @@ fun GroupsTabContent(
                     isExpanded = isExpanded,
                     onToggleExpansion = { onAction(RosterAction.OnToggleGroupExpansion(group.id)) },
                     onRemoveMember = { athleteId -> onAction(RosterAction.OnRemoveAthleteFromGroup(group.id, athleteId)) },
-                    onAddMember = { onAction(RosterAction.OnShowManageMembersDialog(group.id)) }
+                    onAddMember = { onAction(RosterAction.OnShowManageMembersDialog(group.id)) },
+                    onDeleteGroup = { onAction(RosterAction.OnDeleteGroup(group)) }
                 )
             }
             item { Spacer(modifier = Modifier.height(80.dp)) }
@@ -360,10 +361,12 @@ fun ModernGroupCard(
     isExpanded: Boolean,
     onToggleExpansion: () -> Unit,
     onRemoveMember: (String) -> Unit,
-    onAddMember: () -> Unit
+    onAddMember: () -> Unit,
+    onDeleteGroup: () -> Unit
 ) {
     val rotation by animateFloatAsState(if (isExpanded) 90f else 0f)
     val isDark = isSystemInDarkTheme()
+    var menuExpanded by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -415,6 +418,41 @@ fun ModernGroupCard(
 
                 if (!isExpanded) {
                     AvatarStack(members)
+                }
+
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "Group options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Delete Group",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onDeleteGroup()
+                            }
+                        )
+                    }
                 }
 
                 IconButton(onClick = onToggleExpansion) {

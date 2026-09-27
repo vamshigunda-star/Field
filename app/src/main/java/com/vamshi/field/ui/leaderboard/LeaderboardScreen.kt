@@ -360,8 +360,8 @@ private fun LeaderboardEntryRow(entry: LeaderboardEntry) {
             // Percentile Pill
             entry.percentile?.let { p ->
                 val (bgColor, textColor) = when {
-                    p >= 60 -> if (isDark) PerformanceGreenDark to PerformanceGreenTextDark else PerformanceGreen to PerformanceGreenText
-                    p >= 30 -> if (isDark) PerformanceYellowDark to PerformanceYellowTextDark else PerformanceYellow to PerformanceYellowText
+                    p >= 80 -> if (isDark) PerformanceGreenDark to PerformanceGreenTextDark else PerformanceGreen to PerformanceGreenText
+                    p >= 40 -> if (isDark) PerformanceYellowDark to PerformanceYellowTextDark else PerformanceYellow to PerformanceYellowText
                     else -> if (isDark) PerformanceRedDark to PerformanceRedTextDark else PerformanceRed to PerformanceRedText
                 }
                 Surface(

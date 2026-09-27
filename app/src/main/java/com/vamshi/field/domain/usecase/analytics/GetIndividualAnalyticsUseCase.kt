@@ -69,8 +69,8 @@ class GetIndividualAnalyticsUseCase @Inject constructor() {
             val percentile = result.percentile ?: 0
             
             val zone = when {
-                percentile >= 60 -> PerformanceZone.GREEN
-                percentile >= 30 -> PerformanceZone.YELLOW
+                percentile >= 80 -> PerformanceZone.GREEN
+                percentile >= 40 -> PerformanceZone.YELLOW
                 else -> PerformanceZone.RED
             }
             

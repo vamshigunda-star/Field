@@ -163,9 +163,13 @@ class ReportsHubViewModel @Inject constructor(
             ReportsHubAction.OnOpenInsight -> _uiState.update { it.copy(isInsightSheetOpen = true) }
             ReportsHubAction.OnDismissInsight -> _uiState.update { it.copy(isInsightSheetOpen = false) }
             is ReportsHubAction.OnSwitchSession -> {
-                _uiState.update { it.copy(isSwitcherOpen = false, isLoadingEvent = true, eventData = null) }
-                val groupId = _uiState.value.selectedEventGroupId ?: return
-                loadEvent(action.sessionId, groupId)
+                val groupId = _uiState.value.selectedEventGroupId
+                if (groupId != null) {
+                    _uiState.update { it.copy(isSwitcherOpen = false, isLoadingEvent = true, eventData = null) }
+                    loadEvent(action.sessionId, groupId)
+                } else {
+                    _uiState.update { it.copy(isSwitcherOpen = false) }
+                }
             }
             ReportsHubAction.DismissError -> _uiState.update { it.copy(errorMessage = null) }
             ReportsHubAction.ExportAthleteCsv -> exportAthleteResults()
@@ -239,13 +243,18 @@ class ReportsHubViewModel @Inject constructor(
                     if (data != null) {
                         val radar = radarDeferred.await()
                         val initialTestId = data.tiles.firstOrNull()?.test?.id
-                        athleteCache[id] = CachedAthleteReport(data, radar, initialTestId)
                         _uiState.update { state ->
+                            val validTestId = if (state.selectedAthleteTestId != null && data.tiles.any { it.test.id == state.selectedAthleteTestId }) {
+                                state.selectedAthleteTestId
+                            } else {
+                                initialTestId
+                            }
+                            athleteCache[id] = CachedAthleteReport(data, radar, validTestId)
                             state.copy(
                                 athleteData = data,
                                 athleteRadarData = radar,
                                 isLoadingAthlete = false,
-                                selectedAthleteTestId = state.selectedAthleteTestId ?: initialTestId
+                                selectedAthleteTestId = validTestId
                             )
                         }
                     } else {
@@ -265,7 +274,8 @@ class ReportsHubViewModel @Inject constructor(
                     selectedEventGroupId = groupId,
                     eventData = cached.eventData,
                     selectedEventTestId = cached.testId,
-                    isLoadingEvent = false
+                    isLoadingEvent = false,
+                    isEventDeleted = false
                 )
             }
         } else {
@@ -275,7 +285,8 @@ class ReportsHubViewModel @Inject constructor(
                     selectedEventGroupId = groupId,
                     isLoadingEvent = true,
                     eventData = null,
-                    selectedEventTestId = null
+                    selectedEventTestId = null,
+                    isEventDeleted = false
                 )
             }
         }
@@ -344,10 +355,15 @@ class ReportsHubViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 testingRepository.deleteEventById(eventId)
-                _uiState.update { it.copy(showDeleteDialog = false, isEventDeleted = true) }
-                // Need to clear the event or reload the home data? 
-                // Home data is observed so it will auto-update!
-                _uiState.update { it.copy(selectedEventId = null, eventData = null) }
+                eventCache.remove(eventId)
+                _uiState.update { 
+                    it.copy(
+                        showDeleteDialog = false, 
+                        isEventDeleted = true, 
+                        selectedEventId = null, 
+                        eventData = null 
+                    ) 
+                }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(showDeleteDialog = false, errorMessage = "Failed to delete: ${e.message}")

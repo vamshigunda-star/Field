@@ -1,6 +1,8 @@
 package com.vamshi.field.ui.report.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -85,22 +87,29 @@ fun SessionSwitcherSheet(
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text("Switch session", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            sessions.forEach { ev ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onPick(ev) }
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(ev.name, style = MaterialTheme.typography.bodyLarge)
-                        Text(df.format(Date(ev.date)), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    }
-                    if (ev.id == currentId) {
-                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(
+                "Switch session",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            LazyColumn(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                items(sessions, key = { it.id }) { ev ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onPick(ev) }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(ev.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(df.format(Date(ev.date)), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        }
+                        if (ev.id == currentId) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }

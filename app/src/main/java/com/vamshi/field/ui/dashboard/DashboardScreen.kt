@@ -78,7 +78,6 @@ fun DashboardScreen(
     onNavigateToLeaderboard: (eventId: String, groupId: String, mode: String) -> Unit,
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToAiCoach: () -> Unit = {},
     onNavigateToSignIn: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
@@ -96,7 +95,6 @@ fun DashboardScreen(
         uiState = uiState,
         onNavigateToRoster = onNavigateToRoster,
         onNavigateToTestLibrary = onNavigateToTestLibrary,
-        onNavigateToAiCoach = onNavigateToAiCoach,
         onAction = {
             when (it) {
                 DashboardAction.OnCreateEventClick -> onNavigateToCreateEvent()
@@ -125,7 +123,6 @@ fun DashboardContent(
     uiState: DashboardUiState,
     onNavigateToRoster: () -> Unit = {},
     onNavigateToTestLibrary: () -> Unit = {},
-    onNavigateToAiCoach: () -> Unit = {},
     onAction: (DashboardAction) -> Unit
 ) {
     val spotlightState = rememberSpotlightState()
@@ -181,7 +178,6 @@ fun DashboardContent(
                             onNavigateToRoster = onNavigateToRoster,
                             onNavigateToTestLibrary = onNavigateToTestLibrary,
                             onOpenTestingTour = { onAction(DashboardAction.OnOpenTestingTour) },
-                            onNavigateToAiCoach = onNavigateToAiCoach,
                             onOpenPipelineSimulator = { onAction(DashboardAction.OnOpenPipelineSimulator) },
                             onDismiss = { onAction(DashboardAction.OnDismissGettingStarted) }
                         )
@@ -264,7 +260,7 @@ fun DashboardContent(
                             id = "qa_reports",
                             stepIndex = 3,
                             title = "4. Analytics & Reports",
-                            description = "Explore individual athlete historical reports, normative physiological curves (Green/Yellow/Red), and AI Coach recommendations.",
+                            description = "Explore individual athlete historical reports, normative physiological curves (Green/Yellow/Red), and coaching insights.",
                             state = spotlightState,
                             shape = SpotlightShape.ROUNDED_RECT
                         ),

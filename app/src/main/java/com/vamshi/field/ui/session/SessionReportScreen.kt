@@ -31,7 +31,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandMore
@@ -72,8 +71,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.reports.Classification
 import com.vamshi.field.domain.model.reports.LeaderboardRow
-import com.vamshi.field.domain.repository.AiCoachStatus
-import com.vamshi.field.ui.aicoach.AiCoachViewModel
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.AppTopBarActionButton
 import com.vamshi.field.ui.components.AppTopBarSubtitleColor
@@ -98,9 +95,7 @@ fun SessionReportScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAthlete: (String, String) -> Unit,
     onResumeTesting: (String, String?, String?, List<String>?) -> Unit,
-    onNavigateToAiCoach: (String?) -> Unit,
     viewModel: SessionReportViewModel = hiltViewModel(),
-    aiCoachViewModel: AiCoachViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -141,8 +136,6 @@ fun SessionReportScreen(
                 else -> viewModel.onAction(action)
             }
         },
-        aiCoachViewModel = aiCoachViewModel,
-        onNavigateToAiCoach = onNavigateToAiCoach,
     )
 
         if (uiState.showTestingTour) {
@@ -173,12 +166,8 @@ fun SessionReportScreen(
 @Composable
 fun SessionReportContent(
     uiState: SessionReportUiState,
-    aiCoachViewModel: AiCoachViewModel,
-    onNavigateToAiCoach: (String?) -> Unit = {},
     onAction: (SessionReportAction) -> Unit,
 ) {
-    val aiCoachState by aiCoachViewModel.uiState.collectAsState()
-    val isAiCoachVisible = aiCoachState.status != AiCoachStatus.UNSUPPORTED
     val data = uiState.data
     val df = remember { SimpleDateFormat("EEEE, MMM d", Locale.getDefault()) }
 
@@ -211,19 +200,6 @@ fun SessionReportContent(
                                 icon = Icons.Default.Lightbulb,
                                 contentDescription = "Coach Insight",
                                 onClick = { onAction(SessionReportAction.OnOpenInsight) }
-                            )
-                        }
-                        if (isAiCoachVisible) {
-                            AppTopBarActionButton(
-                                icon = Icons.Default.AutoAwesome,
-                                contentDescription = "AI Coach",
-                                onClick = {
-                                    val contextString = data.let { d ->
-                                        "Session: ${d.event.name}\nTotal Athletes: ${d.totalAthletes}\n" +
-                                        "Tests:\n" + d.tests.joinToString("\n") { it.name }
-                                    }
-                                    onNavigateToAiCoach(contextString)
-                                }
                             )
                         }
                         if (uiState.isExporting) {
@@ -263,7 +239,7 @@ fun SessionReportContent(
             val activeRows = activeTestId?.let { data.leaderboardByTest[it] }.orEmpty()
             CoachInsightSheet(
                 test = activeTest,
-                redZoneAthletes = activeRows.filter { (it.percentile != null) && (it.percentile < 30) }
+                redZoneAthletes = activeRows.filter { (it.percentile != null) && (it.percentile < 40) }
             ) { onAction(SessionReportAction.OnDismissInsight) }
         }
     }
@@ -300,7 +276,7 @@ fun SessionReportBody(
             item {
                 CoachMarkBanner(
                     title = "Session Analytics & Reports",
-                    message = "Review group attendance and test distributions. Tap the Lightbulb for insights, Sparkles for AI Coach analysis, or Download to export CSV data.",
+                    message = "Review group attendance and test distributions. Tap the Lightbulb for insights or Download to export CSV data.",
                     actionLabel = "View Tour",
                     onActionClick = { onAction(SessionReportAction.OnOpenTestingTour) }
                 ) { onAction(SessionReportAction.OnDismissCoachMark) }
@@ -669,7 +645,7 @@ fun CoachInsightSheet(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
                             Spacer(Modifier.width(8.dp))
-                            Text("Remediation Required (<30%ile)", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                            Text("Remediation Required (<40%ile)", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                         }
                         Spacer(Modifier.height(8.dp))
                         val names = redZoneAthletes.joinToString(", ") { row ->
