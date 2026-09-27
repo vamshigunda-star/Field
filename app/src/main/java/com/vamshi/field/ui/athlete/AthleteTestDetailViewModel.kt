@@ -35,7 +35,6 @@ sealed interface AthleteTestDetailAction {
     data class OnRequestDelete(val attempt: AttemptRow) : AthleteTestDetailAction
     data object OnConfirmDelete : AthleteTestDetailAction
     data object OnDismissDelete : AthleteTestDetailAction
-    data object OnDismissError : AthleteTestDetailAction
     data class OnSelectRange(val range: ChartRangeFilter) : AthleteTestDetailAction
 }
 
@@ -108,7 +107,6 @@ class AthleteTestDetailViewModel @Inject constructor(
         when (action) {
             AthleteTestDetailAction.OnOpenPeerSheet -> _uiState.update { it.copy(showPeerSheet = true) }
             AthleteTestDetailAction.OnDismissPeerSheet -> _uiState.update { it.copy(showPeerSheet = false) }
-            AthleteTestDetailAction.OnDismissError -> _uiState.update { it.copy(errorMessage = null) }
             is AthleteTestDetailAction.OnRequestDelete -> _uiState.update { it.copy(deleteCandidate = action.attempt) }
             AthleteTestDetailAction.OnDismissDelete -> _uiState.update { it.copy(deleteCandidate = null) }
             AthleteTestDetailAction.OnConfirmDelete -> confirmDelete()

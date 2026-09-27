@@ -43,20 +43,11 @@ class AuthRepositoryImpl @Inject constructor(
         lastName: String,
         username: String,
         password: String,
-        email: String?,
-        securityQuestion: String?,
-        securityAnswer: String?
+        email: String?
     ): AuthResult = withContext(Dispatchers.IO) {
         val normalizedUsername = username.trim().lowercase()
 
         val (pwdSalt, pwdHash) = hasher.hash(password)
-        // Security-answer hashing is skipped entirely (null hash/salt persisted) when no
-        // security answer is supplied — the current onboarding path never sets one.
-        val (ansSalt, ansHash) = if (!securityAnswer.isNullOrBlank()) {
-            hasher.hash(securityAnswer.trim().lowercase())
-        } else {
-            null to null
-        }
 
         val entity = UserEntity(
             id = UUID.randomUUID().toString(),
@@ -66,9 +57,6 @@ class AuthRepositoryImpl @Inject constructor(
             email = email?.trim()?.ifBlank { null },
             passwordHash = pwdHash,
             passwordSalt = pwdSalt,
-            securityQuestion = securityQuestion?.trim(),
-            securityAnswerHash = ansHash,
-            securityAnswerSalt = ansSalt,
             createdAt = System.currentTimeMillis()
         )
 
@@ -83,21 +71,6 @@ class AuthRepositoryImpl @Inject constructor(
             AuthResult.Failure(AuthError.Unknown)
         }
     }
-
-    override suspend fun signIn(username: String, password: String): AuthResult =
-        withContext(Dispatchers.IO) {
-            val normalizedUsername = username.trim().lowercase()
-            val entity = userDao.getByUsername(normalizedUsername)
-                ?: return@withContext AuthResult.Failure(AuthError.InvalidCredentials)
-
-            val valid = hasher.verify(password, entity.passwordSalt, entity.passwordHash)
-            if (!valid) {
-                return@withContext AuthResult.Failure(AuthError.InvalidCredentials)
-            }
-
-            sessionManager.setCurrentUserId(entity.id)
-            AuthResult.Success(entity.toDomain())
-        }
 
     override suspend fun signOut() {
         sessionManager.setCurrentUserId(null)
@@ -121,38 +94,6 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun userCount(): Int = withContext(Dispatchers.IO) {
         userDao.count()
     }
-
-    override suspend fun resetPassword(
-        username: String,
-        securityAnswer: String,
-        newPassword: String
-    ): AuthResult = withContext(Dispatchers.IO) {
-        val normalizedUsername = username.trim().lowercase()
-        val normalizedAnswer = securityAnswer.trim().lowercase()
-
-        val entity = userDao.getByUsername(normalizedUsername)
-            ?: return@withContext AuthResult.Failure(AuthError.UsernameNotFound)
-
-        val ansHash = entity.securityAnswerHash
-        val ansSalt = entity.securityAnswerSalt
-        if (ansHash == null || ansSalt == null) {
-            return@withContext AuthResult.Failure(AuthError.NoSecurityQuestion)
-        }
-
-        val answerValid = hasher.verify(normalizedAnswer, ansSalt, ansHash)
-        if (!answerValid) {
-            return@withContext AuthResult.Failure(AuthError.IncorrectSecurityAnswer)
-        }
-
-        val (newSalt, newHash) = hasher.hash(newPassword)
-        userDao.updatePasswordHash(entity.id, newHash, newSalt)
-        AuthResult.Success(entity.toDomain())
-    }
-
-    override suspend fun getSecurityQuestion(username: String): String? =
-        withContext(Dispatchers.IO) {
-            userDao.getByUsername(username.trim().lowercase())?.securityQuestion
-        }
 
     override suspend fun getPrimaryAccount(): User? = withContext(Dispatchers.IO) {
         // userDao.getAll() is already ordered by createdAt DESC, so the head of the

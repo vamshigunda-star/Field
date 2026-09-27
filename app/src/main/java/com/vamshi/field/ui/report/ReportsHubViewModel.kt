@@ -63,7 +63,6 @@ data class ReportsHubUiState(
 
 sealed interface ReportsHubAction {
     data class SelectAthlete(val id: String) : ReportsHubAction
-    data class SelectAthleteTest(val testId: String) : ReportsHubAction
     data class SelectEvent(val eventId: String, val groupId: String) : ReportsHubAction
     data class SelectEventTest(val testId: String) : ReportsHubAction
     data object OnOpenSwitcher : ReportsHubAction
@@ -155,7 +154,6 @@ class ReportsHubViewModel @Inject constructor(
     fun onAction(action: ReportsHubAction) {
         when (action) {
             is ReportsHubAction.SelectAthlete -> loadAthlete(action.id)
-            is ReportsHubAction.SelectAthleteTest -> _uiState.update { it.copy(selectedAthleteTestId = action.testId) }
             is ReportsHubAction.SelectEvent -> loadEvent(action.eventId, action.groupId)
             is ReportsHubAction.SelectEventTest -> _uiState.update { it.copy(selectedEventTestId = action.testId) }
             ReportsHubAction.OnOpenSwitcher -> _uiState.update { it.copy(isSwitcherOpen = true) }

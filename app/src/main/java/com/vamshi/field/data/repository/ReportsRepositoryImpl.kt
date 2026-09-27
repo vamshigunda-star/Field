@@ -1,6 +1,5 @@
 package com.vamshi.field.data.repository
 
-import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.domain.model.people.Group
 import com.vamshi.field.domain.model.people.Individual
 import com.vamshi.field.domain.model.standards.FitnessTest
@@ -19,7 +18,6 @@ import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 import java.util.Calendar
-import java.util.concurrent.ConcurrentHashMap
 
 // ───────────────────────────────────────────────────────────────────
 // Repository
@@ -35,13 +33,6 @@ class ReportsRepositoryImpl @Inject constructor(
     private val calculateGroupDistribution: CalculateGroupDistributionUseCase,
     private val getAthleteFlags: GetAthleteFlagsUseCase
 ) : ReportsRepository {
-
-    private val expectedTestsCache = ConcurrentHashMap<Pair<BiologicalSex, Int>, List<FitnessTest>>()
-
-    private suspend fun cachedExpectedTests(athlete: Individual): List<FitnessTest> =
-        expectedTestsCache.getOrPut(athlete.sex to athlete.currentAge) {
-            expectedTestsForAthlete(athlete)
-        }
 
     // ---------- Home ----------
 
@@ -65,8 +56,7 @@ class ReportsRepositoryImpl @Inject constructor(
                 calculateAthleteSessionAvg(latest)
             }
             val distribution = calculateGroupDistribution(athleteAvgs)
-            val lastSession = eventsByGroup[g.id]?.firstOrNull()?.date
-            GroupCardData(g, members.size, distribution, lastSession)
+            GroupCardData(g, members.size, distribution)
         }
 
         // 2. Recent Sessions (in-memory aggregation)

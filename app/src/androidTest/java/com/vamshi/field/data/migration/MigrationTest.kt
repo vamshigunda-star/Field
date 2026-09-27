@@ -106,6 +106,75 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 15 → 16 drops `pending_test_entries` and the three security-question columns on `users`.
+     *
+     * The assertion that matters is that the `users` rebuild is lossless: the migration
+     * copies rows into a new table and renames it, so a mistake there silently deletes
+     * every coach account and the app would send the coach back to Onboarding with an
+     * empty roster. The unique index on `username` has to survive too — without it
+     * `signUp` stops mapping duplicate usernames to `AuthError.UsernameTaken`.
+     */
+    @Test
+    fun migrate15To16_dropsPendingTable_andPreservesUsers() = runBlocking {
+        helper.createDatabase(15).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO users (
+                    id, firstName, lastName, username, email, passwordHash, passwordSalt,
+                    securityQuestion, securityAnswerHash, securityAnswerSalt, createdAt
+                ) VALUES (
+                    'user_1', 'Asha', '', 'asha', 'asha@example.com', X'0102', X'0304',
+                    'First school?', X'0506', X'0708', 1700000000000
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO testing_events (id, groupId, name, date, location, notes, createdAt)
+                VALUES ('event_1', NULL, 'Baseline', 1700000000000, NULL, NULL, 1700000000000)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO pending_test_entries (eventId, individualId, testId, rawScore, stagedAt)
+                VALUES ('event_1', 'ind_1', 'test_1', 12.5, 1700000000000)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(16, listOf(AppDatabase.MIGRATION_15_16)).use { db ->
+            assertEquals(1, db.selectSingleLong("SELECT COUNT(*) FROM users").toInt())
+            assertEquals("asha", db.selectSingleText("SELECT username FROM users WHERE id = 'user_1'"))
+            assertEquals("Asha", db.selectSingleText("SELECT firstName FROM users WHERE id = 'user_1'"))
+            assertEquals(
+                1700000000000L,
+                db.selectSingleLong("SELECT createdAt FROM users WHERE id = 'user_1'")
+            )
+            assertEquals(
+                0,
+                db.selectSingleLong(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'pending_test_entries'"
+                ).toInt()
+            )
+            assertEquals(
+                1,
+                db.selectSingleLong(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'index_users_username'"
+                ).toInt()
+            )
+        }
+    }
+
+    /** An empty v15 database must still migrate cleanly — the fresh-install-then-update path. */
+    @Test
+    fun migrate15To16_onEmptyDatabase_validatesSchema() = runBlocking {
+        helper.createDatabase(15).use { /* no rows */ }
+        helper.runMigrationsAndValidate(16, listOf(AppDatabase.MIGRATION_15_16)).use { db ->
+            assertEquals(0, db.selectSingleLong("SELECT COUNT(*) FROM users").toInt())
+        }
+    }
+
     private fun SQLiteConnection.selectSingleText(sql: String): String? =
         prepare(sql).use { stmt -> if (stmt.step()) stmt.getText(0) else null }
 

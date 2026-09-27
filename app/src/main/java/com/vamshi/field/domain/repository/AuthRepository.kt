@@ -24,10 +24,6 @@ interface AuthRepository {
      * @param password  Plain-text password; hashed inside the data layer via PBKDF2.
      * @param email     Optional — only used to enable Google Drive backup/restore later. Never
      *                   required and never a login field.
-     * @param securityQuestion A memorable question used for password reset. Null when the
-     *                   legacy security-question flow is not used (current onboarding path).
-     * @param securityAnswer   The answer; stored as a normalized hash (trim+lowercase). Null
-     *                   when [securityQuestion] is null — no security-answer hash is stored.
      * @return [AuthResult.Success] with the new [User], or a typed [AuthResult.Failure].
      */
     suspend fun signUp(
@@ -35,21 +31,8 @@ interface AuthRepository {
         lastName: String,
         username: String,
         password: String,
-        email: String? = null,
-        securityQuestion: String? = null,
-        securityAnswer: String? = null
+        email: String? = null
     ): AuthResult
-
-    /**
-     * Validates credentials and establishes a session on success.
-     *
-     * On success, the implementation must persist the user ID via [SessionManager]
-     * so that [observeCurrentUser] immediately reflects the signed-in user.
-     *
-     * @return [AuthResult.Success] with the existing [User], or [AuthResult.Failure]
-     *         with [com.vamshi.field.domain.model.auth.AuthError.InvalidCredentials].
-     */
-    suspend fun signIn(username: String, password: String): AuthResult
 
     /**
      * Clears the active session. Does not delete the account.
@@ -78,29 +61,6 @@ interface AuthRepository {
     suspend fun userCount(): Int
 
     /**
-     * Two-factor-style password reset using the security question mechanism.
-     *
-     * The implementation must:
-     *  1. Look up the account by [username].
-     *  2. Normalize and hash [securityAnswer] and compare with the stored hash.
-     *  3. Hash [newPassword] and update the stored credentials.
-     *
-     * @return [AuthResult.Success] on update, [AuthResult.Failure] on mismatch/not-found.
-     */
-    suspend fun resetPassword(
-        username: String,
-        securityAnswer: String,
-        newPassword: String
-    ): AuthResult
-
-    /**
-     * Fetches the security question for [username] without revealing any credentials.
-     *
-     * @return The question string, or `null` if the username is not registered.
-     */
-    suspend fun getSecurityQuestion(username: String): String?
-
-    /**
      * Resolves the account the Unlock screen should greet by default.
      *
      * Zero accounts → `null`. One account → that account. Multiple accounts (rare —
@@ -119,13 +79,12 @@ interface AuthRepository {
 
     /**
      * Validates [password] for the account identified by [userId] and establishes a
-     * session on success — the Unlock-screen equivalent of [signIn], but keyed by a
-     * known account ID (from [getPrimaryAccount]/[listAccounts]) rather than a typed
-     * username.
+     * session on success, keyed by a known account ID (from
+     * [getPrimaryAccount]/[listAccounts]) rather than a typed username.
      *
      * @return [AuthResult.Success] with the [User], or [AuthResult.Failure] with the
      *         generic [com.vamshi.field.domain.model.auth.AuthError.InvalidCredentials]
-     *         (mirrors [signIn]'s username-enumeration protection).
+     *         — deliberately not distinguishing "no such account" from "wrong password".
      */
     suspend fun unlock(userId: String, password: String): AuthResult
 

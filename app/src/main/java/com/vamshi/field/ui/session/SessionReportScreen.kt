@@ -75,12 +75,9 @@ import com.vamshi.field.ui.components.AppTopBarSubtitleColor
 import com.vamshi.field.ui.report.components.AthleteLeaderRow
 import com.vamshi.field.ui.report.components.SessionSwitcherSheet
 import com.vamshi.field.ui.report.components.ZoneChip
-import com.vamshi.field.ui.theme.PerformanceRed
-import com.vamshi.field.ui.theme.PerformanceRedText
 import com.vamshi.field.ui.theme.SportOrange
 import com.vamshi.field.ui.session.components.GroupTrendChart
 import com.vamshi.field.ui.session.components.TestSelectorHeroCard
-import com.vamshi.field.ui.theme.SportOrangeContainer
 import com.vamshi.field.util.CsvExporter
 import java.text.SimpleDateFormat
 import java.util.Date

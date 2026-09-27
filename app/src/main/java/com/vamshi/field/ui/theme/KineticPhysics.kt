@@ -5,27 +5,19 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-
-val TorqueEasing = CubicBezierEasing(0.6f, -0.28f, 0.735f, 0.045f)
 
 fun triggerAcceleratorHaptic(context: Context) {
     try {
@@ -87,35 +79,4 @@ fun Modifier.acceleratorClick(
                 }
             }
         )
-}
-
-@Composable
-fun TorqueTransitionWrapper(
-    content: @Composable () -> Unit
-) {
-    var isEntering by remember { mutableStateOf(true) }
-    
-    LaunchedEffect(Unit) {
-        isEntering = false
-    }
-
-    val blurRadius by animateFloatAsState(
-        targetValue = if (isEntering) 40f else 0f,
-        animationSpec = tween(durationMillis = 350, easing = TorqueEasing),
-        label = "MotionBlur"
-    )
-
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.graphicsLayer {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurRadius > 0.1f) {
-                renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                    blurRadius,
-                    1f, 
-                    android.graphics.Shader.TileMode.CLAMP
-                ).asComposeRenderEffect()
-            }
-        }
-    ) {
-        content()
-    }
 }

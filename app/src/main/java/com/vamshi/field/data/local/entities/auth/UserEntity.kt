@@ -13,10 +13,6 @@ import androidx.room3.PrimaryKey
  *  Salt and hash are stored separately (both as BLOB) so the verifier can
  *  reconstruct the same KDF invocation without encoding overhead.
  *
- * Security answer storage follows the same scheme via [securityAnswerSalt]
- * and [securityAnswerHash]. The answer is normalized (trim + lowercase) before
- * hashing to prevent case/whitespace mismatch failures.
- *
  * The [username] column has a unique index; the DB layer enforces uniqueness
  * at insert time (SQLiteConstraintException), and the repository catches it
  * and maps it to [com.vamshi.field.domain.model.auth.AuthError.UsernameTaken].
@@ -48,15 +44,6 @@ data class UserEntity(
     /** 16-byte random salt used when deriving [passwordHash]. */
     val passwordSalt: ByteArray,
 
-    /** The security question prompt stored in plain text. */
-    val securityQuestion: String?,
-
-    /** PBKDF2 derived key of the normalized security answer (or null if not set). */
-    val securityAnswerHash: ByteArray?,
-
-    /** Salt for the security answer hash (or null if not set). */
-    val securityAnswerSalt: ByteArray?,
-
     val createdAt: Long
 ) {
     // ByteArray-aware equals/hashCode so data class comparisons work correctly.
@@ -71,13 +58,6 @@ data class UserEntity(
             email == other.email &&
             passwordHash.contentEquals(other.passwordHash) &&
             passwordSalt.contentEquals(other.passwordSalt) &&
-            securityQuestion == other.securityQuestion &&
-            (securityAnswerHash == null && other.securityAnswerHash == null ||
-                securityAnswerHash != null && other.securityAnswerHash != null &&
-                securityAnswerHash.contentEquals(other.securityAnswerHash)) &&
-            (securityAnswerSalt == null && other.securityAnswerSalt == null ||
-                securityAnswerSalt != null && other.securityAnswerSalt != null &&
-                securityAnswerSalt.contentEquals(other.securityAnswerSalt)) &&
             createdAt == other.createdAt
     }
 
@@ -89,9 +69,6 @@ data class UserEntity(
         result = 31 * result + (email?.hashCode() ?: 0)
         result = 31 * result + passwordHash.contentHashCode()
         result = 31 * result + passwordSalt.contentHashCode()
-        result = 31 * result + (securityQuestion?.hashCode() ?: 0)
-        result = 31 * result + (securityAnswerHash?.contentHashCode() ?: 0)
-        result = 31 * result + (securityAnswerSalt?.contentHashCode() ?: 0)
         result = 31 * result + createdAt.hashCode()
         return result
     }

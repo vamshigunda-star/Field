@@ -1,9 +1,6 @@
 package com.vamshi.field.ui.components.testing
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,82 +12,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vamshi.field.domain.model.standards.InputParadigm
-
-/**
- * A semi-circular gauge that represents performance percentile (0-100)
- */
-@Composable
-fun PercentileGauge(
-    percentile: Int?,
-    modifier: Modifier = Modifier
-) {
-    val targetValue = (percentile ?: 0).toFloat() / 100f
-    val animatedValue by animateFloatAsState(
-        targetValue = targetValue,
-        animationSpec = tween(durationMillis = 800),
-        label = "gauge_animation"
-    )
-
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.weight(1f)) {
-            val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            Canvas(modifier = Modifier.size(160.dp, 90.dp)) {
-                val strokeWidth = 8.dp.toPx()
-                
-                // Background Arc (Track)
-                drawArc(
-                    color = trackColor,
-                    startAngle = 180f,
-                    sweepAngle = 180f,
-                    useCenter = false,
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                )
-
-                // Foreground Arc (Progress)
-                if (percentile != null) {
-                    drawArc(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(Color(0xFFEF4444), Color(0xFFFACC15), Color(0xFF22C55E))
-                        ),
-                        startAngle = 180f,
-                        sweepAngle = 180f * animatedValue,
-                        useCenter = false,
-                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                    )
-                }
-            }
-
-            // Value Display
-            Column(
-                modifier = Modifier.offset(y = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = if (percentile != null) "${percentile}%" else "--",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Black,
-                    color = if (percentile == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "PERCENTILE",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
 
 /**
  * The Switcher that chooses the right module based on test paradigm

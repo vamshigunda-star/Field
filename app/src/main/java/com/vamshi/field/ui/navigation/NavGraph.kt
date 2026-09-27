@@ -130,7 +130,6 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                 onNavigateToTestLibrary = { navController.navigate(Screen.TestLibrary.route) },
                 onNavigateToCreateEvent = { navController.navigate(Screen.CreateEvent.createRoute()) },
                 onNavigateToRecommendations = { navController.navigate(Screen.Recommendations.route) },
-                onNavigateToNewTest = { navController.navigate(Screen.CustomTest.createRoute()) },
                 onNavigateToQuickTest = { navController.navigate(Screen.QuickTest.createRoute()) },
                 onNavigateToIndividualTest = { navController.navigate(Screen.QuickTest.createRoute(mode = "individual")) },
                 onNavigateToLeaderboard = { eventId, groupId, mode ->

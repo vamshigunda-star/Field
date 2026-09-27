@@ -4,7 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vamshi.field.domain.model.people.BiologicalSex
-import com.vamshi.field.domain.model.standards.BandLevel
 import com.vamshi.field.domain.model.standards.CustomTestDraft
 import com.vamshi.field.domain.model.standards.CustomTestField
 import com.vamshi.field.domain.model.standards.MeasurementMethod

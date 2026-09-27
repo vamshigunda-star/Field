@@ -1,13 +1,11 @@
 package com.vamshi.field.di
 
 import com.vamshi.field.data.repository.PeopleRepositoryImpl
-import com.vamshi.field.data.repository.PendingTestEntryRepositoryImpl
 import com.vamshi.field.data.repository.RecommendationRepositoryImpl
 import com.vamshi.field.data.repository.ReportsRepositoryImpl
 import com.vamshi.field.data.repository.StandardsRepositoryImpl
 import com.vamshi.field.data.repository.TestingRepositoryImpl
 import com.vamshi.field.domain.repository.PeopleRepository
-import com.vamshi.field.domain.repository.PendingTestEntryRepository
 import com.vamshi.field.domain.repository.RecommendationRepository
 import com.vamshi.field.domain.repository.ReportsRepository
 import com.vamshi.field.domain.repository.StandardsRepository
@@ -45,12 +43,6 @@ abstract class RepositoryModule {
     abstract fun bindReportsRepository(
         reportsRepositoryImpl: ReportsRepositoryImpl
     ): ReportsRepository
-
-    @Binds
-    @Singleton
-    abstract fun bindPendingTestEntryRepository(
-        pendingTestEntryRepositoryImpl: PendingTestEntryRepositoryImpl
-    ): PendingTestEntryRepository
 
     @Binds
     @Singleton

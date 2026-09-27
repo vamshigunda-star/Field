@@ -4,6 +4,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Required by CsvExporter.saveToDownloadsLegacy on API < 29, which checks this
+         permission before writing to the public Downloads directory. API 29+ goes
+         through MediaStore and needs no permission. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
     <application

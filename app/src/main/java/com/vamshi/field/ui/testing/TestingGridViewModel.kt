@@ -42,8 +42,7 @@ sealed interface FailedGridAction {
     data class Save(
         val athlete: Individual,
         val test: FitnessTest,
-        val rawScore: Double,
-        val moveToNext: Boolean
+        val rawScore: Double
     ) : FailedGridAction
 
     data class Delete(
@@ -75,8 +74,6 @@ sealed interface TestingGridAction {
     data class OnStartEditing(val athlete: Individual, val test: FitnessTest) : TestingGridAction
     data object OnDismissEditing : TestingGridAction
     data class OnSaveScore(val rawScore: Double) : TestingGridAction
-    data class OnSaveAndNext(val rawScore: Double) : TestingGridAction
-    data object OnRequestBack : TestingGridAction
     data class OnRequestTimingChoice(val athlete: Individual, val test: FitnessTest) : TestingGridAction
     data class OnSelectTimingMethod(val testId: String, val method: CaptureMethodPreference) : TestingGridAction
     data object OnDismissTimingChoice : TestingGridAction
@@ -173,13 +170,7 @@ class TestingGridViewModel @Inject constructor(
             is TestingGridAction.OnSaveScore -> {
                 val cell = _uiState.value.editingCell
                 if (cell != null) {
-                    saveScore(cell.athlete, cell.test, action.rawScore, moveToNext = false)
-                }
-            }
-            is TestingGridAction.OnSaveAndNext -> {
-                val cell = _uiState.value.editingCell
-                if (cell != null) {
-                    saveScore(cell.athlete, cell.test, action.rawScore, moveToNext = true)
+                    saveScore(cell.athlete, cell.test, action.rawScore)
                 }
             }
             is TestingGridAction.OnRequestDelete -> {
@@ -202,7 +193,7 @@ class TestingGridViewModel @Inject constructor(
             TestingGridAction.OnRetryFailedAction -> {
                 val failed = _uiState.value.failedAction
                 when (failed) {
-                    is FailedGridAction.Save -> saveScore(failed.athlete, failed.test, failed.rawScore, failed.moveToNext)
+                    is FailedGridAction.Save -> saveScore(failed.athlete, failed.test, failed.rawScore)
                     is FailedGridAction.Delete -> retryDelete(failed)
                     null -> Unit
                 }
@@ -217,17 +208,13 @@ class TestingGridViewModel @Inject constructor(
         }
     }
 
-    private fun saveScore(athlete: Individual, test: FitnessTest, rawScore: Double, moveToNext: Boolean) {
-        val gridData = _uiState.value.gridData ?: return
+    private fun saveScore(athlete: Individual, test: FitnessTest, rawScore: Double) {
+        if (_uiState.value.gridData == null) return
         val currentResult = _uiState.value.editingCell?.currentResult
 
-        // A fresh attempt supersedes any prior failure.
-        _uiState.update { it.copy(failedAction = null) }
-
-        // Temporarily clear the editing cell to dismiss keyboard while saving if not moving to next
-        if (!moveToNext) {
-            _uiState.update { it.copy(editingCell = null) }
-        }
+        // A fresh attempt supersedes any prior failure; clearing the editing cell
+        // dismisses the keyboard while the save is in flight.
+        _uiState.update { it.copy(failedAction = null, editingCell = null) }
 
         viewModelScope.launch {
             try {
@@ -251,29 +238,6 @@ class TestingGridViewModel @Inject constructor(
                         sex = fullAthlete.sex
                     )
                 }
-
-                if (moveToNext) {
-                    val students = gridData.students
-                    val currentIndex = students.indexOfFirst { it.id == athlete.id }
-                    if (currentIndex != -1 && currentIndex + 1 < students.size) {
-                        val nextAthlete = students[currentIndex + 1]
-                        val nextCurrentResult = _uiState.value.gridData?.results?.find {
-                            it.individualId == nextAthlete.id && it.testId == test.id
-                        }
-                        _uiState.update {
-                            it.copy(
-                                editingCell = EditingCell(
-                                    athlete = nextAthlete,
-                                    test = test,
-                                    currentResult = nextCurrentResult
-                                )
-                            )
-                        }
-                    } else {
-                        // Reached the end of the list
-                        _uiState.update { it.copy(editingCell = null) }
-                    }
-                }
             } catch (e: Exception) {
                 Log.e(
                     "TestingGridViewModel",
@@ -284,7 +248,7 @@ class TestingGridViewModel @Inject constructor(
                     it.copy(
                         errorMessage = e.message,
                         editingCell = null,
-                        failedAction = FailedGridAction.Save(athlete, test, rawScore, moveToNext)
+                        failedAction = FailedGridAction.Save(athlete, test, rawScore)
                     )
                 }
             }

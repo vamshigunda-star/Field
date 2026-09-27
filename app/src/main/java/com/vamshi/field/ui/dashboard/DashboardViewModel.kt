@@ -44,7 +44,6 @@ sealed interface DashboardAction {
     data object OnRosterClick : DashboardAction
     data object OnTestLibraryClick : DashboardAction
     data object OnRecommendationsClick : DashboardAction
-    data object OnNewTestClick : DashboardAction
     data object OnSettingsClick : DashboardAction
     data object OnDismissError : DashboardAction
     data object OnLeaderboardClick : DashboardAction

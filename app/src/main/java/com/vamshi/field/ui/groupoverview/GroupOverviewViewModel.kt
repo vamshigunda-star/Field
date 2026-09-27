@@ -25,7 +25,6 @@ sealed interface GroupOverviewAction {
     data class OnNavigateToSession(val sessionId: String) : GroupOverviewAction
     data object OnNavigateToCreateSession : GroupOverviewAction
     data object OnNavigateBack : GroupOverviewAction
-    data object OnDismissError : GroupOverviewAction
     data class OnSelectTestTrend(val testId: String) : GroupOverviewAction
     data object OnDismissTestTrend : GroupOverviewAction
 }
@@ -51,7 +50,6 @@ class GroupOverviewViewModel @Inject constructor(
 
     fun onAction(action: GroupOverviewAction) {
         when (action) {
-            GroupOverviewAction.OnDismissError -> _uiState.update { it.copy(errorMessage = null) }
             is GroupOverviewAction.OnSelectTestTrend -> _uiState.update { it.copy(selectedTrendTestId = action.testId) }
             GroupOverviewAction.OnDismissTestTrend -> _uiState.update { it.copy(selectedTrendTestId = null) }
             else -> Unit

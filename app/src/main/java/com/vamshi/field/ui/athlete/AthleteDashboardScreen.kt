@@ -28,9 +28,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TrendingDown
-import androidx.compose.material.icons.automirrored.filled.TrendingFlat
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandMore
@@ -48,7 +45,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
@@ -75,42 +71,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.people.Individual
-import com.vamshi.field.domain.model.reports.AthleteDashboardData
 import com.vamshi.field.domain.model.reports.AthleteFlag
 import com.vamshi.field.domain.model.reports.AthleteTestTile
 import com.vamshi.field.domain.model.reports.Classification
 import com.vamshi.field.domain.model.reports.FlagType
 import com.vamshi.field.domain.model.standards.FitnessTest
-import com.vamshi.field.ui.report.components.PercentileChip
 import com.vamshi.field.ui.report.components.ZoneChip
 import com.vamshi.field.ui.report.components.zoneLabel
 import com.vamshi.field.ui.theme.AquaCyan
 import com.vamshi.field.ui.theme.ElectricBlue
-import com.vamshi.field.ui.theme.PerformanceGreen
-import com.vamshi.field.ui.theme.PerformanceGreenDark
-import com.vamshi.field.ui.theme.PerformanceGreenText
-import com.vamshi.field.ui.theme.PerformanceGreenTextDark
-import com.vamshi.field.ui.theme.PerformanceGreyText
-import com.vamshi.field.ui.theme.PerformanceGreyTextDark
-import com.vamshi.field.ui.theme.PerformanceRed
-import com.vamshi.field.ui.theme.PerformanceRedDark
-import com.vamshi.field.ui.theme.PerformanceRedText
-import com.vamshi.field.ui.theme.PerformanceRedTextDark
-import com.vamshi.field.ui.theme.PerformanceYellowText
-import com.vamshi.field.ui.theme.PerformanceYellowTextDark
 import com.vamshi.field.domain.usecase.testing.AthleteRadarData
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.AppTopBarSubtitleColor
 import com.vamshi.field.ui.components.charts.RadarChart
-import com.vamshi.field.ui.report.components.DeltaArrow
-import com.vamshi.field.ui.report.components.PercentileChip
 import com.vamshi.field.ui.report.components.ZoneChip
-import com.vamshi.field.ui.report.components.zoneColors
 import com.vamshi.field.ui.report.components.zoneLabel
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.vamshi.field.ui.theme.*
 import com.vamshi.field.util.CsvExporter
-import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import com.vamshi.field.domain.model.reports.PerformanceThresholds
 
@@ -352,25 +330,6 @@ fun AthleteBody(
         }
     }
 }
-
-@Composable
-fun AthleteAlertCard(athlete: Individual) {
-    if (athlete.medicalAlert == null && !athlete.isRestricted) return
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
-            Spacer(Modifier.width(8.dp))
-            Column {
-                if (athlete.isRestricted) Text("Restricted", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold)
-                athlete.medicalAlert?.let { Text(it, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium) }
-            }
-        }
-    }
-}
-
 
 @Composable
 fun IndividualTestBreakdownCard(
@@ -733,51 +692,6 @@ fun CategoryRadarCard(radarData: AthleteRadarData?, hasResults: Boolean) {
                     )
                 }
             }
-        }
-    }
-}
-
-/**
- * Modern Delta Trend Capsule Badge (e.g. +2 %ile, -3 %ile, or 0 / stable).
- */
-@Composable
-fun DeltaTrendBadge(deltaPercentile: Int?, modifier: Modifier = Modifier) {
-    val isDark = isSystemInDarkTheme()
-    val greenBg = if (isDark) PerformanceGreenDark.copy(alpha = 0.35f) else PerformanceGreen.copy(alpha = 0.7f)
-    val greenFg = if (isDark) PerformanceGreenTextDark else PerformanceGreenText
-    val redBg = if (isDark) PerformanceRedDark.copy(alpha = 0.35f) else PerformanceRed.copy(alpha = 0.7f)
-    val redFg = if (isDark) PerformanceRedTextDark else PerformanceRedText
-    val neutralBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainer
-    val neutralFg = MaterialTheme.colorScheme.onSurfaceVariant
-
-    val (bg, fg, icon, text) = when {
-        deltaPercentile == null -> Tuple4(neutralBg, neutralFg, Icons.AutoMirrored.Filled.TrendingFlat, "—")
-        deltaPercentile > 0 -> Tuple4(greenBg, greenFg, Icons.AutoMirrored.Filled.TrendingUp, "+$deltaPercentile")
-        deltaPercentile < 0 -> Tuple4(redBg, redFg, Icons.AutoMirrored.Filled.TrendingDown, "$deltaPercentile")
-        else -> Tuple4(neutralBg, neutralFg, Icons.AutoMirrored.Filled.TrendingFlat, "0")
-    }
-
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = bg
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = fg,
-                modifier = Modifier.size(12.dp)
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                color = fg
-            )
         }
     }
 }

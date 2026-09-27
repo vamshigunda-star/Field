@@ -90,7 +90,6 @@ sealed interface RosterAction {
     data class OnConfirmDeleteAthlete(val id: String) : RosterAction
     data object OnDismissDeleteConfirmation : RosterAction
     
-    data class OnSelectGroup(val group: Group) : RosterAction
     data object OnShowAddGroupDialog : RosterAction
     data object OnDismissAddGroupDialog : RosterAction
     data class OnCreateGroup(val name: String, val location: String?, val cycle: String?) : RosterAction
@@ -213,7 +212,6 @@ class RosterViewModel @Inject constructor(
             is RosterAction.OnConfirmDeleteAthlete -> deleteAthlete(action.id)
             is RosterAction.OnDismissDeleteConfirmation -> _uiState.update { it.copy(showDeleteAthleteConfirmation = null) }
             
-            is RosterAction.OnSelectGroup -> selectGroup(action.group)
             is RosterAction.OnShowAddGroupDialog -> _uiState.update { it.copy(showAddGroupDialog = true) }
             is RosterAction.OnDismissAddGroupDialog -> _uiState.update { it.copy(showAddGroupDialog = false) }
             is RosterAction.OnCreateGroup -> addGroup(action.name, action.location, action.cycle)
@@ -261,10 +259,6 @@ class RosterViewModel @Inject constructor(
             }
             current.copy(expandedGroupIds = newExpanded)
         }
-    }
-
-    private fun selectGroup(group: Group) {
-        _uiState.update { it.copy(selectedGroup = group) }
     }
 
     private fun addGroup(name: String, location: String?, cycle: String?) {

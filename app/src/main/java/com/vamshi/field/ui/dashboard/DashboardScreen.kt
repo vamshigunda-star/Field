@@ -14,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -62,7 +61,6 @@ fun DashboardScreen(
     onNavigateToRoster: () -> Unit,
     onNavigateToTestLibrary: () -> Unit,
     onNavigateToRecommendations: () -> Unit,
-    onNavigateToNewTest: () -> Unit,
     onNavigateToCreateEvent: () -> Unit,
     onNavigateToQuickTest: () -> Unit,
     onNavigateToIndividualTest: () -> Unit,
@@ -94,7 +92,6 @@ fun DashboardScreen(
                 DashboardAction.OnRosterClick -> onNavigateToRoster()
                 DashboardAction.OnTestLibraryClick -> onNavigateToTestLibrary()
                 DashboardAction.OnRecommendationsClick -> onNavigateToRecommendations()
-                DashboardAction.OnNewTestClick -> onNavigateToNewTest()
                 is DashboardAction.OnPickLeaderboardEvent -> {
                     viewModel.onAction(DashboardAction.OnDismissLeaderboardPicker)
                     onNavigateToLeaderboard(it.eventId, it.groupId, "event")

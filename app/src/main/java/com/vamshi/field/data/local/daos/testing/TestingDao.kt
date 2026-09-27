@@ -80,7 +80,6 @@ interface TestingDao {
 """)
     fun getAllResultsForIndividual(individualId: String): Flow<List<TestResultEntity>>
 
-
     @Query("""
     SELECT * FROM test_results
     WHERE individualId = :individualId
@@ -114,15 +113,6 @@ interface TestingDao {
             AND r.createdAt = latest.maxCreated
     """)
     suspend fun getAllLatestResultsOnce(): List<TestResultEntity>
-
-    @Query("""
-    SELECT test_results.* FROM test_results
-    INNER JOIN group_members ON test_results.individualId = group_members.individualId
-    WHERE group_members.groupId = :groupId 
-    AND test_results.testId = :testId
-    ORDER BY test_results.createdAt DESC
-""")
-    fun getGroupResultsForTest(groupId: String, testId: String): Flow<List<TestResultEntity>>
 
     // --- STOPWATCH SUPPORT ---
 

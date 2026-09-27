@@ -42,7 +42,6 @@ sealed interface SessionReportAction {
     data object OnResumeTesting : SessionReportAction
     data object OnNavigateBack : SessionReportAction
     data object OnExportCsv : SessionReportAction
-    data object OnDismissError : SessionReportAction
     data object OnRequestDelete : SessionReportAction
     data object OnConfirmDelete : SessionReportAction
     data object OnDismissDelete : SessionReportAction
@@ -89,7 +88,6 @@ class SessionReportViewModel @Inject constructor(
                 _uiState.update { it.copy(isSwitcherOpen = false, isLoading = true, data = null) }
                 load(action.sessionId)
             }
-            SessionReportAction.OnDismissError -> _uiState.update { it.copy(errorMessage = null) }
             SessionReportAction.OnExportCsv -> exportResults()
             SessionReportAction.OnRequestDelete -> _uiState.update { it.copy(showDeleteDialog = true) }
             SessionReportAction.OnDismissDelete -> _uiState.update { it.copy(showDeleteDialog = false) }

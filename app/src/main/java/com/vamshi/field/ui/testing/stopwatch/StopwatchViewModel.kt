@@ -212,8 +212,6 @@ class StopwatchViewModel @Inject constructor(
     fun onAction(action: StopwatchAction) {
         when (action) {
             is StopwatchAction.OnStartStop -> handleStartStop()
-            is StopwatchAction.OnUndo -> handleUndo()
-            is StopwatchAction.OnNext -> handleNext()
             is StopwatchAction.OnSelectAthlete -> {
                 val currentPhase = _uiState.value.stopwatchPhase
                 val currentMode = _uiState.value.mode
@@ -224,14 +222,11 @@ class StopwatchViewModel @Inject constructor(
                             selectedAthleteId = action.athleteId,
                             stopwatchPhase = StopwatchPhase.READY,
                             elapsedMs = 0L,
-                            confirmationData = null,
-                            canUndo = false
+                            confirmationData = null
                         ) }
                     }
                 }
             }
-            is StopwatchAction.OnResetAthlete -> handleResetAthlete()
-            
             // New Mass Timing Actions
             is StopwatchAction.OnToggleAbsent -> handleToggleAbsent(action.athleteId)
             is StopwatchAction.OnCaptureTime -> handleCaptureTime(action.athleteId)
@@ -256,7 +251,6 @@ class StopwatchViewModel @Inject constructor(
                         showDiscardDialog = false,
                         pendingResults = emptyMap(),
                         confirmationData = null,
-                        canUndo = false,
                         stopwatchPhase = StopwatchPhase.READY,
                         elapsedMs = 0L,
                         heatAthletes = it.heatAthletes.map { a ->
@@ -537,21 +531,6 @@ class StopwatchViewModel @Inject constructor(
         }
     }
 
-    private fun handleResetAthlete() {
-        tickerJob?.cancel()
-        val currentAthleteId = _uiState.value.selectedAthleteId
-        _uiState.update {
-            it.copy(
-                stopwatchPhase = StopwatchPhase.READY,
-                elapsedMs = 0L,
-                confirmationData = null,
-                canUndo = false,
-                pendingResults = if (currentAthleteId != null) it.pendingResults - currentAthleteId else it.pendingResults
-            )
-        }
-        refreshAllAthletesIfIndividual()
-    }
-
     private fun handleNext() {
         if (_uiState.value.mode == TimingMode.INDIVIDUAL) {
             val all = _uiState.value.allAthletes
@@ -571,7 +550,6 @@ class StopwatchViewModel @Inject constructor(
                     stopwatchPhase = StopwatchPhase.READY,
                     selectedAthleteId = nextAthlete?.athleteId,
                     confirmationData = null,
-                    canUndo = false,
                     elapsedMs = 0L
                 )
             }
@@ -604,19 +582,6 @@ class StopwatchViewModel @Inject constructor(
                 )
             }
         }
-    }
-
-    private fun handleUndo() {
-        val currentAthleteId = _uiState.value.selectedAthleteId ?: return
-        _uiState.update {
-            it.copy(
-                stopwatchPhase = StopwatchPhase.READY,
-                confirmationData = null,
-                canUndo = false,
-                pendingResults = it.pendingResults - currentAthleteId
-            )
-        }
-        refreshAllAthletesIfIndividual()
     }
 
     private fun submitPending() {

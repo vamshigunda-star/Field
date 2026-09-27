@@ -26,13 +26,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.standards.TestPreset
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.components.testing.TestSelectionCard
-import com.vamshi.field.ui.components.testing.TestSelectionRow
 import com.vamshi.field.ui.theme.*
 
 @Composable

@@ -3,21 +3,12 @@ package com.vamshi.field.domain.usecase.standards
 import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.domain.model.standards.BandLevel
 import com.vamshi.field.domain.model.standards.CustomTestDraft
-import com.vamshi.field.domain.model.standards.FitnessTest
 import com.vamshi.field.domain.model.standards.MeasurementMethod
 import com.vamshi.field.domain.model.standards.NormReference
 import com.vamshi.field.domain.model.standards.ScoringBands
 import com.vamshi.field.domain.model.standards.TestSource
 import com.vamshi.field.domain.repository.StandardsRepository
-import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
-
-/** Coach-authored tests, for the "My tests" section of the library. */
-class ObserveCustomTestsUseCase @Inject constructor(
-    private val repository: StandardsRepository
-) {
-    operator fun invoke(): Flow<List<FitnessTest>> = repository.getCustomTests()
-}
 
 /**
  * Hydrates the authoring form when editing an existing custom test.

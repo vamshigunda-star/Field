@@ -23,7 +23,6 @@ data class StopwatchUiState(
     val pendingReviewCount: Int = 0,
     val trialsPerAthlete: Int = 0,
     val confirmationData: ConfirmationData? = null,
-    val canUndo: Boolean = false,
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val sessionLoaded: Boolean = false,
@@ -68,15 +67,12 @@ data class ConfirmationData(
 
 sealed interface StopwatchAction {
     data object OnStartStop : StopwatchAction
-    data object OnUndo : StopwatchAction
     data object OnDismissError : StopwatchAction
     data object OnNavigateBack : StopwatchAction
     data object OnRequestBack : StopwatchAction
     data object OnConfirmDiscard : StopwatchAction
     data object OnDismissDiscard : StopwatchAction
-    data object OnNext : StopwatchAction
     data class OnSelectAthlete(val athleteId: String) : StopwatchAction
-    data object OnResetAthlete : StopwatchAction
     
     // New Actions for Continuous Mass Timing
     data class OnToggleAbsent(val athleteId: String) : StopwatchAction

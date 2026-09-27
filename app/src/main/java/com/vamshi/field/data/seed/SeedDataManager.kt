@@ -41,6 +41,13 @@ class SeedDataManager @Inject constructor(
         // threshold (was 40, which classified as Healthy), top bracket extended to 115, and
         // duplicate legacy age bands removed from wall-sit and shoulder-flexibility.
         private const val KEY_SEEDED_VERSION = "data_seeded_version_v30"
+
+        // One-shot, and deliberately NOT versioned like [KEY_SEEDED_VERSION]. The demo roster
+        // is a first-run convenience, not catalog data: it must be offered exactly once per
+        // install and never again, including across catalog revisions that re-run the seeder.
+        // An empty `individuals` table is not a substitute for this flag -- it is equally the
+        // state of a coach who deliberately deleted the demo athletes.
+        private const val KEY_DEMO_DATA_SEEDED = "demo_data_seeded"
         private const val SEED_SOURCE = "SEED"
     }
 
@@ -59,9 +66,27 @@ class SeedDataManager @Inject constructor(
 
             Log.d(TAG, "seedIfNeeded: isAlreadySeeded=$isAlreadySeeded, testCount=$testCount, normCount=$normCount, athleteCount=$athleteCount")
 
-            // Fast path: Database already has pre-packaged catalog with full norms (>= 2500 norms)
-            if (isAlreadySeeded && normCount >= 2500 && testCount >= 80 && athleteCount > 0) {
-                Log.d(TAG, "Pre-packaged database detected with $testCount tests and $normCount norms. Skipping runtime CSV seeding.")
+            // Fast path: this build's catalog has already been applied, so the CSV import
+            // would rebuild byte-identical data. Two distinct questions, deliberately not
+            // conflated:
+            //
+            //  - "Is this catalog version already applied?" -> [KEY_SEEDED_VERSION] alone can
+            //    answer it. A row count cannot: a catalog revision that corrects a percentile
+            //    without adding or removing rows leaves every count unchanged.
+            //  - "Is a catalog present at all?" -> a presence check (> 0), never a completeness
+            //    threshold. The previous `normCount >= 2500` asserted a specific size, and the
+            //    v30 de-duplication dropped norms.csv from 2519 to 2453 rows, so the condition
+            //    became unsatisfiable and this fast path was dead: every cold start re-parsed
+            //    three CSVs and rewrote ~2.4k norm rows to reach identical data.
+            //
+            // athleteCount is deliberately NOT a condition here. Athlete deletion is a hard
+            // @Delete and getIndividualCount() counts unfiltered, so a coach who clears the
+            // preloaded demo roster before adding their own team drops it to 0 -- which used to
+            // fail this guard, fall through to step 3, and resurrect all five demo athletes plus
+            // their groups, events and results on the next launch. Step 3 carries its own
+            // `currentAthleteCount == 0` check, so nothing here needs to repeat it.
+            if (isAlreadySeeded && normCount > 0 && testCount > 0) {
+                Log.d(TAG, "Catalog already seeded for this version: $testCount tests, $normCount norms. Skipping runtime CSV seeding.")
                 return
             }
 
@@ -176,10 +201,25 @@ class SeedDataManager @Inject constructor(
 
                 prefs.edit().putBoolean(KEY_SEEDED_VERSION, true).apply()
 
-            // 3. Seed Dummy Athletes, Groups, Events & Results (if missing)
+            // 3. Seed the demo roster -- first run only, never again.
+            //
+            // Gated on [KEY_DEMO_DATA_SEEDED] rather than on the roster being empty. Athlete
+            // deletion is a hard @Delete, so "no athletes" is ambiguous: it is the state of a
+            // fresh install AND the state of a coach who cleared the demo roster to make room
+            // for their real team. Re-seeding on that signal resurrects five demo athletes, two
+            // groups, ten testing events and two hundred results under them.
+            //
+            // The flag is set once this has been settled either way, so an install that already
+            // carries the prepackaged demo roster records it as done without re-inserting, and
+            // an existing install upgrading into this build settles on its first launch.
             try {
+                val demoDataSettled = try {
+                    prefs.getBoolean(KEY_DEMO_DATA_SEEDED, false)
+                } catch (e: Exception) {
+                    false
+                }
                 val currentAthleteCount = database.peopleDao().getIndividualCount()
-                if (currentAthleteCount == 0) {
+                if (!demoDataSettled && currentAthleteCount == 0) {
                     Log.d(TAG, "Seeding preloaded athletes, groups, events, and results...")
                     val peopleDao = database.peopleDao()
                     val testingDao = database.testingDao()
@@ -336,6 +376,11 @@ class SeedDataManager @Inject constructor(
                     }
                     testingDao.insertResults(resultsToInsert)
                     Log.d(TAG, "Successfully seeded preloaded athletes, groups, events, and testing results!")
+                }
+                if (!demoDataSettled) {
+                    // Set whether or not rows were inserted: both branches mean "the demo roster
+                    // question is answered for this install".
+                    prefs.edit().putBoolean(KEY_DEMO_DATA_SEEDED, true).apply()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to seed dummy athletes and results", e)

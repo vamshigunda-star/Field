@@ -75,7 +75,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.vamshi.field.ui.theme.PerformanceGreenDark
@@ -86,7 +85,6 @@ import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.components.testing.TestInputSwitcher
 import com.vamshi.field.ui.components.testing.TestSelectionCard
-import com.vamshi.field.ui.components.testing.TestSelectionRow
 import com.vamshi.field.ui.theme.*
 import androidx.compose.material3.OutlinedCard
 import java.util.Locale

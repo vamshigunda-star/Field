@@ -9,8 +9,7 @@ import com.vamshi.field.domain.model.testing.TestingEvent
 data class GroupCardData(
     val group: Group,
     val size: Int,
-    val distribution: Distribution,
-    val lastSessionDate: Long?
+    val distribution: Distribution
 )
 
 data class RecentSessionRow(

@@ -10,8 +10,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 sealed class Screen(val route: String) {
     data object Dashboard : Screen("dashboard")
     data object Roster : Screen("roster")
-    data object Athletes : Screen("athletes")
-    data object Insights : Screen("insights")
     data object TestLibrary : Screen("test_library")
     data object Recommendations : Screen("recommendations")
     data object CreateEvent : Screen("create_event?recommendationId={recommendationId}") {
@@ -54,8 +52,6 @@ sealed class Screen(val route: String) {
             return "stopwatch/$eventId/$fitnessTestId/$groupId$query"
         }
     }
-
-    data object TestsHub : Screen("tests_hub")
 
     /** Custom Test Builder. No `testId` = create; with one = edit that coach-authored test. */
     data object CustomTest : Screen("custom_test?testId={testId}") {

@@ -4,7 +4,6 @@ import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.domain.model.standards.BandLevel
 import com.vamshi.field.domain.model.standards.CustomTestDraft
 import com.vamshi.field.domain.model.standards.NormReference
-import com.vamshi.field.domain.model.standards.ScoringBands
 import com.vamshi.field.domain.model.standards.TestSource
 import java.util.UUID
 import javax.inject.Inject

@@ -8,7 +8,6 @@ import com.vamshi.field.data.local.daos.auth.UserDao
 import com.vamshi.field.data.local.daos.people.PeopleDao
 import com.vamshi.field.data.local.daos.standards.RecommendationDao
 import com.vamshi.field.data.local.daos.standards.StandardsDao
-import com.vamshi.field.data.local.daos.testing.PendingTestEntryDao
 import com.vamshi.field.data.local.daos.testing.TestingDao
 import dagger.Module
 import dagger.Provides
@@ -42,7 +41,8 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_11_12,
                 AppDatabase.MIGRATION_12_13,
                 AppDatabase.MIGRATION_13_14,
-                AppDatabase.MIGRATION_14_15
+                AppDatabase.MIGRATION_14_15,
+                AppDatabase.MIGRATION_15_16
             )
             .setDriver(AndroidSQLiteDriver())
             .build()
@@ -59,9 +59,6 @@ object DatabaseModule {
 
     @Provides
     fun provideUserDao(db: AppDatabase): UserDao = db.userDao()
-
-    @Provides
-    fun providePendingTestEntryDao(db: AppDatabase): PendingTestEntryDao = db.pendingTestEntryDao()
 
     @Provides
     fun provideRecommendationDao(db: AppDatabase): RecommendationDao = db.recommendationDao()

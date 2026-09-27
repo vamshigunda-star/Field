@@ -14,16 +14,13 @@ sealed class AuthResult {
 /**
  * Enumeration of all possible auth failure modes.
  *
- * Security note: [InvalidCredentials] is intentionally generic — it is used for
- * both "username not found" and "wrong password" at the sign-in level to prevent
- * username enumeration attacks on the presentation layer.
+ * Security note: [InvalidCredentials] is intentionally generic — it covers both
+ * "no such account" and "wrong password" so the presentation layer cannot be used
+ * to enumerate usernames.
  */
 enum class AuthError {
     /** The requested username is already registered on this device. */
     UsernameTaken,
-
-    /** No account with the given username exists. Used only in ResetPassword flow. */
-    UsernameNotFound,
 
     /** Username/password combination does not match any stored account. */
     InvalidCredentials,
@@ -31,17 +28,8 @@ enum class AuthError {
     /** Password does not satisfy the complexity rules. */
     WeakPassword,
 
-    /** Username format is invalid (regex mismatch or length out of range). */
-    InvalidUsername,
-
     /** First or last name is blank or exceeds the max length. */
     InvalidName,
-
-    /** The provided security answer does not match the stored hash. */
-    IncorrectSecurityAnswer,
-
-    /** No security question was set for the given account (legacy or skipped). */
-    NoSecurityQuestion,
 
     /** Catch-all for unexpected data-layer failures. */
     Unknown

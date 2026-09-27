@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.map
  * In-memory [AuthRepository] test double.
  *
  * Mirrors the real implementation's observable behavior — auto-sign-in on [signUp],
- * a generic [AuthError.InvalidCredentials] on failed [signIn]/[unlock] (no username-
+ * a generic [AuthError.InvalidCredentials] on a failed [unlock] (no username-
  * enumeration leak), most-recently-created-wins account resolution — without touching
  * Room, SharedPreferences, or PBKDF2. Used to unit-test the use cases in this package
  * in isolation from the data layer, using a hand-written fake instead of a
@@ -32,9 +32,7 @@ class FakeAuthRepository : AuthRepository {
         lastName: String,
         username: String,
         password: String,
-        email: String?,
-        securityQuestion: String?,
-        securityAnswer: String?
+        email: String?
     ): AuthResult {
         val normalized = username.trim().lowercase()
         if (users.any { it.user.username == normalized }) {
@@ -53,14 +51,6 @@ class FakeAuthRepository : AuthRepository {
         return AuthResult.Success(user)
     }
 
-    override suspend fun signIn(username: String, password: String): AuthResult {
-        val normalized = username.trim().lowercase()
-        val stored = users.firstOrNull { it.user.username == normalized && it.password == password }
-            ?: return AuthResult.Failure(AuthError.InvalidCredentials)
-        currentUserId.value = stored.user.id
-        return AuthResult.Success(stored.user)
-    }
-
     override suspend fun signOut() {
         currentUserId.value = null
     }
@@ -72,14 +62,6 @@ class FakeAuthRepository : AuthRepository {
         users.any { it.user.username == username.trim().lowercase() }
 
     override suspend fun userCount(): Int = users.size
-
-    override suspend fun resetPassword(
-        username: String,
-        securityAnswer: String,
-        newPassword: String
-    ): AuthResult = AuthResult.Failure(AuthError.NoSecurityQuestion)
-
-    override suspend fun getSecurityQuestion(username: String): String? = null
 
     override suspend fun getPrimaryAccount(): User? =
         users.maxByOrNull { it.user.createdAt }?.user

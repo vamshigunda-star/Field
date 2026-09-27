@@ -169,9 +169,6 @@ data class BackupUser(
     val username: String,
     val passwordHash: String,
     val passwordSalt: String,
-    val securityQuestion: String?,
-    val securityAnswerHash: String?,
-    val securityAnswerSalt: String?,
     val email: String? = null,
     val createdAt: Long
 )

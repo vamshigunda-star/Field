@@ -66,19 +66,3 @@ fun ZoneChip(
         fontWeight = FontWeight.SemiBold
     )
 }
-
-@Composable
-fun PerformanceYellowChip(text: String, modifier: Modifier = Modifier) {
-    val isDark = isSystemInDarkTheme()
-    val bg = if (isDark) PerformanceYellowDark else PerformanceYellow
-    val fg = if (isDark) PerformanceYellowTextDark else PerformanceYellowText
-    Text(
-        text = text,
-        modifier = modifier
-            .background(bg, RoundedCornerShape(999.dp))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        style = MaterialTheme.typography.labelSmall,
-        color = fg,
-        fontWeight = FontWeight.SemiBold
-    )
-}

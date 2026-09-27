@@ -1,6 +1,7 @@
 package com.vamshi.field.ui.roster
 
 import androidx.compose.animation.*
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -174,7 +175,14 @@ fun SwipeableAthleteCard(
         state = dismissState,
         enableDismissFromStartToEnd = false,
         backgroundContent = {
-            val color = MaterialTheme.colorScheme.errorContainer
+            // Drawn at all times, not only while swiping — so it must be transparent at
+            // rest. The card above it is translucent in dark mode, and a solid errorContainer
+            // here bleeds through and tints every athlete card maroon.
+            val isSwiping = dismissState.targetValue != SwipeToDismissBoxValue.Settled
+            val color by animateColorAsState(
+                targetValue = if (isSwiping) MaterialTheme.colorScheme.errorContainer else Color.Transparent,
+                label = "swipeBackground"
+            )
             Box(
                 Modifier
                     .fillMaxSize()
@@ -183,7 +191,9 @@ fun SwipeableAthleteCard(
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                if (isSwiping) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                }
             }
         }
     ) {

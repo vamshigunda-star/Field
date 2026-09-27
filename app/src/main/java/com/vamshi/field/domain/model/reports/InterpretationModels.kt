@@ -2,12 +2,6 @@ package com.vamshi.field.domain.model.reports
 
 enum class Classification { SUPERIOR, HEALTHY, NEEDS_IMPROVEMENT, NO_DATA }
 
-data class NormResult(
-    val percentile: Int,
-    val classification: Classification,
-    val classificationLabel: String?
-)
-
 data class Distribution(
     val superior: Int,
     val healthy: Int,

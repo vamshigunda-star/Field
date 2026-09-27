@@ -11,7 +11,6 @@ import com.vamshi.field.data.local.daos.backup.BackupDao
 import com.vamshi.field.data.local.daos.people.PeopleDao
 import com.vamshi.field.data.local.daos.standards.RecommendationDao
 import com.vamshi.field.data.local.daos.standards.StandardsDao
-import com.vamshi.field.data.local.daos.testing.PendingTestEntryDao
 import com.vamshi.field.data.local.daos.testing.TestingDao
 import com.vamshi.field.data.local.entities.auth.UserEntity
 import com.vamshi.field.data.local.entities.people.GroupEntity
@@ -23,7 +22,6 @@ import com.vamshi.field.data.local.entities.standards.RecommendationCategoryEnti
 import com.vamshi.field.data.local.entities.standards.RecommendationTestCrossRef
 import com.vamshi.field.data.local.entities.standards.TestCategoryEntity
 import com.vamshi.field.data.local.entities.testing.EventTestCrossRef
-import com.vamshi.field.data.local.entities.testing.PendingTestEntryEntity
 import com.vamshi.field.data.local.entities.testing.TestResultEntity
 import com.vamshi.field.data.local.entities.testing.TestingEventEntity
 
@@ -39,11 +37,10 @@ import com.vamshi.field.data.local.entities.testing.TestingEventEntity
         TestResultEntity::class,
         EventTestCrossRef::class,
         UserEntity::class,
-        PendingTestEntryEntity::class,
         RecommendationCategoryEntity::class,
         RecommendationTestCrossRef::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = true
 )
 @ColumnTypeConverters(Converters::class)
@@ -52,11 +49,56 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun standardsDao(): StandardsDao
     abstract fun testingDao(): TestingDao
     abstract fun userDao(): UserDao
-    abstract fun pendingTestEntryDao(): PendingTestEntryDao
     abstract fun backupDao(): BackupDao
     abstract fun recommendationDao(): RecommendationDao
 
     companion object {
+        /**
+         * Migration 15 → 16: drops `pending_test_entries` and the three unused
+         * security-question columns on `users`.
+         *
+         * `pending_test_entries` was never written to — staged stopwatch scores live in
+         * StopwatchUiState — so dropping it cannot lose coach data. The `users` columns
+         * were only ever populated by the removed ResetPassword flow; OnboardingUseCase
+         * has always passed null for both.
+         */
+        val MIGRATION_15_16 = object : androidx.room3.migration.Migration(15, 16) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("DROP INDEX IF EXISTS `index_pending_test_entries_eventId`")
+                connection.execSQL("DROP TABLE IF EXISTS `pending_test_entries`")
+
+                // Table rebuild rather than ALTER TABLE ... DROP COLUMN: the rebuild is the
+                // portable form across every SQLite the app can run on, and it lets the
+                // recreated table match the exported schema exactly.
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `users_new` (
+                        `id` TEXT NOT NULL,
+                        `firstName` TEXT NOT NULL,
+                        `lastName` TEXT NOT NULL,
+                        `username` TEXT NOT NULL,
+                        `email` TEXT,
+                        `passwordHash` BLOB NOT NULL,
+                        `passwordSalt` BLOB NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+                connection.execSQL(
+                    """
+                    INSERT INTO `users_new` (id, firstName, lastName, username, email, passwordHash, passwordSalt, createdAt)
+                    SELECT id, firstName, lastName, username, email, passwordHash, passwordSalt, createdAt FROM `users`
+                    """.trimIndent()
+                )
+                connection.execSQL("DROP TABLE `users`")
+                connection.execSQL("ALTER TABLE `users_new` RENAME TO `users`")
+                connection.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_users_username` ON `users` (`username`)"
+                )
+            }
+        }
+
         /**
          * Migration 14 → 15: Ensures composite indices on test_results exist for fast query performance.
          */
@@ -139,7 +181,7 @@ abstract class AppDatabase : RoomDatabase() {
          *
          * Deliberately does NOT drop `securityQuestion`/`securityAnswerHash`/`securityAnswerSalt`
          * — those columns are already nullable and simply stop being written to by the new
-         * onboarding path. Physically dropping them is out of scope here (planned separately).
+         * onboarding path. [MIGRATION_15_16] is where they are physically dropped.
          */
         val MIGRATION_10_11 = object : androidx.room3.migration.Migration(10, 11) {
             override suspend fun migrate(connection: SQLiteConnection) {

@@ -68,7 +68,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vamshi.field.domain.usecase.testing.AthleteRadarData
-import com.vamshi.field.domain.usecase.testing.RadarAxisScore
 import com.vamshi.field.ui.theme.AquaCyan
 import com.vamshi.field.ui.theme.ElectricBlue
 import com.vamshi.field.ui.theme.PerformanceGreenText

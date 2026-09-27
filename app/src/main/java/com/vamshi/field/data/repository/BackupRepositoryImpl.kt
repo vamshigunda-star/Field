@@ -107,9 +107,6 @@ class BackupRepositoryImpl @Inject constructor(
                     username = it.username,
                     passwordHash = android.util.Base64.encodeToString(it.passwordHash, android.util.Base64.NO_WRAP),
                     passwordSalt = android.util.Base64.encodeToString(it.passwordSalt, android.util.Base64.NO_WRAP),
-                    securityQuestion = it.securityQuestion,
-                    securityAnswerHash = it.securityAnswerHash?.let { h -> android.util.Base64.encodeToString(h, android.util.Base64.NO_WRAP) },
-                    securityAnswerSalt = it.securityAnswerSalt?.let { s -> android.util.Base64.encodeToString(s, android.util.Base64.NO_WRAP) },
                     email = it.email,
                     createdAt = it.createdAt
                 )
@@ -230,9 +227,6 @@ class BackupRepositoryImpl @Inject constructor(
                 email = it.email,
                 passwordHash = android.util.Base64.decode(it.passwordHash, android.util.Base64.NO_WRAP),
                 passwordSalt = android.util.Base64.decode(it.passwordSalt, android.util.Base64.NO_WRAP),
-                securityQuestion = it.securityQuestion,
-                securityAnswerHash = it.securityAnswerHash?.let { h -> android.util.Base64.decode(h, android.util.Base64.NO_WRAP) },
-                securityAnswerSalt = it.securityAnswerSalt?.let { s -> android.util.Base64.decode(s, android.util.Base64.NO_WRAP) },
                 createdAt = it.createdAt
             )
         }

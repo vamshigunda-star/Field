@@ -129,12 +129,8 @@ To change the app's colors, modify the Hex values here and rebuild the app.
 | DynamicOrange | #FFFF5E00 |
 | AquaCyan | #00D1FF |
 | NavyVariant | #1B263B |
-| NavyPrimary | #0052FF |
 | SportBlue | #0052FF |
-| VibrantBlue | #0052FF |
-| BlueAccent | #00D1FF |
 | SportOrange | #FFFF5E00 |
-| SportOrangeVariant | #E65100 |
 | SportOrangeContainer | #FFF4EC |
 | PeachIconBg | #F6D0C0 |
 | BlueIconBg | #C7D7FF |

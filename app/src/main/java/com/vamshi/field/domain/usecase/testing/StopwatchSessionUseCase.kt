@@ -2,7 +2,6 @@ package com.vamshi.field.domain.usecase.testing
 
 import com.vamshi.field.domain.model.people.Individual
 import com.vamshi.field.domain.model.standards.FitnessTest
-import com.vamshi.field.domain.model.standards.TimingMode
 import com.vamshi.field.domain.repository.StandardsRepository
 import com.vamshi.field.domain.repository.TestingRepository
 import javax.inject.Inject

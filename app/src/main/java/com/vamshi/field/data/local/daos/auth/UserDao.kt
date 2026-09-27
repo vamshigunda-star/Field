@@ -54,13 +54,4 @@ interface UserDao {
      */
     @Query("SELECT * FROM users ORDER BY createdAt DESC")
     suspend fun getAll(): List<UserEntity>
-
-    /**
-     * Updates the password credentials for an existing user during a
-     * password reset operation.
-     */
-    @Query(
-        "UPDATE users SET passwordHash = :hash, passwordSalt = :salt WHERE id = :id"
-    )
-    suspend fun updatePasswordHash(id: String, hash: ByteArray, salt: ByteArray)
 }

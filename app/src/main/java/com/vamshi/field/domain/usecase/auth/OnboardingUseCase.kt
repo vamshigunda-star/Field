@@ -54,9 +54,7 @@ class OnboardingUseCase @Inject constructor(
             lastName = "",
             username = username,
             password = password,
-            email = email?.trim()?.ifBlank { null },
-            securityQuestion = null,
-            securityAnswer = null
+            email = email?.trim()?.ifBlank { null }
         )
     }
 }
