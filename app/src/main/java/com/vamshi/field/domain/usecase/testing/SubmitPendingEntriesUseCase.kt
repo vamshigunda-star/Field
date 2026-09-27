@@ -1,6 +1,7 @@
 package com.vamshi.field.domain.usecase.testing
 
-import android.util.Log
+import com.vamshi.field.domain.logging.AppLogger
+import com.vamshi.field.domain.logging.NoOpAppLogger
 import com.vamshi.field.domain.repository.PendingTestEntryRepository
 import com.vamshi.field.domain.repository.PeopleRepository
 import kotlinx.coroutines.NonCancellable
@@ -22,14 +23,13 @@ import javax.inject.Inject
 class SubmitPendingEntriesUseCase @Inject constructor(
     private val pendingRepository: PendingTestEntryRepository,
     private val peopleRepository: PeopleRepository,
-    private val recordTestResult: RecordTestResultUseCase
+    private val recordTestResult: RecordTestResultUseCase,
+    private val logger: AppLogger = NoOpAppLogger
 ) {
     suspend operator fun invoke(eventId: String): Result<Int> = withContext(NonCancellable) {
         try {
             val pending = pendingRepository.getPendingForEvent(eventId)
-            Log.d("SubmitPending", "begin flush eventId=$eventId pending=${pending.size}")
             var written = 0
-            var skippedMissingAthlete = 0
             for (entry in pending) {
                 val athlete = peopleRepository.getIndividualById(entry.individualId)
                 if (athlete == null) {
@@ -37,12 +37,11 @@ class SubmitPendingEntriesUseCase @Inject constructor(
                     // pending entity has no FK to individuals (only to events), so this
                     // is reachable. Drop the orphan and warn — silently leaving it
                     // means the grid permanently shows a stale pending cell.
-                    Log.w(
+                    logger.warn(
                         "SubmitPending",
                         "Dropping orphan pending entry: individualId=${entry.individualId} testId=${entry.testId} (athlete not found)"
                     )
                     pendingRepository.delete(eventId, entry.individualId, entry.testId)
-                    skippedMissingAthlete++
                     continue
                 }
                 val ageMillis = System.currentTimeMillis() - athlete.dateOfBirth
@@ -58,13 +57,9 @@ class SubmitPendingEntriesUseCase @Inject constructor(
                 pendingRepository.delete(eventId, entry.individualId, entry.testId)
                 written++
             }
-            Log.d(
-                "SubmitPending",
-                "flush complete eventId=$eventId written=$written droppedOrphans=$skippedMissingAthlete"
-            )
             Result.success(written)
         } catch (e: Exception) {
-            Log.e("SubmitPending", "flush FAILED eventId=$eventId", e)
+            logger.error("SubmitPending", "flush FAILED eventId=$eventId", e)
             Result.failure(e)
         }
     }

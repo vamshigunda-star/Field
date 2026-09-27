@@ -1,6 +1,7 @@
 package com.vamshi.field.domain.usecase.testing
 
-import android.util.Log
+import com.vamshi.field.domain.logging.AppLogger
+import com.vamshi.field.domain.logging.NoOpAppLogger
 import com.vamshi.field.domain.model.standards.FitnessTest
 import com.vamshi.field.domain.model.standards.RadarAxis
 import com.vamshi.field.domain.repository.StandardsRepository
@@ -35,7 +36,8 @@ data class AthleteRadarData(
 
 class GetAthleteRadarDataUseCase @Inject constructor(
     private val testingRepository: TestingRepository,
-    private val standardsRepository: StandardsRepository
+    private val standardsRepository: StandardsRepository,
+    private val logger: AppLogger = NoOpAppLogger
 ) {
     /**
      * Builds the radar-chart payload for a single athlete.
@@ -69,13 +71,12 @@ class GetAthleteRadarDataUseCase @Inject constructor(
         for (result in latestResults) {
             val test = testMap[result.testId]
             if (test == null) {
-                Log.w("GetAthleteRadarData", "Test not found: ${result.testId}")
+                logger.warn("GetAthleteRadarData", "Test not found: ${result.testId}")
                 continue
             }
             val percentile = result.percentile
             if (percentile == null) {
                 // Result exists but no norm matched — don't penalise the average.
-                Log.d("GetAthleteRadarData", "Skipping result ${result.id} (no percentile)")
                 continue
             }
             // Check if test belongs to a known category
@@ -102,8 +103,6 @@ class GetAthleteRadarDataUseCase @Inject constructor(
                 categoryId = category.id
             )
         }
-
-        Log.d("GetAthleteRadarData", "Athlete=$individualId spokes=${axisScores.size} scored=${axisScores.count { it.testCount > 0 }}")
 
         AthleteRadarData(
             individualId = individualId,

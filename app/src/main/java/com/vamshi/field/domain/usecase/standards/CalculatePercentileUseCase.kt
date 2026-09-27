@@ -1,6 +1,7 @@
 package com.vamshi.field.domain.usecase.standards
 
-import android.util.Log
+import com.vamshi.field.domain.logging.AppLogger
+import com.vamshi.field.domain.logging.NoOpAppLogger
 import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.domain.repository.StandardsRepository
 import javax.inject.Inject
@@ -14,7 +15,8 @@ data class PercentileResult(
 )
 
 class CalculatePercentileUseCase @Inject constructor(
-    private val repository: StandardsRepository
+    private val repository: StandardsRepository,
+    private val logger: AppLogger = NoOpAppLogger
 ) {
     suspend operator fun invoke(
         testId: String,
@@ -84,7 +86,7 @@ class CalculatePercentileUseCase @Inject constructor(
             }
         }
 
-        Log.w(
+        logger.warn(
             "CalculatePercentile",
             "No norm match: testId=$testId sex=$sex age=$age score=$rawScore"
         )
