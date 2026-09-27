@@ -25,6 +25,11 @@ import javax.inject.Inject
  * This ViewModel is consumed by [com.vamshi.field.ui.navigation.ALearningNavGraph]
  * to determine the [NavHost] start destination. Once the destination is resolved the
  * [NavHost] takes over and this ViewModel is not observed further.
+ *
+ * Resolution is bounded twice over — by [RESOLUTION_TIMEOUT_MS] and by a catch-all — and both
+ * failure paths fall back to onboarding. The gate can therefore never strand the app on
+ * [AuthGateState.Loading], which is what keeps a slow or corrupt database from looking like a
+ * permanent hang. `AuthGateViewModelTest` asserts all three exits.
  */
 sealed interface AuthGateState {
     data object Loading : AuthGateState
@@ -43,34 +48,34 @@ class AuthGateViewModel @Inject constructor(
     val state: StateFlow<AuthGateState> = _state.asStateFlow()
 
     init {
-        Log.e("AuthGateViewModel", "Init started")
         viewModelScope.launch {
             try {
-                Log.e("AuthGateViewModel", "Resolving auth state...")
-                val result = withTimeoutOrNull(5000) {
+                val result = withTimeoutOrNull(RESOLUTION_TIMEOUT_MS) {
                     val currentId = sessionManager.currentUserIdOnce()
-                    Log.e("AuthGateViewModel", "currentUserIdOnce: $currentId")
                     if (currentId != null) {
                         AuthGateState.Authenticated
+                    } else if (authRepository.userCount() == 0) {
+                        AuthGateState.UnauthenticatedNoUsers
                     } else {
-                        val count = authRepository.userCount()
-                        Log.e("AuthGateViewModel", "userCount: $count")
-                        if (count == 0) AuthGateState.UnauthenticatedNoUsers
-                        else AuthGateState.UnauthenticatedHasUsers
+                        AuthGateState.UnauthenticatedHasUsers
                     }
                 }
-                
+
                 if (result == null) {
-                    Log.w("AuthGateViewModel", "Auth resolution timed out. Falling back to UnauthenticatedNoUsers.")
+                    Log.w(TAG, "Auth resolution timed out after ${RESOLUTION_TIMEOUT_MS}ms; falling back to onboarding.")
                     _state.value = AuthGateState.UnauthenticatedNoUsers
                 } else {
-                    Log.e("AuthGateViewModel", "Resolved to: $result")
                     _state.value = result
                 }
             } catch (e: Exception) {
-                Log.e("AuthGateViewModel", "Error resolving auth state", e)
+                Log.e(TAG, "Error resolving auth state", e)
                 _state.value = AuthGateState.UnauthenticatedNoUsers
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "AuthGateViewModel"
+        const val RESOLUTION_TIMEOUT_MS = 5_000L
     }
 }

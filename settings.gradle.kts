@@ -20,3 +20,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Field"
 include(":app")
+include(":baselineprofile")

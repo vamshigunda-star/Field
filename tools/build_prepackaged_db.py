@@ -10,6 +10,18 @@ ASSETS_DIR = r"c:\Users\APF\AndroidStudioProjects\Alearning\app\src\main\assets"
 DB_DIR = os.path.join(ASSETS_DIR, "database")
 DB_PATH = os.path.join(DB_DIR, "alearning.db")
 
+# Stamped into `catalog_metadata` so a fresh install can tell that the catalog shipped inside
+# this database is already current and skip re-importing the CSVs at startup. Must match
+# SeedDataManager.CATALOG_VERSION -- bump both together whenever the CSVs change, or the app
+# will fall back to parsing the CSVs on every first launch (correct data, ~5.5s slower).
+CATALOG_VERSION = "v31"
+
+# Must match app/schemas/com.vamshi.field.data.AppDatabase/<ROOM_SCHEMA_VERSION>.json. Room
+# refuses to open a prepackaged database whose identity hash disagrees with the compiled
+# schema, so both values below have to be refreshed together whenever the schema changes.
+ROOM_SCHEMA_VERSION = 17
+ROOM_IDENTITY_HASH = "07d547486e7cae323e90278a671e827e"
+
 os.makedirs(DB_DIR, exist_ok=True)
 if os.path.exists(DB_PATH):
     os.remove(DB_PATH)
@@ -63,8 +75,9 @@ schema_statements = [
     "CREATE TABLE IF NOT EXISTS `recommendation_categories` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `icon` TEXT, `scope` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`id`))",
     "CREATE TABLE IF NOT EXISTS `recommendation_test_cross_ref` (`recommendationCategoryId` TEXT NOT NULL, `testId` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `required` INTEGER NOT NULL, PRIMARY KEY(`recommendationCategoryId`, `testId`), FOREIGN KEY(`recommendationCategoryId`) REFERENCES `recommendation_categories`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`testId`) REFERENCES `fitness_tests`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
     "CREATE INDEX IF NOT EXISTS `index_recommendation_test_cross_ref_testId` ON `recommendation_test_cross_ref` (`testId`)",
+    "CREATE TABLE IF NOT EXISTS `catalog_metadata` (`metaKey` TEXT NOT NULL, `metaValue` TEXT NOT NULL, PRIMARY KEY(`metaKey`))",
     "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-    "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a9843c2fe2c17645147eefebc56051b4')"
+    f"INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '{ROOM_IDENTITY_HASH}')"
 ]
 
 for stmt in schema_statements:
@@ -234,8 +247,13 @@ for i in range(10):
                 (str(uuid.uuid4()), event_id, athlete_id, t_id, final_score, pct, cls, event_date)
             )
 
+cursor.execute(
+    "INSERT OR REPLACE INTO catalog_metadata (metaKey, metaValue) VALUES (?, ?)",
+    ("catalog_version", CATALOG_VERSION),
+)
+
 conn.commit()
-cursor.execute("PRAGMA user_version = 16")
+cursor.execute(f"PRAGMA user_version = {ROOM_SCHEMA_VERSION}")
 conn.commit()
 cursor.execute("VACUUM")
 conn.close()

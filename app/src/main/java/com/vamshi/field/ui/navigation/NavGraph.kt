@@ -1,20 +1,26 @@
 package com.vamshi.field.ui.navigation
 
-import android.util.Log
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -51,17 +57,27 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
     // While the auth gate is resolving, show a full-screen spinner so we never
     // briefly flash the wrong destination.
     if (authGateState == AuthGateState.Loading) {
-        Log.d("ALearningNavGraph", "Auth gate is loading...")
         Box(
             modifier = modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator()
+            // Labelled rather than a bare spinner: a cold start can take several seconds on
+            // first launch while the catalog seeds, and an unlabelled indicator reads as a hang.
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Loading your roster…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         return
     }
-
-    Log.d("ALearningNavGraph", "Auth gate resolved: $authGateState")
 
     val startDestination = when (authGateState) {
         AuthGateState.Authenticated -> Screen.Dashboard.route

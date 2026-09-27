@@ -16,6 +16,7 @@ import com.vamshi.field.data.local.entities.auth.UserEntity
 import com.vamshi.field.data.local.entities.people.GroupEntity
 import com.vamshi.field.data.local.entities.people.GroupMemberCrossRef
 import com.vamshi.field.data.local.entities.people.IndividualEntity
+import com.vamshi.field.data.local.entities.standards.CatalogMetadataEntity
 import com.vamshi.field.data.local.entities.standards.FitnessTestEntity
 import com.vamshi.field.data.local.entities.standards.NormReferenceEntity
 import com.vamshi.field.data.local.entities.standards.RecommendationCategoryEntity
@@ -38,9 +39,10 @@ import com.vamshi.field.data.local.entities.testing.TestingEventEntity
         EventTestCrossRef::class,
         UserEntity::class,
         RecommendationCategoryEntity::class,
-        RecommendationTestCrossRef::class
+        RecommendationTestCrossRef::class,
+        CatalogMetadataEntity::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = true
 )
 @ColumnTypeConverters(Converters::class)
@@ -53,6 +55,30 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recommendationDao(): RecommendationDao
 
     companion object {
+        /**
+         * Migration 16 → 17: adds `catalog_metadata`, the stamp that lets a fresh install
+         * recognise the prepackaged catalog as current and skip re-importing the CSVs.
+         *
+         * Creates the table empty and backfills nothing. An existing install therefore reads a
+         * null stamp on its next launch, fails the "already current" check, and runs the CSV
+         * import exactly as it does today — which is correct, because its catalog came from
+         * whatever CSVs shipped with the build that seeded it, not from this build's asset.
+         * Only databases newly created from the prepackaged asset carry a stamp.
+         */
+        val MIGRATION_16_17 = object : androidx.room3.migration.Migration(16, 17) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `catalog_metadata` (
+                        `metaKey` TEXT NOT NULL,
+                        `metaValue` TEXT NOT NULL,
+                        PRIMARY KEY(`metaKey`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         /**
          * Migration 15 → 16: drops `pending_test_entries` and the three unused
          * security-question columns on `users`.

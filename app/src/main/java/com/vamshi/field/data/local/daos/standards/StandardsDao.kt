@@ -186,4 +186,11 @@ interface StandardsDao {
             insertNorms(chunk)
         }
     }
+
+    // --- CATALOG STAMP ---
+    // Null for any install that predates the prepackaged stamp, or whose database was built
+    // by an older run of tools/build_prepackaged_db.py. Callers must treat null as "unknown,
+    // so seed".
+    @Query("SELECT metaValue FROM catalog_metadata WHERE metaKey = :key LIMIT 1")
+    suspend fun getCatalogMetadata(key: String): String?
 }

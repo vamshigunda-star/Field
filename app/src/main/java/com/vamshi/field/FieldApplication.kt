@@ -1,7 +1,6 @@
 package com.vamshi.field
 
 import android.app.Application
-import android.util.Log
 import com.vamshi.field.data.seed.SeedDataManager
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -18,9 +17,7 @@ class FieldApplication : Application() {
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
-        Log.e("FieldApplication", "onCreate started")
         super.onCreate()
-        Log.e("FieldApplication", "super.onCreate finished")
         applicationScope.launch {
             seedDataManager.seedIfNeeded()
         }

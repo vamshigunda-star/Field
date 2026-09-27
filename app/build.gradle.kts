@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.hilt.android)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 kotlin {
@@ -66,6 +67,17 @@ android {
     }
 }
 
+// The catalog tests (TestCatalogCapturePathTest, SeedNormsConsistencyTest) read the seed CSVs
+// straight off the source tree rather than through Android assets, so Gradle cannot infer that
+// they depend on them. Without this, editing norms.csv leaves the test task UP-TO-DATE and the
+// suite reports success in two seconds without running a single assertion — the one change type
+// these tests exist to guard.
+tasks.withType<Test>().configureEach {
+    inputs.dir(layout.projectDirectory.dir("src/main/assets"))
+        .withPropertyName("seedCatalogAssets")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 dependencies {
     constraints {
         // room3-testing's MigrationTestHelper deserializes the exported schema JSON with
@@ -108,6 +120,11 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.gson)
     implementation(libs.coil.compose)
+    // Installs the baseline profile in app/src/main/baseline-prof.txt on API 28+ so the
+    // startup path is AOT-compiled on first run instead of interpreted.
+    implementation(libs.androidx.profileinstaller)
+    // Generates app/src/main/generated/baselineProfiles from :baselineprofile.
+    baselineProfile(project(":baselineprofile"))
     ksp(libs.hilt.android.compiler)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)

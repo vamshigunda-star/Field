@@ -175,6 +175,53 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 16 → 17 adds `catalog_metadata`, the stamp a fresh install uses to skip CSV seeding.
+     *
+     * The assertion that matters is that the table arrives **empty** on an upgrade. An
+     * existing install's catalog came from whatever CSVs seeded it, not from this build's
+     * prepackaged asset, so it must read a null stamp, fail SeedDataManager's
+     * "already current" check, and still run the CSV import. A migration that helpfully
+     * backfilled the current version here would strand every upgrading coach on a stale
+     * catalog — no percentile correction would ever reach them again.
+     */
+    @Test
+    fun migrate16To17_addsCatalogMetadata_emptySoUpgradesStillSeed() = runBlocking {
+        helper.createDatabase(16).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO test_categories (id, name, description, sortOrder, radarAxis, createdAt, updatedAt, isDeleted, source)
+                VALUES ('cat_cardio', 'Cardiorespiratory Endurance', NULL, 1, 'ENDURANCE', 0, 0, 0, 'SEED')
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(17, listOf(AppDatabase.MIGRATION_16_17)).use { db ->
+            assertEquals(
+                1,
+                db.selectSingleLong(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'catalog_metadata'"
+                ).toInt()
+            )
+            // No stamp on an upgraded database — this is what keeps CSV seeding running.
+            assertEquals(0, db.selectSingleLong("SELECT COUNT(*) FROM catalog_metadata").toInt())
+            // And the existing catalog row survives the migration untouched.
+            assertEquals(
+                "SEED",
+                db.selectSingleText("SELECT source FROM test_categories WHERE id = 'cat_cardio'")
+            )
+        }
+    }
+
+    /** An empty v16 database must still migrate cleanly — the fresh-install-then-update path. */
+    @Test
+    fun migrate16To17_onEmptyDatabase_validatesSchema() = runBlocking {
+        helper.createDatabase(16).use { /* no rows */ }
+        helper.runMigrationsAndValidate(17, listOf(AppDatabase.MIGRATION_16_17)).use { db ->
+            assertEquals(0, db.selectSingleLong("SELECT COUNT(*) FROM catalog_metadata").toInt())
+        }
+    }
+
     private fun SQLiteConnection.selectSingleText(sql: String): String? =
         prepare(sql).use { stmt -> if (stmt.step()) stmt.getText(0) else null }
 

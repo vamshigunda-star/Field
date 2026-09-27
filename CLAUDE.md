@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Field** is an offline-first fitness testing and performance tracking app for coaches and fitness professionals.
 **Primary user:** A single coach managing multiple athlete groups.
 **Platform:** Android (Kotlin, Jetpack Compose, Material 3).
-**Data:** Fully offline. Room database (Current Version: 16).
+**Data:** Fully offline. Room database (Current Version: 17).
 
 ---
 
@@ -39,8 +39,21 @@ Presentation (ui/) → Domain (domain/) ← Data (data/)
 ---
 
 ## Database & Seeding
-- **Version:** Room database is currently at **Version 16**.
-- **Seeding:** The DB ships prepackaged (`createFromAsset("database/alearning.db")`, built by `tools/build_prepackaged_db.py` from the CSVs in `assets/`). `SeedDataManager` then tops up from those CSVs unless the prepackaged catalog is already present.
+- **Version:** Room database is currently at **Version 17**.
+- **Seeding:** The DB ships prepackaged (`createFromAsset("database/alearning.db")`, built by `tools/build_prepackaged_db.py` from the CSVs in `assets/`). `SeedDataManager` then tops up from those CSVs unless the prepackaged catalog is already current.
+- **Catalog stamp:** the build script writes its catalog generation into `catalog_metadata`
+  (`catalog_version` → e.g. `v30`), and `SeedDataManager` skips the CSV import outright when that
+  stamp matches `SeedDataManager.CATALOG_VERSION`. This is what makes a fresh install fast: the
+  asset and the CSVs are generated from the same source at build time, so importing them again
+  rewrites ~2.4k identical norm rows. Skipping it cut first launch from 13.6s to 6.2s.
+  **Bump `CATALOG_VERSION` in `SeedDataManager` and `build_prepackaged_db.py` together** whenever
+  the CSVs change. A mismatch is safe — it just falls back to CSV seeding — but a stale match is
+  not, so never leave the script behind.
+- **Prepackaged schema:** `build_prepackaged_db.py` hardcodes `ROOM_SCHEMA_VERSION` and
+  `ROOM_IDENTITY_HASH`, which must match `app/schemas/com.vamshi.field.data.AppDatabase/<n>.json`.
+  Room refuses to open an asset whose identity hash disagrees with the compiled schema, so any
+  schema change means: build once to export the new JSON, copy its `identityHash` into the script,
+  then regenerate.
 - **Seed Flag:** Guarded by a versioned SharedPreferences key (`KEY_SEEDED_VERSION` in `SeedDataManager`, currently `data_seeded_version_v30`).
 - **Reseeding is safe:** bumping the seed key re-imports the catalog by upserting `test_categories`/`fitness_tests` and wholesale-replacing `norm_references` and the recommendation tables. It must NEVER delete user-generated data (`testing_events`, `test_results`, `event_test_cross_ref`, athletes, groups).
 

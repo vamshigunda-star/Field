@@ -1,6 +1,7 @@
 package com.vamshi.field.domain.usecase.testing
 
-import android.util.Log
+import com.vamshi.field.domain.logging.AppLogger
+import com.vamshi.field.domain.logging.NoOpAppLogger
 import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.domain.model.standards.InterpretationStrategy
 import com.vamshi.field.domain.model.testing.CaptureMethod
@@ -14,7 +15,8 @@ import javax.inject.Inject
 class RecordTestResultUseCase @Inject constructor(
     private val repository: TestingRepository,
     private val calculatePercentile: CalculatePercentileUseCase,
-    private val standardsRepository: StandardsRepository
+    private val standardsRepository: StandardsRepository,
+    private val logger: AppLogger = NoOpAppLogger
 ) {
     suspend operator fun invoke(
         eventId: String,
@@ -30,7 +32,7 @@ class RecordTestResultUseCase @Inject constructor(
             // FK on test_results.testId would reject a save anyway, but a missing
             // test here also means we have no isHigherBetter / interpretation hint.
             // Loud warning so it shows up in logcat instead of failing opaquely on insert.
-            Log.w("RecordTestResult", "Unknown testId=$testId — proceeding without interpretation")
+            logger.warn("RecordTestResult", "Unknown testId=$testId — proceeding without interpretation")
         } else {
             if (test.validMin != null && rawScore < test.validMin) {
                 throw IllegalArgumentException("Score $rawScore is below minimum valid value (${test.validMin}) for ${test.name}")
@@ -68,17 +70,13 @@ class RecordTestResultUseCase @Inject constructor(
             // FK violation, IO failure, etc. Log loudly so submit-loop callers can
             // correlate which (event, athlete, test) failed instead of seeing a bare
             // "Submit failed" toast.
-            Log.e(
+            logger.error(
                 "RecordTestResult",
                 "saveResult FAILED eventId=$eventId individualId=$individualId testId=$testId rawScore=$rawScore",
                 e
             )
             throw e
         }
-        Log.d(
-            "RecordTestResult",
-            "saved id=${result.id} event=$eventId athlete=$individualId test=$testId score=$rawScore pct=${result.percentile}"
-        )
         return result
     }
 }

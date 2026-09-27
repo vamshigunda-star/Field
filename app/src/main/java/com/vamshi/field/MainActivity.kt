@@ -1,7 +1,6 @@
 package com.vamshi.field
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,19 +18,15 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        Log.e("MainActivity", "onCreate started")
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        Log.e("MainActivity", "super.onCreate finished")
         enableEdgeToEdge()
         setContent {
-            Log.e("MainActivity", "setContent started")
             FieldTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Log.e("MainActivity", "Surface composed")
                     val navController = rememberNavController()
                     AdaptiveNavigationWrapper(navController = navController) { modifier ->
                         ALearningNavGraph(

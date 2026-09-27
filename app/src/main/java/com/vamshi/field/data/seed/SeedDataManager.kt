@@ -40,7 +40,16 @@ class SeedDataManager @Inject constructor(
         // v30: norms re-encoded so "Needs Improvement" carries a percentile below the Healthy
         // threshold (was 40, which classified as Healthy), top bracket extended to 115, and
         // duplicate legacy age bands removed from wall-sit and shoulder-flexibility.
-        private const val KEY_SEEDED_VERSION = "data_seeded_version_v30"
+        private const val KEY_SEEDED_VERSION = "data_seeded_version_v31"
+
+        // The catalog generation this build expects. Must match the value that
+        // tools/build_prepackaged_db.py stamps into `catalog_metadata`, and must be bumped in
+        // both places together whenever the CSVs change. Getting it wrong is safe in one
+        // direction only: a stamp that does not match simply falls through to the CSV import,
+        // which is today's behaviour. A stamp that matches a catalog it should not would keep
+        // a stale catalog, so bump the script whenever you bump this.
+        private const val CATALOG_VERSION = "v31"
+        private const val KEY_CATALOG_VERSION = "catalog_version"
 
         // One-shot, and deliberately NOT versioned like [KEY_SEEDED_VERSION]. The demo roster
         // is a first-run convenience, not catalog data: it must be offered exactly once per
@@ -64,7 +73,16 @@ class SeedDataManager @Inject constructor(
             val normCount = try { database.standardsDao().getNormCount() } catch (_: Exception) { 0 }
             val athleteCount = try { database.peopleDao().getIndividualCount() } catch (_: Exception) { 0 }
 
-            Log.d(TAG, "seedIfNeeded: isAlreadySeeded=$isAlreadySeeded, testCount=$testCount, normCount=$normCount, athleteCount=$athleteCount")
+            // Null on any database that was not created from a stamped prepackaged asset —
+            // including every install that upgraded into the catalog_metadata table.
+            val stampedCatalogVersion = try {
+                database.standardsDao().getCatalogMetadata(KEY_CATALOG_VERSION)
+            } catch (_: Exception) {
+                null
+            }
+            val prepackagedCatalogIsCurrent = stampedCatalogVersion == CATALOG_VERSION
+
+            Log.d(TAG, "seedIfNeeded: isAlreadySeeded=$isAlreadySeeded, stampedCatalog=$stampedCatalogVersion, testCount=$testCount, normCount=$normCount, athleteCount=$athleteCount")
 
             // Fast path: this build's catalog has already been applied, so the CSV import
             // would rebuild byte-identical data. Two distinct questions, deliberately not
@@ -85,8 +103,29 @@ class SeedDataManager @Inject constructor(
             // fail this guard, fall through to step 3, and resurrect all five demo athletes plus
             // their groups, events and results on the next launch. Step 3 carries its own
             // `currentAthleteCount == 0` check, so nothing here needs to repeat it.
-            if (isAlreadySeeded && normCount > 0 && testCount > 0) {
-                Log.d(TAG, "Catalog already seeded for this version: $testCount tests, $normCount norms. Skipping runtime CSV seeding.")
+            // A fresh install reaches this with isAlreadySeeded = false, because the flag can
+            // only be set by the very CSV import being avoided. The stamp is the second way in:
+            // Room's createFromAsset populated this database from an asset that
+            // tools/build_prepackaged_db.py generated from these same CSVs at build time, so a
+            // matching stamp means the catalog is current by construction and the import would
+            // rewrite identical rows.
+            if ((isAlreadySeeded || prepackagedCatalogIsCurrent) && normCount > 0 && testCount > 0) {
+                if (!isAlreadySeeded) {
+                    Log.d(TAG, "Prepackaged catalog is current ($stampedCatalogVersion): $testCount tests, $normCount norms. Skipping CSV seeding entirely.")
+                    // Record both answers so later launches short-circuit on the flag alone.
+                    //
+                    // KEY_DEMO_DATA_SEEDED is settled here because the prepackaged asset ships
+                    // the demo roster, so the question "has this install been offered demo
+                    // data?" is already answered yes. Without this, a coach who deletes the demo
+                    // athletes and then receives a catalog update would fall through to step 3
+                    // with an empty roster and have all five resurrected.
+                    prefs.edit()
+                        .putBoolean(KEY_SEEDED_VERSION, true)
+                        .putBoolean(KEY_DEMO_DATA_SEEDED, true)
+                        .apply()
+                } else {
+                    Log.d(TAG, "Catalog already seeded for this version: $testCount tests, $normCount norms. Skipping runtime CSV seeding.")
+                }
                 return
             }
 

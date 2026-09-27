@@ -119,7 +119,7 @@ test_curl_up,Default,MALE,60,69,25,75,90,Superior
 test_curl_up,Default,FEMALE,60,69,0,6,20,Needs Improvement
 test_curl_up,Default,FEMALE,60,69,7,22,60,Healthy Fitness Zone
 test_curl_up,Default,FEMALE,60,69,23,75,90,Superior
-test_cooper_12_min_run,Default,MALE,20,29,0,2099 m,20,Needs Improvement
+test_cooper_12_min_run,Default,MALE,20,29,0,2099,20,Needs Improvement
 test_cooper_12_min_run,Default,MALE,20,29,2100,2799,60,Healthy Fitness Zone
 test_cooper_12_min_run,Default,MALE,20,29,2800,5000,90,Superior
 test_cooper_12_min_run,Default,FEMALE,20,29,0,1699,20,Needs Improvement
@@ -460,36 +460,36 @@ test_shuttle_run,Default,MALE,63,115,16,21,90,Superior
 test_shuttle_run,Default,FEMALE,63,115,27.01,60,20,Needs Improvement
 test_shuttle_run,Default,FEMALE,63,115,22.01,27,60,Healthy Fitness Zone
 test_shuttle_run,Default,FEMALE,63,115,17,22,90,Superior
-test_1_5_mile_run,Default,MALE,5,12,901,2000,20,Needs Improvement
-test_1_5_mile_run,Default,MALE,5,12,661,900,60,Healthy Fitness Zone
-test_1_5_mile_run,Default,MALE,5,12,300,660,90,Superior
-test_1_5_mile_run,Default,FEMALE,5,12,961,2000,20,Needs Improvement
-test_1_5_mile_run,Default,FEMALE,5,12,721,960,60,Healthy Fitness Zone
-test_1_5_mile_run,Default,FEMALE,5,12,330,720,90,Superior
-test_1_5_mile_run,Default,MALE,13,19,841,2000,20,Needs Improvement
-test_1_5_mile_run,Default,MALE,13,19,601,840,60,Healthy Fitness Zone
-test_1_5_mile_run,Default,MALE,13,19,280,600,90,Superior
-test_1_5_mile_run,Default,FEMALE,13,19,901,2000,20,Needs Improvement
-test_1_5_mile_run,Default,FEMALE,13,19,661,900,60,Healthy Fitness Zone
-test_1_5_mile_run,Default,FEMALE,13,19,300,660,90,Superior
-test_1_5_mile_run,Default,MALE,20,40,781,2000,20,Needs Improvement
-test_1_5_mile_run,Default,MALE,20,40,541,780,60,Healthy Fitness Zone
-test_1_5_mile_run,Default,MALE,20,40,240,540,90,Superior
-test_1_5_mile_run,Default,FEMALE,20,40,841,2000,20,Needs Improvement
-test_1_5_mile_run,Default,FEMALE,20,40,601,840,60,Healthy Fitness Zone
-test_1_5_mile_run,Default,FEMALE,20,40,270,600,90,Superior
-test_1_5_mile_run,Default,MALE,41,62,901,2000,20,Needs Improvement
-test_1_5_mile_run,Default,MALE,41,62,661,900,60,Healthy Fitness Zone
-test_1_5_mile_run,Default,MALE,41,62,300,660,90,Superior
-test_1_5_mile_run,Default,FEMALE,41,62,961,2000,20,Needs Improvement
-test_1_5_mile_run,Default,FEMALE,41,62,721,960,60,Healthy Fitness Zone
-test_1_5_mile_run,Default,FEMALE,41,62,330,720,90,Superior
-test_1_5_mile_run,Default,MALE,63,115,1021,2500,20,Needs Improvement
-test_1_5_mile_run,Default,MALE,63,115,781,1020,60,Healthy Fitness Zone
-test_1_5_mile_run,Default,MALE,63,115,360,780,90,Superior
-test_1_5_mile_run,Default,FEMALE,63,115,1081,2500,20,Needs Improvement
-test_1_5_mile_run,Default,FEMALE,63,115,841,1080,60,Healthy Fitness Zone
-test_1_5_mile_run,Default,FEMALE,63,115,390,840,90,Superior
+test_1.6_mile_run,Default,MALE,5,12,901,2000,20,Needs Improvement
+test_1.6_mile_run,Default,MALE,5,12,661,900,60,Healthy Fitness Zone
+test_1.6_mile_run,Default,MALE,5,12,300,660,90,Superior
+test_1.6_mile_run,Default,FEMALE,5,12,961,2000,20,Needs Improvement
+test_1.6_mile_run,Default,FEMALE,5,12,721,960,60,Healthy Fitness Zone
+test_1.6_mile_run,Default,FEMALE,5,12,330,720,90,Superior
+test_1.6_mile_run,Default,MALE,13,19,841,2000,20,Needs Improvement
+test_1.6_mile_run,Default,MALE,13,19,601,840,60,Healthy Fitness Zone
+test_1.6_mile_run,Default,MALE,13,19,280,600,90,Superior
+test_1.6_mile_run,Default,FEMALE,13,19,901,2000,20,Needs Improvement
+test_1.6_mile_run,Default,FEMALE,13,19,661,900,60,Healthy Fitness Zone
+test_1.6_mile_run,Default,FEMALE,13,19,300,660,90,Superior
+test_1.6_mile_run,Default,MALE,20,40,781,2000,20,Needs Improvement
+test_1.6_mile_run,Default,MALE,20,40,541,780,60,Healthy Fitness Zone
+test_1.6_mile_run,Default,MALE,20,40,240,540,90,Superior
+test_1.6_mile_run,Default,FEMALE,20,40,841,2000,20,Needs Improvement
+test_1.6_mile_run,Default,FEMALE,20,40,601,840,60,Healthy Fitness Zone
+test_1.6_mile_run,Default,FEMALE,20,40,270,600,90,Superior
+test_1.6_mile_run,Default,MALE,41,62,901,2000,20,Needs Improvement
+test_1.6_mile_run,Default,MALE,41,62,661,900,60,Healthy Fitness Zone
+test_1.6_mile_run,Default,MALE,41,62,300,660,90,Superior
+test_1.6_mile_run,Default,FEMALE,41,62,961,2000,20,Needs Improvement
+test_1.6_mile_run,Default,FEMALE,41,62,721,960,60,Healthy Fitness Zone
+test_1.6_mile_run,Default,FEMALE,41,62,330,720,90,Superior
+test_1.6_mile_run,Default,MALE,63,115,1021,2500,20,Needs Improvement
+test_1.6_mile_run,Default,MALE,63,115,781,1020,60,Healthy Fitness Zone
+test_1.6_mile_run,Default,MALE,63,115,360,780,90,Superior
+test_1.6_mile_run,Default,FEMALE,63,115,1081,2500,20,Needs Improvement
+test_1.6_mile_run,Default,FEMALE,63,115,841,1080,60,Healthy Fitness Zone
+test_1.6_mile_run,Default,FEMALE,63,115,390,840,90,Superior
 test_single_leg_stand,Default,MALE,5,12,0,14,20,Needs Improvement
 test_single_leg_stand,Default,MALE,5,12,15,34,60,Healthy Fitness Zone
 test_single_leg_stand,Default,MALE,5,12,35,60,90,Superior
@@ -2452,3 +2452,63 @@ test_partner_point,Default,FEMALE,41,62,2.96,6,20,Needs Improvement
 test_partner_point,Default,FEMALE,63,115,1,2.8,90,Superior
 test_partner_point,Default,FEMALE,63,115,2.81,3.75,60,Healthy Fitness Zone
 test_partner_point,Default,FEMALE,63,115,3.76,6,20,Needs Improvement
+test_pull_up,Default,MALE,5,12,0,0,20,Needs Improvement
+test_pull_up,Default,MALE,5,12,1,4,60,Healthy Fitness Zone
+test_pull_up,Default,MALE,5,12,5,75,90,Superior
+test_pull_up,Default,FEMALE,5,12,0,0,20,Needs Improvement
+test_pull_up,Default,FEMALE,5,12,1,2,60,Healthy Fitness Zone
+test_pull_up,Default,FEMALE,5,12,3,75,90,Superior
+test_pull_up,Default,MALE,13,19,0,4,20,Needs Improvement
+test_pull_up,Default,MALE,13,19,5,11,60,Healthy Fitness Zone
+test_pull_up,Default,MALE,13,19,12,75,90,Superior
+test_pull_up,Default,FEMALE,13,19,0,0,20,Needs Improvement
+test_pull_up,Default,FEMALE,13,19,1,2,60,Healthy Fitness Zone
+test_pull_up,Default,FEMALE,13,19,3,75,90,Superior
+test_pull_up,Default,MALE,20,40,0,5,20,Needs Improvement
+test_pull_up,Default,MALE,20,40,6,13,60,Healthy Fitness Zone
+test_pull_up,Default,MALE,20,40,14,75,90,Superior
+test_pull_up,Default,FEMALE,20,40,0,1,20,Needs Improvement
+test_pull_up,Default,FEMALE,20,40,2,4,60,Healthy Fitness Zone
+test_pull_up,Default,FEMALE,20,40,5,75,90,Superior
+test_pull_up,Default,MALE,41,62,0,3,20,Needs Improvement
+test_pull_up,Default,MALE,41,62,4,9,60,Healthy Fitness Zone
+test_pull_up,Default,MALE,41,62,10,75,90,Superior
+test_pull_up,Default,FEMALE,41,62,0,0,20,Needs Improvement
+test_pull_up,Default,FEMALE,41,62,1,2,60,Healthy Fitness Zone
+test_pull_up,Default,FEMALE,41,62,3,75,90,Superior
+test_pull_up,Default,MALE,63,115,0,0,20,Needs Improvement
+test_pull_up,Default,MALE,63,115,1,3,60,Healthy Fitness Zone
+test_pull_up,Default,MALE,63,115,4,75,90,Superior
+test_pull_up,Default,FEMALE,63,115,0,0,20,Needs Improvement
+test_pull_up,Default,FEMALE,63,115,1,1,60,Healthy Fitness Zone
+test_pull_up,Default,FEMALE,63,115,2,75,90,Superior
+test_1_5_mile_run,Default,MALE,5,12,901,2000,20,Needs Improvement
+test_1_5_mile_run,Default,MALE,5,12,661,900,60,Healthy Fitness Zone
+test_1_5_mile_run,Default,MALE,5,12,300,660,90,Superior
+test_1_5_mile_run,Default,FEMALE,5,12,961,2000,20,Needs Improvement
+test_1_5_mile_run,Default,FEMALE,5,12,721,960,60,Healthy Fitness Zone
+test_1_5_mile_run,Default,FEMALE,5,12,330,720,90,Superior
+test_1_5_mile_run,Default,MALE,13,19,841,2000,20,Needs Improvement
+test_1_5_mile_run,Default,MALE,13,19,601,840,60,Healthy Fitness Zone
+test_1_5_mile_run,Default,MALE,13,19,280,600,90,Superior
+test_1_5_mile_run,Default,FEMALE,13,19,901,2000,20,Needs Improvement
+test_1_5_mile_run,Default,FEMALE,13,19,661,900,60,Healthy Fitness Zone
+test_1_5_mile_run,Default,FEMALE,13,19,300,660,90,Superior
+test_1_5_mile_run,Default,MALE,20,40,781,2000,20,Needs Improvement
+test_1_5_mile_run,Default,MALE,20,40,541,780,60,Healthy Fitness Zone
+test_1_5_mile_run,Default,MALE,20,40,240,540,90,Superior
+test_1_5_mile_run,Default,FEMALE,20,40,841,2000,20,Needs Improvement
+test_1_5_mile_run,Default,FEMALE,20,40,601,840,60,Healthy Fitness Zone
+test_1_5_mile_run,Default,FEMALE,20,40,270,600,90,Superior
+test_1_5_mile_run,Default,MALE,41,62,901,2000,20,Needs Improvement
+test_1_5_mile_run,Default,MALE,41,62,661,900,60,Healthy Fitness Zone
+test_1_5_mile_run,Default,MALE,41,62,300,660,90,Superior
+test_1_5_mile_run,Default,FEMALE,41,62,961,2000,20,Needs Improvement
+test_1_5_mile_run,Default,FEMALE,41,62,721,960,60,Healthy Fitness Zone
+test_1_5_mile_run,Default,FEMALE,41,62,330,720,90,Superior
+test_1_5_mile_run,Default,MALE,63,115,1021,2500,20,Needs Improvement
+test_1_5_mile_run,Default,MALE,63,115,781,1020,60,Healthy Fitness Zone
+test_1_5_mile_run,Default,MALE,63,115,360,780,90,Superior
+test_1_5_mile_run,Default,FEMALE,63,115,1081,2500,20,Needs Improvement
+test_1_5_mile_run,Default,FEMALE,63,115,841,1080,60,Healthy Fitness Zone
+test_1_5_mile_run,Default,FEMALE,63,115,390,840,90,Superior
