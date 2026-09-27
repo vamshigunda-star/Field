@@ -73,7 +73,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.people.Individual
 import com.vamshi.field.domain.model.reports.AthleteDashboardData
@@ -113,6 +112,7 @@ import com.vamshi.field.ui.theme.*
 import com.vamshi.field.util.CsvExporter
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import com.vamshi.field.domain.model.reports.PerformanceThresholds
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -202,12 +202,7 @@ fun AthleteDashboardContent(
                             val grp = data.groups.firstOrNull()?.name?.let { " • $it" } ?: ""
                             
                             val avg = data.athleteSessionAvgPctile
-                            val cls = when {
-                                avg == null -> Classification.NO_DATA
-                                avg >= 80 -> Classification.SUPERIOR
-                                avg >= 40 -> Classification.HEALTHY
-                                else -> Classification.NEEDS_IMPROVEMENT
-                            }
+                            val cls = PerformanceThresholds.classify(avg)
                             val healthText = zoneLabel(cls)
                             val testCountText = "${data.sessionTestCount} Test${if (data.sessionTestCount == 1) "" else "s"}"
 
@@ -421,10 +416,8 @@ fun IndividualTestBreakdownCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "Individual Test Breakdown",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 18.sp
-                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(Modifier.width(8.dp))
@@ -497,7 +490,7 @@ fun IndividualTestBreakdownCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onToggle() },
-                    color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f) else Color(0xFFF8FAFC)
+                    color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerLow
                 ) {
                     Row(
                         modifier = Modifier
@@ -558,10 +551,8 @@ fun TestBreakdownItemRow(
             ) {
                 Text(
                     text = tile.test.name,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 15.5.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -587,18 +578,14 @@ fun TestBreakdownItemRow(
                     ) {
                         Text(
                             text = s,
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            ),
-                            color = if (isDark) Color(0xFF60A5FA) else MaterialTheme.colorScheme.primary
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             text = tile.test.unit,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp
-                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 2.dp)
                         )
@@ -760,7 +747,7 @@ fun DeltaTrendBadge(deltaPercentile: Int?, modifier: Modifier = Modifier) {
     val greenFg = if (isDark) PerformanceGreenTextDark else PerformanceGreenText
     val redBg = if (isDark) PerformanceRedDark.copy(alpha = 0.35f) else PerformanceRed.copy(alpha = 0.7f)
     val redFg = if (isDark) PerformanceRedTextDark else PerformanceRedText
-    val neutralBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else Color(0xFFF1F5F9)
+    val neutralBg = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainer
     val neutralFg = MaterialTheme.colorScheme.onSurfaceVariant
 
     val (bg, fg, icon, text) = when {

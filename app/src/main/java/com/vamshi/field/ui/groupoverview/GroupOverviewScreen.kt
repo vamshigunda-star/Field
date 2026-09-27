@@ -54,13 +54,22 @@ import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.report.components.DistributionBar
 import com.vamshi.field.ui.report.components.MiniSparkline
 import androidx.compose.foundation.isSystemInDarkTheme
+import com.vamshi.field.ui.theme.PerformanceGreen
+import com.vamshi.field.ui.theme.PerformanceGreenDark
+import com.vamshi.field.ui.theme.PerformanceGreenText
+import com.vamshi.field.ui.theme.PerformanceGreenTextDark
 import com.vamshi.field.ui.theme.PerformanceRed
 import com.vamshi.field.ui.theme.PerformanceRedDark
 import com.vamshi.field.ui.theme.PerformanceRedText
 import com.vamshi.field.ui.theme.PerformanceRedTextDark
+import com.vamshi.field.ui.theme.PerformanceYellow
+import com.vamshi.field.ui.theme.PerformanceYellowDark
+import com.vamshi.field.ui.theme.PerformanceYellowText
+import com.vamshi.field.ui.theme.PerformanceYellowTextDark
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.vamshi.field.domain.model.reports.PerformanceThresholds
 
 @Composable
 fun GroupOverviewScreen(
@@ -197,9 +206,9 @@ private fun GroupHealthSnapshot(memberCount: Int, distribution: Distribution) {
             }
             DistributionBar(distribution = distribution)
             val isDark = isSystemInDarkTheme()
-            val supColor = if (isDark) Color(0xFF4ADE80) else Color(0xFF1B5E20)
-            val hlthColor = if (isDark) Color(0xFFFDE047) else Color(0xFFF57F17)
-            val needsColor = if (isDark) Color(0xFFF87171) else Color(0xFFB71C1C)
+            val supColor = if (isDark) PerformanceGreenTextDark else PerformanceGreenText
+            val hlthColor = if (isDark) PerformanceYellowTextDark else PerformanceYellowText
+            val needsColor = if (isDark) PerformanceRedTextDark else PerformanceRedText
             val noDataColor = MaterialTheme.colorScheme.outlineVariant
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CountLabel("Superior", distribution.superior, supColor)
@@ -281,8 +290,8 @@ private fun TrendLineChart(points: List<Pair<Long, Float>>, modifier: Modifier =
 
     val lineColor = MaterialTheme.colorScheme.primary
     val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    val healthyColor = if (isDark) Color(0x33FDE047) else Color(0x1AF57F17)
-    val superiorColor = if (isDark) Color(0x334ADE80) else Color(0x1A1B5E20)
+    val healthyColor = if (isDark) PerformanceYellowDark.copy(alpha = 0.25f) else PerformanceYellow
+    val superiorColor = if (isDark) PerformanceGreenDark.copy(alpha = 0.25f) else PerformanceGreen
 
     Canvas(modifier = modifier) {
         val totalWidth = size.width
@@ -296,15 +305,17 @@ private fun TrendLineChart(points: List<Pair<Long, Float>>, modifier: Modifier =
         val w = totalWidth - leftPadding - rightPadding
         val h = totalHeight - bottomPadding - topPadding
 
-        // Background bands: NeedsImp <35, Healthy 35-69, Superior >=70
+        // Background bands follow PerformanceThresholds: NeedsImp <40, Healthy 40-79, Superior >=80.
         // Percentile 100 at top (topPadding), 0 at bottom (totalHeight - bottomPadding)
         val yAt = { p: Float -> topPadding + h * (1f - (p.coerceIn(0f, 100f) / 100f)) }
 
-        drawRect(superiorColor, topLeft = Offset(leftPadding, yAt(100f)), size = Size(w, yAt(70f) - yAt(100f)))
-        drawRect(healthyColor, topLeft = Offset(leftPadding, yAt(70f)), size = Size(w, yAt(35f) - yAt(70f)))
+        val superiorMin = PerformanceThresholds.SUPERIOR_MIN.toFloat()
+        val healthyMin = PerformanceThresholds.HEALTHY_MIN.toFloat()
+        drawRect(superiorColor, topLeft = Offset(leftPadding, yAt(100f)), size = Size(w, yAt(superiorMin) - yAt(100f)))
+        drawRect(healthyColor, topLeft = Offset(leftPadding, yAt(superiorMin)), size = Size(w, yAt(healthyMin) - yAt(superiorMin)))
 
-        // Gridlines and Y labels at 0, 35, 70, 100
-        listOf(0f, 35f, 70f, 100f).forEach { p ->
+        // Gridlines and Y labels at the band edges
+        listOf(0f, healthyMin, superiorMin, 100f).forEach { p ->
             val y = yAt(p)
             drawLine(gridColor, start = Offset(leftPadding, y), end = Offset(totalWidth - rightPadding, y), strokeWidth = 1f)
 

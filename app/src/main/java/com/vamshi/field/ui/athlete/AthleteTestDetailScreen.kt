@@ -57,7 +57,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.reports.AttemptRow
 import com.vamshi.field.domain.model.reports.Classification
@@ -221,7 +220,7 @@ private fun DetailBody(
                         ) {
                             Text(
                                 "History",
-                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -254,7 +253,6 @@ private fun DetailBody(
                                         Text(
                                             text = range.label,
                                             style = MaterialTheme.typography.labelSmall,
-                                            fontSize = 10.5.sp,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                             color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
@@ -352,10 +350,8 @@ private fun DetailBody(
                         ) {
                             Text(
                                 text = latest?.let { formatScore(it.rawScore) } ?: "—",
-                                style = MaterialTheme.typography.headlineMedium.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 24.sp
-                                ),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
                                 color = colors.fg
                             )
                             Text(
@@ -402,10 +398,8 @@ private fun DetailBody(
 
                         Text(
                             text = "Attempts (${data.attempts.size})",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
                         )
@@ -513,10 +507,8 @@ private fun AttemptRowView(row: AttemptRow, unit: String, onDelete: () -> Unit) 
             ) {
                 Text(
                     text = df.format(Date(row.date)),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 val attemptLabel = row.classificationLabel?.takeIf { it.isNotBlank() }
@@ -537,18 +529,14 @@ private fun AttemptRowView(row: AttemptRow, unit: String, onDelete: () -> Unit) 
                 ) {
                     Text(
                         text = formatScore(row.rawScore),
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
-                        ),
-                        color = if (isDark) Color(0xFF60A5FA) else MaterialTheme.colorScheme.primary
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = unit,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 12.sp
-                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 2.dp)
                     )

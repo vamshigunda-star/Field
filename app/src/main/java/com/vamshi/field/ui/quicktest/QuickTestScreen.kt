@@ -78,6 +78,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.isSystemInDarkTheme
+import com.vamshi.field.ui.theme.PerformanceGreenDark
+import com.vamshi.field.ui.theme.PerformanceGreenText
+import com.vamshi.field.ui.theme.PerformanceGreenTextDark
 import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
@@ -87,6 +90,7 @@ import com.vamshi.field.ui.components.testing.TestSelectionRow
 import com.vamshi.field.ui.theme.*
 import androidx.compose.material3.OutlinedCard
 import java.util.Locale
+import com.vamshi.field.ui.theme.performanceZoneColors
 
 @Composable
 fun QuickTestScreen(
@@ -300,12 +304,12 @@ private fun SetupStep(
                             Icon(
                                 Icons.Default.CheckCircle,
                                 contentDescription = "Selected",
-                                tint = Color(0xFF4CAF50),
+                                tint = if (isSystemInDarkTheme()) PerformanceGreenTextDark else PerformanceGreenText,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
                     },
-                    textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -340,8 +344,8 @@ private fun SetupStep(
                                             Text(
                                                 athlete.firstName.firstOrNull()?.uppercase() ?: "A",
                                                 color = Color.White,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 14.sp
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold
                                             )
                                         }
                                     },
@@ -369,7 +373,7 @@ private fun SetupStep(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     },
-                    textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
@@ -411,7 +415,7 @@ private fun SetupStep(
                                 modifier = Modifier.weight(1f),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 shape = RoundedCornerShape(12.dp),
-                                textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -430,7 +434,7 @@ private fun SetupStep(
                                     modifier = Modifier.fillMaxWidth(),
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                                     shape = RoundedCornerShape(12.dp),
-                                    textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -640,7 +644,7 @@ private fun EnterScoresStep(
             contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(uiState.selectedTests) { test ->
+            items(uiState.selectedTests, key = { it.id }) { test ->
                 val savedResult = uiState.recordedResults.find { it.testId == test.id }
                 
                 Card(
@@ -657,14 +661,14 @@ private fun EnterScoresStep(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 test.name, 
-                                fontSize = 16.sp, 
+                                style = MaterialTheme.typography.titleMedium, 
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 test.unit,
-                                fontSize = 12.sp,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -750,13 +754,11 @@ private fun EnterScoresStep(
 
 @Composable
 fun QuickTestScoreCell(savedResult: RecordedTestResult?) {
-    val isDark = isSystemInDarkTheme()
+    // Zone colours come from the shared mapping so QuickTest agrees with the grid and reports.
+    val zone = performanceZoneColors(savedResult?.percentile, alpha = 0.7f)
     val (bgColor, textColor) = when {
         savedResult == null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) to MaterialTheme.colorScheme.primary
-        savedResult.percentile == null -> if (isDark) PerformanceGreyDark to PerformanceGreyTextDark else PerformanceGrey to MaterialTheme.colorScheme.onSurface
-        savedResult.percentile >= 60 -> if (isDark) PerformanceGreenDark to PerformanceGreenTextDark else PerformanceGreen.copy(alpha = 0.7f) to PerformanceGreenText
-        savedResult.percentile >= 30 -> if (isDark) PerformanceYellowDark to PerformanceYellowTextDark else PerformanceYellow.copy(alpha = 0.7f) to PerformanceYellowText
-        else -> if (isDark) PerformanceRedDark to PerformanceRedTextDark else PerformanceRed.copy(alpha = 0.7f) to PerformanceRedText
+        else -> zone.background to zone.text
     }
 
     val cellBorder = if (savedResult == null) {
@@ -778,8 +780,8 @@ fun QuickTestScoreCell(savedResult: RecordedTestResult?) {
         ) {
             if (savedResult != null) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(String.format(Locale.getDefault(), "%.1f", savedResult.rawScore), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = textColor)
-                    savedResult.percentile?.let { p -> Text("${p}%", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = textColor.copy(alpha = 0.8f)) }
+                    Text(String.format(Locale.getDefault(), "%.1f", savedResult.rawScore), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = textColor)
+                    savedResult.percentile?.let { p -> Text("${p}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium, color = textColor.copy(alpha = 0.8f)) }
                 }
             } else {
                 Row(
@@ -795,7 +797,7 @@ fun QuickTestScoreCell(savedResult: RecordedTestResult?) {
                     Text(
                         "Enter Result",
                         color = MaterialTheme.colorScheme.primary,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -913,7 +915,7 @@ private fun CompleteStep(
                     modifier = Modifier
                         .size(64.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF16A34A)),
+                        .background(if (isSystemInDarkTheme()) PerformanceGreenDark else PerformanceGreenText),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -968,7 +970,7 @@ private fun CompleteStep(
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
-            items(results) { r -> ResultCard(result = r) }
+            items(results, key = { it.testId }) { r -> ResultCard(result = r) }
         }
 
         item {
@@ -1001,13 +1003,8 @@ private fun CompleteStep(
 
 @Composable
 private fun zoneFor(percentile: Int?): Triple<Color, Color, String> {
-    val isDark = isSystemInDarkTheme()
-    return when {
-        percentile == null -> if (isDark) Triple(PerformanceGreyDark, PerformanceGreyTextDark, "No Norm") else Triple(PerformanceGrey, PerformanceGreyText, "No Norm")
-        percentile >= 80 -> if (isDark) Triple(PerformanceGreenDark, PerformanceGreenTextDark, "Superior") else Triple(PerformanceGreen, PerformanceGreenText, "Superior")
-        percentile >= 40 -> if (isDark) Triple(PerformanceYellowDark, PerformanceYellowTextDark, "Healthy") else Triple(PerformanceYellow, PerformanceYellowText, "Healthy")
-        else -> if (isDark) Triple(PerformanceRedDark, PerformanceRedTextDark, "Needs Improvement") else Triple(PerformanceRed, PerformanceRedText, "Needs Improvement")
-    }
+    val zone = performanceZoneColors(percentile)
+    return Triple(zone.background, zone.text, zone.label)
 }
 
 @Composable

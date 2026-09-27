@@ -20,10 +20,6 @@ import com.vamshi.field.ui.components.AppTopBarSubtitleColor
 import com.vamshi.field.ui.components.InlineErrorBanner
 import kotlinx.coroutines.delay
 
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import com.vamshi.field.ui.components.tour.CoachMarkBanner
-import com.vamshi.field.ui.components.tour.TestingTourDialog
-
 @Composable
 fun TestingGridScreen(
     onNavigateBack: () -> Unit,
@@ -51,12 +47,6 @@ fun TestingGridScreen(
             }
         }
     )
-
-    if (uiState.showTestingTour) {
-        TestingTourDialog(
-            onDismiss = { viewModel.onAction(TestingGridAction.OnDismissTestingTour) }
-        )
-    }
 
     if (uiState.showCompletionDialog) {
         val uniqueAthletesTested = uiState.gridData?.results?.map { it.individualId }?.distinct()?.size ?: 0
@@ -150,9 +140,6 @@ private fun TestingGridContent(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { onAction(TestingGridAction.OnOpenTestingTour) }) {
-                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Testing Guide")
-                    }
                     IconButton(onClick = { onAction(TestingGridAction.OnNavigateToLeaderboard(eventId, groupId, "event")) }) {
                         Icon(Icons.Default.Leaderboard, contentDescription = "Leaderboard")
                     }
@@ -165,7 +152,7 @@ private fun TestingGridContent(
         bottomBar = {
             val totalResults = uiState.gridData?.results?.size ?: 0
             val hasResults = totalResults > 0
-            val totalStudents = uiState.gridData?.students?.size ?: 0
+            val totalAthletes = uiState.gridData?.students?.size ?: 0
             val uniqueAthletesTested = remember(uiState.gridData?.results) {
                 uiState.gridData?.results?.map { it.individualId }?.distinct()?.size ?: 0
             }
@@ -195,7 +182,7 @@ private fun TestingGridContent(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (hasResults) "$uniqueAthletesTested/$totalStudents Athletes • $totalResults Recorded" else "Tap score field to record",
+                            text = if (hasResults) "$uniqueAthletesTested/$totalAthletes Athletes • $totalResults Recorded" else "Tap score field to record",
                             style = MaterialTheme.typography.labelMedium,
                             color = if (hasResults) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold
@@ -236,17 +223,6 @@ private fun TestingGridContent(
                     onRetry = if (uiState.failedAction != null) {
                         { onAction(TestingGridAction.OnRetryFailedAction) }
                     } else null
-                )
-            }
-
-            if (!uiState.hasSeenCoachMark) {
-                CoachMarkBanner(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    title = "Live Scoring & Stopwatch",
-                    message = "Tap any cell to record scores. For timed tests, choose Solo or Group stopwatch mode. Tap the Trophy icon at the top for live event rankings.",
-                    actionLabel = "View Tour",
-                    onActionClick = { onAction(TestingGridAction.OnOpenTestingTour) },
-                    onDismiss = { onAction(TestingGridAction.OnDismissCoachMark) }
                 )
             }
 

@@ -25,7 +25,13 @@ data class BackupPayload(
     // data loss these fields exist to prevent. Read them via orEmpty().
     val customCategories: List<BackupTestCategory>? = null,
     val customTests: List<BackupFitnessTest>? = null,
-    val customNorms: List<BackupNormReference>? = null
+    val customNorms: List<BackupNormReference>? = null,
+
+    /**
+     * 1 = the first lossless payload (every user-data column round-trips).
+     * Absent (null) = written before that change; restore falls back per field.
+     */
+    val schemaVersion: Int? = null
 )
 
 data class BackupTestCategory(
@@ -74,14 +80,32 @@ data class BackupIndividual(
     val lastName: String,
     val dateOfBirth: Long,
     val gender: String,
-    val notes: String?
+    val notes: String?,
+
+    // Added for the lossless round trip. Nullable for the Gson/Unsafe reason above:
+    // a coach's existing Drive backup has none of these keys, and a non-null
+    // Boolean here would come back as a null through a non-null type and throw on
+    // first use, aborting the restore as CorruptedBackup. Read via ?: at the
+    // restore site, never by trusting a Kotlin default.
+    val medicalAlert: String? = null,
+    val isRestricted: Boolean? = null,
+    val email: String? = null,
+    val isActive: Boolean? = null,
+    val isDeleted: Boolean? = null,
+    val createdAt: Long? = null,
+    val updatedAt: Long? = null
 )
 
 data class BackupGroup(
     val id: String,
     val name: String,
     val type: String,
-    val isActive: Boolean
+    val isActive: Boolean,
+
+    // Added for the lossless round trip; nullable for the Gson/Unsafe reason above.
+    val location: String? = null,
+    val cycle: String? = null,
+    val createdAt: Long? = null
 )
 
 data class BackupGroupMemberCrossRef(
@@ -93,7 +117,16 @@ data class BackupTestingEvent(
     val id: String,
     val name: String,
     val timestamp: Long,
-    val notes: String?
+    val notes: String?,
+
+    // groupId was missing entirely, so every restored event came back detached
+    // (TestingEventEntity.groupId defaulted to null) and TestingDao.getEventsForGroup
+    // could not find it. The rows were in the database; no group-scoped screen could
+    // see them. Nullable both because the column is genuinely nullable for personal
+    // sessions and for the Gson/Unsafe reason above.
+    val groupId: String? = null,
+    val location: String? = null,
+    val createdAt: Long? = null
 )
 
 data class BackupEventTestCrossRef(
@@ -107,10 +140,26 @@ data class BackupTestResult(
     val individualId: String,
     val testId: String,
     val rawScore: Double,
+
+    /**
+     * Legacy: the percentile, widened to Double. It was written but never read back,
+     * so restored results lost their zone colour. Still written for backward
+     * compatibility with older builds, and still read as the fallback for
+     * [percentile] so backups already in Drive recover their percentile.
+     */
     val standardizedScore: Double?,
     val timestamp: Long,
     val captureMethod: String,
-    val notes: String?
+    /** No matching column on test_results; written as null. Kept so the JSON shape is stable. */
+    val notes: String?,
+
+    // Added for the lossless round trip; nullable for the Gson/Unsafe reason above.
+    val ageAtTime: Float? = null,
+    val percentile: Int? = null,
+    val classification: String? = null,
+    val normVariantUsed: String? = null,
+    val weightAtTime: Double? = null,
+    val bodyWeightKg: Double? = null
 )
 
 data class BackupUser(

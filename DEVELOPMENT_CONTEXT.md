@@ -47,15 +47,36 @@ All routes are defined as objects in [Screen.kt](file:///c:/Users/APF/AndroidStu
 | **SessionReport** | `"group/{groupId}/session/{sessionId}"` | `SessionReportViewModel` | Historical event performance report (flags, distributions, resume). |
 | **AthleteDashboard** | `"athlete/{athleteId}"` | `AthleteDashboardViewModel` | Individual longitudinal profile, test summaries, and Sparklines. |
 | **AthleteTestDetail** | `"athlete/{athleteId}/test/{testId}"` | `AthleteTestDetailViewModel` | Historical charts, progress indicators, and test-specific attempts. |
-| **Analytics** | `"analytics"` | `AnalyticsViewModel` | Group trends, insights, and remediation listings (e.g. <30th percentile). |
+| **Analytics** | `"analytics"` | `AnalyticsViewModel` | Group trends, insights, and remediation listings (below the Healthy threshold). |
 
 ### Composable Design System & UI Rules
 - **State Hoisting**: Screen composables accept a read-only `UiState` and a callback lambda `(ScreenAction) -> Unit`.
 - **Predefined Performance Color Zones**:
-  - **Green (Superior/Healthy)**: Percentile $\ge 60$
-  - **Yellow (Healthy/Borderline)**: Percentile $30$ to $59$
-  - **Red (Needs Improvement)**: Percentile $< 30$
-  - **Grey (No Reference)**: Null or no matching norm percentile found.
+  - **Green (Superior)**: Percentile $\ge 80$
+  - **Yellow (Healthy / Average)**: Percentile $40$ to $79$
+  - **Red (Needs Improvement)**: Percentile $< 40$
+  - **Grey (No Reference)**: Null or no matching norm percentile found. Grey is the absence of data, not a category.
+
+  These numbers live in exactly one place: `domain/model/reports/PerformanceThresholds.kt`.
+  UI code must not re-derive them — use `ui/theme/PerformanceZoneColors.kt`, which is the
+  Composable-facing mapping, because Composables cannot inject `ClassifyPercentileUseCase`.
+
+### Age Brackets
+Defined once in `domain/model/people/AgeBracket.kt`, and used by both norm lookup and the
+roster filter:
+
+| Bracket | Ages |
+|---|---|
+| Childhood | 5–12 |
+| Adolescence | 13–19 |
+| Adults | 20–40 |
+| Adults | 41–62 |
+| Older Adults | 63–115 |
+
+Adulthood stays split at 40/41 because the published normative tables grade adults by age —
+collapsing it would judge a 60-year-old against 20-year-old cutoffs.
+
+Norm coverage per test is therefore 2 sexes × 5 brackets × 3 classifications = **30 rows**.
 - **Medical Warnings**: Displayed with prominent red text/backgrounds accompanied by warning icons.
 
 ---
@@ -273,7 +294,7 @@ To support autonomous implementation of upcoming sports fitness features, the fo
 - **Workflow**:
   - Parse generated compiler reports to detect unstable classes in view states.
   - Scan Composable lists (`LazyColumn`, `LazyRow`) to ensure standard `key` parameter usage is present.
-  - Validate that custom screen views adhere to the standard percentile color zones ($\ge 60$ Green, $30\text{-}59$ Yellow, $<30$ Red).
+  - Validate that custom screen views obtain colours from `performanceZoneColors(...)` rather than re-deriving thresholds ($\ge 80$ Green, $40\text{-}79$ Yellow, $<40$ Red).
 
 ### 3. Clean Architecture Conformance Checker
 - **Role**: Assert strict package dependencies using a static import analysis script.

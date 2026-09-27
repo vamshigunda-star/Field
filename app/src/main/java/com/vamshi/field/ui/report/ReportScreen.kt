@@ -213,7 +213,10 @@ fun ReportScreen(
             val activeRows = activeTestId?.let { uiState.eventData!!.leaderboardByTest[it] }.orEmpty()
             CoachInsightSheet(
                 test = activeTest,
-                redZoneAthletes = activeRows.filter { it.percentile != null && it.percentile < 40 },
+                redZoneAthletes = activeRows.filter {
+                    it.percentile != null &&
+                        it.percentile < com.vamshi.field.domain.model.reports.PerformanceThresholds.HEALTHY_MIN
+                },
                 onDismiss = { viewModel.onAction(ReportsHubAction.OnDismissInsight) }
             )
         }
@@ -513,12 +516,7 @@ private fun AthletePickerRow(
                 }
                 if (athleteData != null) {
                     val avg = athleteData.athleteSessionAvgPctile
-                    val cls = when {
-                        avg == null -> com.vamshi.field.domain.model.reports.Classification.NO_DATA
-                        avg >= 80 -> com.vamshi.field.domain.model.reports.Classification.SUPERIOR
-                        avg >= 40 -> com.vamshi.field.domain.model.reports.Classification.HEALTHY
-                        else -> com.vamshi.field.domain.model.reports.Classification.NEEDS_IMPROVEMENT
-                    }
+                    val cls = com.vamshi.field.domain.model.reports.PerformanceThresholds.classify(avg)
                     val healthText = com.vamshi.field.ui.report.components.zoneLabel(cls)
                     val testCountText = "${athleteData.sessionTestCount} Test${if (athleteData.sessionTestCount == 1) "" else "s"}"
                     
@@ -662,8 +660,7 @@ private fun EventPickerRow(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
                 )
                 LazyColumn {
-                    items(sessions.size) { index ->
-                        val row = sessions[index]
+                    items(sessions, key = { it.event.id }) { row ->
                         val isSelected = row.event.id == selectedEventId
                         ListItem(
                             headlineContent = { Text(row.event.name, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },

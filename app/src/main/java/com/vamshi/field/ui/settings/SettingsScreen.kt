@@ -189,44 +189,7 @@ fun SettingsContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
             HorizontalDivider()
-
-            Text(
-                text = "Guided Tours & Tutorials",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            if (uiState.tourResetMessage != null) {
-                Text(
-                    text = uiState.tourResetMessage,
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-
-            OutlinedButton(
-                onClick = { onAction(SettingsAction.OnOpenWelcomeTour) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Replay App Overview Tour")
-            }
-
-            OutlinedButton(
-                onClick = { onAction(SettingsAction.OnOpenTestingTour) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Replay Testing Workflow Guide")
-            }
-
-            TextButton(
-                onClick = { onAction(SettingsAction.OnResetAllTours) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Reset All Onboarding Hints & Checklists")
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -243,19 +206,6 @@ fun SettingsContent(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-        }
-
-        if (uiState.showWelcomeTour) {
-            com.vamshi.field.ui.components.tour.WelcomeTourDialog(
-                onDismiss = { onAction(SettingsAction.OnDismissWelcomeTour) },
-                onStartTestingTour = { onAction(SettingsAction.OnOpenTestingTour) }
-            )
-        }
-
-        if (uiState.showTestingTour) {
-            com.vamshi.field.ui.components.tour.TestingTourDialog(
-                onDismiss = { onAction(SettingsAction.OnDismissTestingTour) }
-            )
         }
 
         if (uiState.showRestoreConfirmation) {

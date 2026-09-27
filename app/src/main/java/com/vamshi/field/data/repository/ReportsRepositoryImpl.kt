@@ -507,7 +507,11 @@ class ReportsRepositoryImpl @Inject constructor(
                 NormBandsForAge(
                     date = r.createdAt,
                     ageYears = ageYears,
-                    superiorMin = findScoreForPercentile(normBands, 70, test.isHigherBetter),
+                    superiorMin = findScoreForPercentile(
+                        normBands,
+                        com.vamshi.field.domain.model.reports.PerformanceThresholds.SUPERIOR_MIN,
+                        test.isHigherBetter
+                    ),
                     healthyMin = findScoreForPercentile(normBands, 35, test.isHigherBetter),
                     needsMax = findScoreForPercentile(normBands, 34, test.isHigherBetter)
                 )

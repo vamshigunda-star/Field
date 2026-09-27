@@ -37,7 +37,10 @@ class SeedDataManager @Inject constructor(
         // Bumping this key re-runs seedIfNeeded() on next launch.
         // This is non-destructive for user data: catalog tests/categories are upserted in place,
         // and norm_references and recommendation tables are safely updated.
-        private const val KEY_SEEDED_VERSION = "data_seeded_version_v29"
+        // v30: norms re-encoded so "Needs Improvement" carries a percentile below the Healthy
+        // threshold (was 40, which classified as Healthy), top bracket extended to 115, and
+        // duplicate legacy age bands removed from wall-sit and shoulder-flexibility.
+        private const val KEY_SEEDED_VERSION = "data_seeded_version_v30"
         private const val SEED_SOURCE = "SEED"
     }
 
@@ -313,8 +316,8 @@ class SeedDataManager @Inject constructor(
                                 val percentile = (pctBase + (Math.random() * 10).toInt()).coerceIn(1, 99)
 
                                 val classification = when {
-                                    percentile >= 80 -> "SUPERIOR"
-                                    percentile >= 40 -> "HEALTHY"
+                                    percentile >= com.vamshi.field.domain.model.reports.PerformanceThresholds.SUPERIOR_MIN -> "SUPERIOR"
+                                    percentile >= com.vamshi.field.domain.model.reports.PerformanceThresholds.HEALTHY_MIN -> "HEALTHY"
                                     else -> "NEEDS_IMPROVEMENT"
                                 }
 

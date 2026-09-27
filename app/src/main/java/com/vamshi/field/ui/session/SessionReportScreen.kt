@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -67,7 +66,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.reports.Classification
 import com.vamshi.field.domain.model.reports.LeaderboardRow
@@ -80,8 +78,6 @@ import com.vamshi.field.ui.report.components.ZoneChip
 import com.vamshi.field.ui.theme.PerformanceRed
 import com.vamshi.field.ui.theme.PerformanceRedText
 import com.vamshi.field.ui.theme.SportOrange
-import com.vamshi.field.ui.components.tour.CoachMarkBanner
-import com.vamshi.field.ui.components.tour.TestingTourDialog
 import com.vamshi.field.ui.session.components.GroupTrendChart
 import com.vamshi.field.ui.session.components.TestSelectorHeroCard
 import com.vamshi.field.ui.theme.SportOrangeContainer
@@ -138,12 +134,6 @@ fun SessionReportScreen(
         },
     )
 
-        if (uiState.showTestingTour) {
-            TestingTourDialog(
-                onDismiss = { viewModel.onAction(SessionReportAction.OnDismissTestingTour) },
-            )
-        }
-
     if (uiState.showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.onAction(SessionReportAction.OnDismissDelete) },
@@ -192,9 +182,6 @@ fun SessionReportContent(
                 },
                 actions = {
                     if (data != null) {
-                        IconButton(onClick = { onAction(SessionReportAction.OnOpenTestingTour) }) {
-                            Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Testing Guide")
-                        }
                         if (data.tests.isNotEmpty()) {
                             AppTopBarActionButton(
                                 icon = Icons.Default.Lightbulb,
@@ -239,7 +226,10 @@ fun SessionReportContent(
             val activeRows = activeTestId?.let { data.leaderboardByTest[it] }.orEmpty()
             CoachInsightSheet(
                 test = activeTest,
-                redZoneAthletes = activeRows.filter { (it.percentile != null) && (it.percentile < 40) }
+                redZoneAthletes = activeRows.filter {
+                    (it.percentile != null) &&
+                        (it.percentile < com.vamshi.field.domain.model.reports.PerformanceThresholds.HEALTHY_MIN)
+                }
             ) { onAction(SessionReportAction.OnDismissInsight) }
         }
     }
@@ -270,17 +260,6 @@ fun SessionReportBody(
     ) {
         if (headerContent != null) {
             item { headerContent() }
-        }
-
-        if (!uiState.hasSeenCoachMark) {
-            item {
-                CoachMarkBanner(
-                    title = "Session Analytics & Reports",
-                    message = "Review group attendance and test distributions. Tap the Lightbulb for insights or Download to export CSV data.",
-                    actionLabel = "View Tour",
-                    onActionClick = { onAction(SessionReportAction.OnOpenTestingTour) }
-                ) { onAction(SessionReportAction.OnDismissCoachMark) }
-            }
         }
 
         if (data.tests.isNotEmpty()) {
@@ -483,7 +462,7 @@ fun AbsentAthleteRow(row: LeaderboardRow, onClick: () -> Unit) {
         ) {
             Text(
                 text = row.athleteName,
-                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.5.sp),
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
@@ -536,7 +515,7 @@ fun MissingDataCard(
                     )
                     Text(
                         text = "Missing Data",
-                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.5.sp),
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -743,7 +722,7 @@ private fun CollapsibleSectionHeader(
             )
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.5.sp),
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )

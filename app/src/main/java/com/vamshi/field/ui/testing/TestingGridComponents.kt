@@ -71,6 +71,7 @@ import com.vamshi.field.domain.model.testing.TestResult
 import com.vamshi.field.ui.theme.*
 import com.vamshi.field.ui.components.testing.TestInputSwitcher
 import java.util.Locale
+import com.vamshi.field.ui.theme.performanceZoneColors
 
 @Composable
 fun TimingChoiceDialog(
@@ -462,13 +463,12 @@ fun ScoreCell(
     isFailed: Boolean = false
 ) {
     val isDark = isSystemInDarkTheme()
+    // Zone colours come from the shared mapping so the grid agrees with the reports.
+    val zone = performanceZoneColors(savedResult?.percentile, alpha = 0.7f)
     val (bgColor, textColor) = when {
         isFailed -> if (isDark) PerformanceRedDark to PerformanceRedTextDark else PerformanceRed.copy(alpha = 0.7f) to PerformanceRedText
         savedResult == null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) to MaterialTheme.colorScheme.primary
-        savedResult.percentile == null -> if (isDark) PerformanceGreyDark to PerformanceGreyTextDark else PerformanceGrey to MaterialTheme.colorScheme.onSurface
-        savedResult.percentile >= 60 -> if (isDark) PerformanceGreenDark to PerformanceGreenTextDark else PerformanceGreen.copy(alpha = 0.7f) to PerformanceGreenText
-        savedResult.percentile >= 30 -> if (isDark) PerformanceYellowDark to PerformanceYellowTextDark else PerformanceYellow.copy(alpha = 0.7f) to PerformanceYellowText
-        else -> if (isDark) PerformanceRedDark to PerformanceRedTextDark else PerformanceRed.copy(alpha = 0.7f) to PerformanceRedText
+        else -> zone.background to zone.text
     }
 
     val cellBorder = when {

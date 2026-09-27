@@ -38,7 +38,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.vamshi.field.domain.model.standards.FitnessTest
@@ -424,7 +423,6 @@ private fun NetflixTestCard(
                         Text(
                             text = "CUSTOM",
                             style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
                             modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
@@ -455,7 +453,6 @@ private fun NetflixTestCard(
                             Text(
                                 text = "Video Guide",
                                 style = MaterialTheme.typography.labelSmall,
-                                fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color.White
                             )
@@ -506,9 +503,8 @@ private fun NetflixTestCard(
             ) {
                 Text(
                     text = test.name,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
                     color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -519,7 +515,7 @@ private fun NetflixTestCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     val indicatorText = if (test.isHigherBetter) "↑ Higher is Better" else "↓ Lower is Better"
-                    val indicatorColor = if (test.isHigherBetter) Color(0xFF81C784) else Color(0xFFFF8A80)
+                    val indicatorColor = if (test.isHigherBetter) PerformanceGreenTextDark else PerformanceRedTextDark
 
                     Text(
                         text = indicatorText,
@@ -556,7 +552,6 @@ private fun CustomBadge() {
         Text(
             "Custom",
             style = MaterialTheme.typography.labelSmall,
-            fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -600,7 +595,6 @@ private fun TestDetailPane(test: FitnessTest, onAction: (TestLibraryAction) -> U
                     "Unit: ${test.unit}",
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                     style = MaterialTheme.typography.labelSmall,
-                    fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -625,7 +619,6 @@ private fun TestDetailPane(test: FitnessTest, onAction: (TestLibraryAction) -> U
                     if (test.isHigherBetter) "Higher is better" else "Lower is better",
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                     style = MaterialTheme.typography.labelSmall,
-                    fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = textColor
                 )

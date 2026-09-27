@@ -86,6 +86,8 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
+import com.vamshi.field.domain.model.reports.Classification
+import com.vamshi.field.domain.model.reports.PerformanceThresholds
 
 /**
  * Modern, High-Polish Athletic Radar / Skill Matrix Chart.
@@ -730,25 +732,26 @@ fun RadarChart(
 }
 
 /**
- * Maps normalized score to canonical classification label.
+ * Maps a normalized score to Field's canonical three-category label.
  */
 private fun getScoreClassification(normalizedScore: Float, testCount: Int): String {
     if (testCount <= 0) return "Untested"
-    val pct = normalizedScore * 100f
-    return when {
-        pct >= 85f -> "Elite"
-        pct >= 70f -> "Advanced"
-        pct >= 45f -> "Proficient"
-        pct >= 25f -> "Developing"
-        else -> "Needs Focus"
+    // Field consolidates the published five-tier classifications into three. This chart used
+    // to carry its own five-tier scale (Elite/Advanced/Proficient/Developing/Needs Focus at
+    // 85/70/45/25), which was a second vocabulary for the same numbers.
+    return when (PerformanceThresholds.classify(normalizedScore * 100f)) {
+        Classification.SUPERIOR -> "Superior"
+        Classification.HEALTHY -> "Healthy"
+        Classification.NEEDS_IMPROVEMENT -> "Needs Improvement"
+        Classification.NO_DATA -> "Untested"
     }
 }
 
 /**
- * Maps percentile performance (0.0 to 1.0) to canonical ALearning text/foreground performance colors:
- * - >= 75% (0.75f): Green
- * - 40% - 74% (0.40f - 0.74f): Yellow/Amber
- * - < 40% (< 0.40f): Red
+ * Maps percentile performance (0.0 to 1.0) to Field's performance colours.
+ *
+ * Thresholds come from [PerformanceThresholds] rather than being re-typed here; this vertex
+ * used to turn green at 75, five points before the reports did.
  */
 private fun performanceColor(
     normalizedScore: Float,
@@ -757,9 +760,9 @@ private fun performanceColor(
     red: Color
 ): Color {
     val percentage = normalizedScore * 100f
-    return when {
-        percentage >= 75f -> green
-        percentage >= 40f -> yellow
+    return when (PerformanceThresholds.classify(percentage)) {
+        Classification.SUPERIOR -> green
+        Classification.HEALTHY -> yellow
         else -> red
     }
 }

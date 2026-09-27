@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -52,15 +51,7 @@ import com.vamshi.field.ui.theme.PeachIconBg
 import com.vamshi.field.ui.theme.BlueIconBg
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import com.vamshi.field.ui.components.tour.GettingStartedCard
-import com.vamshi.field.ui.components.tour.TourSelectionSheet
-import com.vamshi.field.ui.components.tour.WelcomeTourDialog
-import com.vamshi.field.ui.components.tour.TestingTourDialog
-import com.vamshi.field.ui.components.tour.PipelineWorkflowSimulatorDialog
-import com.vamshi.field.ui.components.spotlight.SpotlightOverlay
-import com.vamshi.field.ui.components.spotlight.SpotlightShape
-import com.vamshi.field.ui.components.spotlight.rememberSpotlightState
-import com.vamshi.field.ui.components.spotlight.spotlightTarget
+import com.vamshi.field.ui.dashboard.components.GettingStartedCard
 import java.util.Date
 import java.util.Locale
 
@@ -125,21 +116,10 @@ fun DashboardContent(
     onNavigateToTestLibrary: () -> Unit = {},
     onAction: (DashboardAction) -> Unit
 ) {
-    val spotlightState = rememberSpotlightState()
-
-    LaunchedEffect(uiState.showDashboardSpotlight) {
-        if (uiState.showDashboardSpotlight) {
-            spotlightState.startTour()
-        } else {
-            spotlightState.dismiss()
-        }
-    }
-
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
                 DashboardHeader(
-                    onTourClick = { onAction(DashboardAction.OnOpenTourMenuClick) },
                     onSettingsClick = { onAction(DashboardAction.OnSettingsClick) },
                     onSignOutClick = { onAction(DashboardAction.OnSignOutClick) }
                 )
@@ -177,8 +157,7 @@ fun DashboardContent(
                             scheduledTestCount = uiState.scheduledTestCount,
                             onNavigateToRoster = onNavigateToRoster,
                             onNavigateToTestLibrary = onNavigateToTestLibrary,
-                            onOpenTestingTour = { onAction(DashboardAction.OnOpenTestingTour) },
-                            onOpenPipelineSimulator = { onAction(DashboardAction.OnOpenPipelineSimulator) },
+                            onNavigateToCreateEvent = { onAction(DashboardAction.OnCreateEventClick) },
                             onDismiss = { onAction(DashboardAction.OnDismissGettingStarted) }
                         )
                     }
@@ -186,14 +165,6 @@ fun DashboardContent(
 
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     HeroCard(
-                        modifier = Modifier.spotlightTarget(
-                            id = "hero_group_event",
-                            stepIndex = 2,
-                            title = "3. Start Group Testing Event",
-                            description = "Launch live testing sessions to record multiple athletes across tests in high-speed spreadsheet grids with heat stopwatches.",
-                            state = spotlightState,
-                            shape = SpotlightShape.ROUNDED_RECT
-                        ),
                         onClick = { onAction(DashboardAction.OnCreateEventClick) }
                     )
                 }
@@ -222,14 +193,6 @@ fun DashboardContent(
 
                 item {
                     QuickActionCard(
-                        modifier = Modifier.spotlightTarget(
-                            id = "qa_roster",
-                            stepIndex = 0,
-                            title = "1. Manage Squad Rosters",
-                            description = "Add squads, register athlete profiles, and view high-visibility medical alerts before testing begins.",
-                            state = spotlightState,
-                            shape = SpotlightShape.ROUNDED_RECT
-                        ),
                         icon = Icons.Default.Group,
                         label = "Roster",
                         tint = SportBlue,
@@ -239,14 +202,6 @@ fun DashboardContent(
                 }
                 item {
                     QuickActionCard(
-                        modifier = Modifier.spotlightTarget(
-                            id = "qa_tests",
-                            stepIndex = 1,
-                            title = "2. Standard Tests & Batteries",
-                            description = "Browse standardized normative fitness protocols, age-graded benchmarks, and custom tests.",
-                            state = spotlightState,
-                            shape = SpotlightShape.ROUNDED_RECT
-                        ),
                         icon = Icons.AutoMirrored.Filled.LibraryBooks,
                         label = "Tests Library",
                         tint = MaterialTheme.colorScheme.primary,
@@ -256,14 +211,6 @@ fun DashboardContent(
                 }
                 item {
                     QuickActionCard(
-                        modifier = Modifier.spotlightTarget(
-                            id = "qa_reports",
-                            stepIndex = 3,
-                            title = "4. Analytics & Reports",
-                            description = "Explore individual athlete historical reports, normative physiological curves (Green/Yellow/Red), and coaching insights.",
-                            state = spotlightState,
-                            shape = SpotlightShape.ROUNDED_RECT
-                        ),
                         icon = Icons.AutoMirrored.Filled.TrendingUp,
                         label = "Reports",
                         tint = SportOrange,
@@ -300,13 +247,6 @@ fun DashboardContent(
                 }
             }
         }
-
-        // Spotlight Cutout Scrim Layer
-        SpotlightOverlay(
-            state = spotlightState,
-            onDismiss = { onAction(DashboardAction.OnDismissDashboardSpotlight) },
-            onComplete = { onAction(DashboardAction.OnDismissDashboardSpotlight) }
-        )
     }
 
     if (uiState.showLeaderboardPicker) {
@@ -314,42 +254,6 @@ fun DashboardContent(
             events = uiState.availableEvents.filter { it.groupId != null },
             onPick = { event -> onAction(DashboardAction.OnPickLeaderboardEvent(event.id, event.groupId!!)) },
             onDismiss = { onAction(DashboardAction.OnDismissLeaderboardPicker) }
-        )
-    }
-
-    if (uiState.showTourSelectionSheet) {
-        TourSelectionSheet(
-            onDismiss = { onAction(DashboardAction.OnDismissTourMenu) },
-            onOpenWelcomeTour = { onAction(DashboardAction.OnOpenWelcomeTour) },
-            onOpenTestingTour = { onAction(DashboardAction.OnOpenTestingTour) },
-            onOpenPipelineSimulator = { onAction(DashboardAction.OnOpenPipelineSimulator) },
-            onStartSpotlightTour = { onAction(DashboardAction.OnStartDashboardSpotlight) },
-            onResetChecklist = { onAction(DashboardAction.OnResetGettingStarted) }
-        )
-    }
-
-    if (uiState.showWelcomeTour) {
-        WelcomeTourDialog(
-            onDismiss = { onAction(DashboardAction.OnDismissWelcomeTour) },
-            onStartTestingTour = { onAction(DashboardAction.OnOpenTestingTour) },
-            onStartPipelineSimulator = { onAction(DashboardAction.OnOpenPipelineSimulator) }
-        )
-    }
-
-    if (uiState.showTestingTour) {
-        TestingTourDialog(
-            onDismiss = { onAction(DashboardAction.OnDismissTestingTour) },
-            onStartEventClick = { onAction(DashboardAction.OnCreateEventClick) }
-        )
-    }
-
-    if (uiState.showPipelineSimulator) {
-        PipelineWorkflowSimulatorDialog(
-            onDismiss = { onAction(DashboardAction.OnDismissPipelineSimulator) },
-            onStartEventClick = {
-                onAction(DashboardAction.OnDismissPipelineSimulator)
-                onAction(DashboardAction.OnCreateEventClick)
-            }
         )
     }
 }
@@ -430,10 +334,8 @@ private fun LeaderboardEventPickerSheet(
  */
 @Composable
 private fun DashboardHeader(
-    onTourClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    onSignOutClick: () -> Unit,
-    helpButtonModifier: Modifier = Modifier
+    onSignOutClick: () -> Unit
 ) {
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -473,12 +375,6 @@ private fun DashboardHeader(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DashboardHeaderIconButton(
-                    modifier = helpButtonModifier,
-                    icon = Icons.AutoMirrored.Filled.HelpOutline,
-                    contentDescription = "Guided Tours & Help",
-                    onClick = onTourClick
-                )
                 DashboardHeaderIconButton(
                     icon = Icons.Default.Settings,
                     contentDescription = "Settings",

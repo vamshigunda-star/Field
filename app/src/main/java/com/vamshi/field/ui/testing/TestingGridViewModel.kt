@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.vamshi.field.data.storage.TourPreferencesStore
 import com.vamshi.field.domain.model.people.Individual
 import com.vamshi.field.domain.model.standards.FitnessTest
 import com.vamshi.field.domain.model.testing.TestResult
@@ -34,8 +33,6 @@ data class TestingGridUiState(
     val testCapturePreferences: Map<String, CaptureMethodPreference> = emptyMap(),
     val deleteCandidate: DeleteCandidate? = null,
     val showCompletionDialog: Boolean = false,
-    val showTestingTour: Boolean = false,
-    val hasSeenCoachMark: Boolean = true,
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val failedAction: FailedGridAction? = null
@@ -90,9 +87,6 @@ sealed interface TestingGridAction {
     data object OnRetryFailedAction : TestingGridAction
     data object OnRequestSaveSession : TestingGridAction
     data object OnDismissCompletionDialog : TestingGridAction
-    data object OnOpenTestingTour : TestingGridAction
-    data object OnDismissTestingTour : TestingGridAction
-    data object OnDismissCoachMark : TestingGridAction
     
     // Navigation actions — handled by the screen composable
     data object OnNavigateBack : TestingGridAction
@@ -114,8 +108,7 @@ class TestingGridViewModel @Inject constructor(
     private val testingRepository: TestingRepository,
     private val peopleRepository: PeopleRepository,
     private val getGridData: GetTestingGridDataUseCase,
-    private val recordTestResult: RecordTestResultUseCase,
-    private val tourPreferencesStore: TourPreferencesStore
+    private val recordTestResult: RecordTestResultUseCase
 ) : ViewModel() {
 
     val eventId: String = savedStateHandle["eventId"] ?: ""
@@ -135,12 +128,6 @@ class TestingGridViewModel @Inject constructor(
                     .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoading = false) } }
                     .collect { data ->
                         _uiState.update { it.copy(gridData = data, isLoading = false) }
-                    }
-            }
-            viewModelScope.launch {
-                tourPreferencesStore.observeHasSeenTestingGridCoachMark()
-                    .collect { seen ->
-                        _uiState.update { it.copy(hasSeenCoachMark = seen) }
                     }
             }
         }
@@ -225,18 +212,6 @@ class TestingGridViewModel @Inject constructor(
             }
             TestingGridAction.OnDismissCompletionDialog -> {
                 _uiState.update { it.copy(showCompletionDialog = false) }
-            }
-            TestingGridAction.OnOpenTestingTour -> {
-                _uiState.update { it.copy(showTestingTour = true) }
-            }
-            TestingGridAction.OnDismissTestingTour -> {
-                _uiState.update { it.copy(showTestingTour = false) }
-            }
-            TestingGridAction.OnDismissCoachMark -> {
-                viewModelScope.launch {
-                    tourPreferencesStore.setHasSeenTestingGridCoachMark(true)
-                }
-                _uiState.update { it.copy(hasSeenCoachMark = true) }
             }
             else -> Unit
         }

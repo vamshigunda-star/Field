@@ -8,7 +8,8 @@
 - **Test library** — a catalog of fitness tests (strength, endurance, speed, agility, flexibility, balance) with defined units and validation ranges
 - **Testing events** — create an event, pick tests and a group, and run through athletes with a live testing grid
 - **Built-in stopwatch** — individual and group timing modes with trial support, for timed tests
-- **Percentile-based reporting** — results are classified against norm references into performance zones (green ≥ 60th percentile, yellow 30–59th, red < 30th)
+- **Percentile-based reporting** — results are classified against norm references into three performance zones: green (Superior, ≥ 80th percentile), yellow (Healthy/Average, 40–79th), red (Needs Improvement, < 40th). Grey means no norm matched, which is the absence of data rather than a fourth zone.
+- **Age-bracketed norms** — Childhood 5–12, Adolescence 13–19, Adults 20–40, Adults 41–62, Older Adults 63–115, following established developmental and fitness-assessment frameworks
 - **Leaderboards & analytics** — event and all-time rankings, group trends, and remediation lists for athletes who need attention
 - **Longitudinal athlete profiles** — individual dashboards with historical charts and progress over time
 - **Fully offline** — all data lives in a local Room database; no network connection required for core functionality

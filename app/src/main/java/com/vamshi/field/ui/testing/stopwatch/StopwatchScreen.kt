@@ -25,7 +25,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vamshi.field.domain.model.standards.TimingMode
@@ -496,7 +495,7 @@ private fun IndividualModeContent(
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Text(
                             if (isRunning) "STOP" else "START",
-                            fontSize = 22.sp,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -643,8 +642,8 @@ private fun GroupStartModeContent(uiState: StopwatchUiState, onAction: (Stopwatc
                         onClick = { onAction(StopwatchAction.OnStartStop) }
                     ),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF2E7D32))
-            ) { Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) { Text("START SESSION", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White) } }
+                colors = CardDefaults.cardColors(containerColor = if (isSystemInDarkTheme()) PerformanceGreenDark else PerformanceGreenText)
+            ) { Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) { Text("START SESSION", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White) } }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -695,7 +694,7 @@ private fun StopwatchDisplay(elapsedMs: Long) {
 
     Text(
         text = "%02d:%02d.%02d".format(minutes, seconds, centis),
-        fontSize = 64.sp,
+        style = MaterialTheme.typography.displayLarge,
         fontWeight = FontWeight.Bold,
         fontFamily = FontFamily.Monospace,
         color = MaterialTheme.colorScheme.onSurface,
@@ -811,7 +810,7 @@ private fun IndividualAthleteRow(
                     )
                 }
                 else -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Absent?", style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp))
+                    Text("Absent?", style = MaterialTheme.typography.labelSmall)
                     Spacer(Modifier.width(4.dp))
                     Switch(
                         checked = isAbsent,
@@ -919,7 +918,7 @@ private fun EditTimeDialog(
                                 shape = CircleShape,
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface)
                             ) {
-                                Text(key, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                Text(key, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

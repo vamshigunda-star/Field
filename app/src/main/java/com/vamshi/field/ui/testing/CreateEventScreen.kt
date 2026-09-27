@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -34,8 +33,6 @@ import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.components.testing.TestSelectionCard
 import com.vamshi.field.ui.components.testing.TestSelectionRow
-import com.vamshi.field.ui.components.tour.CoachMarkBanner
-import com.vamshi.field.ui.components.tour.TestingTourDialog
 import com.vamshi.field.ui.theme.*
 
 @Composable
@@ -45,7 +42,6 @@ fun CreateEventScreen(
     viewModel: CreateEventViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showTestingTour by remember { mutableStateOf(false) }
 
     // Handle navigation event
     LaunchedEffect(uiState.eventCreated) {
@@ -57,7 +53,6 @@ fun CreateEventScreen(
 
     CreateEventContent(
         uiState = uiState,
-        onOpenTestingTour = { showTestingTour = true },
         onAction = { action ->
             when (action) {
                 is CreateEventAction.NavigateBack -> onNavigateBack()
@@ -65,19 +60,12 @@ fun CreateEventScreen(
             }
         }
     )
-
-    if (showTestingTour) {
-        TestingTourDialog(
-            onDismiss = { showTestingTour = false }
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventContent(
     uiState: CreateEventUiState,
-    onOpenTestingTour: () -> Unit = {},
     onAction: (CreateEventAction) -> Unit
 ) {
     Scaffold(
@@ -88,11 +76,6 @@ fun CreateEventContent(
                 navigationIcon = {
                     IconButton(onClick = { onAction(CreateEventAction.NavigateBack) }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onOpenTestingTour) {
-                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Testing Guide")
                     }
                 }
             )
@@ -368,7 +351,7 @@ private fun CreateEventBody(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         },
-                        textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         placeholder = { Text("Select athlete group") },
                         readOnly = true,
                         trailingIcon = { 
@@ -441,7 +424,7 @@ private fun CreateEventBody(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     },
-                    textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.SemiBold),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     placeholder = { Text("e.g. Spring Fitness Assessment") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,

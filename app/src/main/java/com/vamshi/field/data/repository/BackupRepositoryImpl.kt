@@ -31,23 +31,73 @@ class BackupRepositoryImpl @Inject constructor(
         syncState.value = true
         try {
             // Extract all data
-            val individuals = backupDao.getAllIndividuals().map { 
-                BackupIndividual(it.id, it.firstName, it.lastName, it.dateOfBirth, it.sex.name, it.notes)
+            // Named arguments from here down: these payload constructors are long enough
+            // that a positional slip would be silent and would only surface as data loss
+            // on someone's restore.
+            val individuals = backupDao.getAllIndividuals().map {
+                BackupIndividual(
+                    id = it.id,
+                    firstName = it.firstName,
+                    lastName = it.lastName,
+                    dateOfBirth = it.dateOfBirth,
+                    gender = it.sex.name,
+                    notes = it.notes,
+                    medicalAlert = it.medicalAlert,
+                    isRestricted = it.isRestricted,
+                    email = it.email,
+                    isActive = it.isActive,
+                    isDeleted = it.isDeleted,
+                    createdAt = it.createdAt,
+                    updatedAt = it.updatedAt
+                )
             }
             val groups = backupDao.getAllGroups().map {
-                BackupGroup(it.id, it.name, it.category ?: "", !it.isDeleted)
+                BackupGroup(
+                    id = it.id,
+                    name = it.name,
+                    type = it.category ?: "",
+                    isActive = !it.isDeleted,
+                    location = it.location,
+                    cycle = it.cycle,
+                    createdAt = it.createdAt
+                )
             }
             val groupMembers = backupDao.getAllGroupMembers().map {
                 BackupGroupMemberCrossRef(it.groupId, it.individualId)
             }
             val testingEvents = backupDao.getAllTestingEvents().map {
-                BackupTestingEvent(it.id, it.name, it.date, it.notes)
+                BackupTestingEvent(
+                    id = it.id,
+                    name = it.name,
+                    timestamp = it.date,
+                    notes = it.notes,
+                    groupId = it.groupId,
+                    location = it.location,
+                    createdAt = it.createdAt
+                )
             }
             val eventTests = backupDao.getAllEventTests().map {
                 BackupEventTestCrossRef(it.eventId, it.testId)
             }
             val testResults = backupDao.getAllTestResults().map {
-                BackupTestResult(it.id, it.eventId, it.individualId, it.testId, it.rawScore, it.percentile?.toDouble(), it.createdAt, it.captureMethod, null)
+                BackupTestResult(
+                    id = it.id,
+                    eventId = it.eventId,
+                    individualId = it.individualId,
+                    testId = it.testId,
+                    rawScore = it.rawScore,
+                    // Still written so an older build can read a newer backup.
+                    standardizedScore = it.percentile?.toDouble(),
+                    timestamp = it.createdAt,
+                    captureMethod = it.captureMethod,
+                    notes = null,
+                    ageAtTime = it.ageAtTime,
+                    percentile = it.percentile,
+                    classification = it.classification,
+                    normVariantUsed = it.normVariantUsed,
+                    weightAtTime = it.weightAtTime,
+                    bodyWeightKg = it.bodyWeightKg
+                )
             }
             val users = backupDao.getAllUsers().map {
                 BackupUser(
@@ -109,7 +159,8 @@ class BackupRepositoryImpl @Inject constructor(
                 individuals, groups, groupMembers, testingEvents, eventTests, testResults, users,
                 customCategories = customCategories,
                 customTests = customTests,
-                customNorms = customNorms
+                customNorms = customNorms,
+                schemaVersion = PAYLOAD_SCHEMA_VERSION
             )
 
             // Serialize to local cache
@@ -185,23 +236,69 @@ class BackupRepositoryImpl @Inject constructor(
                 createdAt = it.createdAt
             )
         }
+        // Every `?:` below is the behaviour a pre-existing Drive backup gets, and it is
+        // exactly what this code used to do unconditionally. New backups carry the real
+        // values. medicalAlert / isRestricted are the reason this mattered most: a restore
+        // used to hand back every athlete with no medical alert and no restriction flag.
+        val now = System.currentTimeMillis()
         val indEntities = payload.individuals.map {
             com.vamshi.field.data.local.entities.people.IndividualEntity(
-                id = it.id, firstName = it.firstName, lastName = it.lastName,
-                dateOfBirth = it.dateOfBirth, sex = com.vamshi.field.domain.model.people.BiologicalSex.valueOf(it.gender), notes = it.notes
+                id = it.id,
+                firstName = it.firstName,
+                lastName = it.lastName,
+                dateOfBirth = it.dateOfBirth,
+                sex = com.vamshi.field.domain.model.people.BiologicalSex.valueOf(it.gender),
+                medicalAlert = it.medicalAlert,
+                isRestricted = it.isRestricted ?: false,
+                email = it.email,
+                isActive = it.isActive ?: true,
+                notes = it.notes,
+                createdAt = it.createdAt ?: now,
+                updatedAt = it.updatedAt ?: now,
+                isDeleted = it.isDeleted ?: false
             )
         }
         val grpEntities = payload.groups.map {
             com.vamshi.field.data.local.entities.people.GroupEntity(
-                id = it.id, name = it.name, location = null, cycle = null, category = it.type, isDeleted = !it.isActive
+                id = it.id,
+                name = it.name,
+                location = it.location,
+                cycle = it.cycle,
+                // Backups write `category ?: ""`, so an absent category arrives as a blank
+                // string. GroupMapper.toDomain already degrades that to null via runCatching,
+                // but storing null keeps the column honest.
+                category = it.type.takeIf { t -> t.isNotBlank() },
+                createdAt = it.createdAt ?: now,
+                updatedAt = now,
+                isDeleted = !it.isActive
             )
         }
         val gmEntities = payload.groupMembers.map {
             com.vamshi.field.data.local.entities.people.GroupMemberCrossRef(it.groupId, it.individualId)
         }
+        // Restored groups, by id — an event may only point at a group that is actually in
+        // this payload. The foreign key is ON DELETE SET NULL, so a dangling groupId would
+        // quietly detach the event all over again instead of failing loudly.
+        val restoredGroupIds = payload.groups.mapTo(mutableSetOf()) { it.id }
+        var orphanedEventCount = 0
         val teEntities = payload.testingEvents.map {
+            val resolvedGroupId = it.groupId?.takeIf { id -> id in restoredGroupIds }
+            if (it.groupId != null && resolvedGroupId == null) orphanedEventCount++
             com.vamshi.field.data.local.entities.testing.TestingEventEntity(
-                id = it.id, name = it.name, date = it.timestamp, notes = it.notes
+                id = it.id,
+                groupId = resolvedGroupId,
+                name = it.name,
+                date = it.timestamp,
+                location = it.location,
+                notes = it.notes,
+                createdAt = it.createdAt ?: it.timestamp
+            )
+        }
+        if (orphanedEventCount > 0) {
+            android.util.Log.w(
+                "BackupRestore",
+                "$orphanedEventCount restored event(s) referenced a group that was not in the " +
+                    "backup; they were restored as personal sessions."
             )
         }
         val etEntities = payload.eventTests.map {
@@ -209,8 +306,22 @@ class BackupRepositoryImpl @Inject constructor(
         }
         val trEntities = payload.testResults.map {
             com.vamshi.field.data.local.entities.testing.TestResultEntity(
-                id = it.id, eventId = it.eventId, individualId = it.individualId, testId = it.testId,
-                rawScore = it.rawScore, ageAtTime = 0f, captureMethod = it.captureMethod, createdAt = it.timestamp
+                id = it.id,
+                eventId = it.eventId,
+                individualId = it.individualId,
+                testId = it.testId,
+                rawScore = it.rawScore,
+                ageAtTime = it.ageAtTime ?: 0f,
+                weightAtTime = it.weightAtTime,
+                bodyWeightKg = it.bodyWeightKg,
+                // standardizedScore is the pre-existing write-only copy of the percentile.
+                // Reading it as the fallback recovers the zone colour for every backup
+                // already sitting in Drive, not just ones taken after this change.
+                percentile = it.percentile ?: it.standardizedScore?.toInt(),
+                classification = it.classification,
+                normVariantUsed = it.normVariantUsed,
+                captureMethod = it.captureMethod,
+                createdAt = it.timestamp
             )
         }
 
@@ -288,5 +399,8 @@ class BackupRepositoryImpl @Inject constructor(
 
     private companion object {
         const val KEY_LAST_BACKUP_TIMESTAMP = "last_backup_timestamp"
+
+        /** Bump when the payload gains fields that restore needs to branch on. */
+        const val PAYLOAD_SCHEMA_VERSION = 1
     }
 }

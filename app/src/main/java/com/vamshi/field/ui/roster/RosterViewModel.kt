@@ -19,26 +19,24 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.vamshi.field.domain.model.people.AgeBracket
 
 enum class RosterTab {
     ATHLETES, GROUPS
 }
 
-enum class AthleteAgeRange(val label: String, val minAge: Int, val maxAge: Int?) {
-    UNDER_10("Under 10", 0, 9),
-    TEN_TO_TWELVE("10–12", 10, 12),
-    THIRTEEN_TO_FIFTEEN("13–15", 13, 15),
-    SIXTEEN_TO_EIGHTEEN("16–18", 16, 18),
-    EIGHTEEN_PLUS("18+", 18, null)
-}
+/**
+ * The roster filter uses the same brackets as the norm tables, so "Adolescence" on a chip
+ * and "Adolescence" in a norm lookup mean the same span of ages. Kept as an alias rather
+ * than a rename so existing call sites are untouched.
+ */
+typealias AthleteAgeRange = AgeBracket
 
 private fun ageOf(individual: Individual): Int =
     ((System.currentTimeMillis() - individual.dateOfBirth) / 31_557_600_000L).toInt()
 
-private fun matchesAgeRange(individual: Individual, range: AthleteAgeRange): Boolean {
-    val age = ageOf(individual)
-    return age >= range.minAge && (range.maxAge == null || age <= range.maxAge)
-}
+private fun matchesAgeRange(individual: Individual, range: AthleteAgeRange): Boolean =
+    ageOf(individual) in range
 
 data class RosterUiState(
     val currentTab: RosterTab = RosterTab.ATHLETES,

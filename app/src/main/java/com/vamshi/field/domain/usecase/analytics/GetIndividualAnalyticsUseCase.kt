@@ -69,8 +69,8 @@ class GetIndividualAnalyticsUseCase @Inject constructor() {
             val percentile = result.percentile ?: 0
             
             val zone = when {
-                percentile >= 80 -> PerformanceZone.GREEN
-                percentile >= 40 -> PerformanceZone.YELLOW
+                percentile >= com.vamshi.field.domain.model.reports.PerformanceThresholds.SUPERIOR_MIN -> PerformanceZone.GREEN
+                percentile >= com.vamshi.field.domain.model.reports.PerformanceThresholds.HEALTHY_MIN -> PerformanceZone.YELLOW
                 else -> PerformanceZone.RED
             }
             

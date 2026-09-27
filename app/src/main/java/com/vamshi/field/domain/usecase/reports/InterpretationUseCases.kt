@@ -2,6 +2,7 @@ package com.vamshi.field.domain.usecase.reports
 
 import com.vamshi.field.domain.model.reports.Classification
 import com.vamshi.field.domain.model.reports.Distribution
+import com.vamshi.field.domain.model.reports.PerformanceThresholds
 import com.vamshi.field.domain.model.reports.AthleteFlag
 import com.vamshi.field.domain.model.reports.FlagType
 import com.vamshi.field.domain.model.testing.TestResult
@@ -10,13 +11,12 @@ import javax.inject.Inject
 import kotlin.math.roundToInt
 
 class ClassifyPercentileUseCase @Inject constructor() {
-    // ALearning classification contract — three categories: Superior ≥80 (Green), Healthy/Average 40–79 (Yellow), Needs Improvement <40 (Red). Grey is the absence of data, not a category.
-    operator fun invoke(percentile: Int?): Classification = when {
-        percentile == null -> Classification.NO_DATA
-        percentile >= 80 -> Classification.SUPERIOR
-        percentile >= 40 -> Classification.HEALTHY
-        else -> Classification.NEEDS_IMPROVEMENT
-    }
+    /**
+     * Delegates to [PerformanceThresholds] so the rule exists in exactly one place.
+     * Kept as an injectable use case because every existing call site injects it.
+     */
+    operator fun invoke(percentile: Int?): Classification =
+        PerformanceThresholds.classify(percentile)
 }
 
 class CalculateAthleteSessionAvgUseCase @Inject constructor() {
@@ -76,9 +76,9 @@ class GetAthleteFlagsUseCase @Inject constructor(
                 continue
             }
 
-            // BELOW HEALTHY (athlete-session average < 40 — Red zone per CLAUDE.md)
+            // BELOW HEALTHY (athlete-session average below PerformanceThresholds.HEALTHY_MIN)
             val avg = calculateAthleteSessionAvg(mine)
-            if ((avg != null) && (avg < 40)) {
+            if ((avg != null) && (avg < PerformanceThresholds.HEALTHY_MIN)) {
                 flags += AthleteFlag(
                     individualId = athleteId,
                     athleteName = athleteName,

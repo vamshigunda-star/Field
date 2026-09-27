@@ -244,7 +244,7 @@ private fun OnboardingHero(modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Fitness testing built for coaches and PE teachers.",
+                text = "Fitness testing built for coaches and fitness professionals.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.9f),
                 textAlign = TextAlign.Center

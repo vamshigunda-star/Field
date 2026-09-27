@@ -284,4 +284,230 @@ class BackupRepositoryImplTest {
 
         assertEquals(42_000L, recreated.getLastBackupTimestamp())
     }
+
+    // ---------------------------------------------------------------------------
+    // Lossless round trip.
+    //
+    // The existing tests above cover the *dangerous* version of a broken restore: a
+    // failed one must not wipe local data. They all pass while the quiet version --
+    // a restore that "succeeds" and silently drops columns -- goes unnoticed, which
+    // is exactly how it shipped. These exercise the round trip itself.
+    // ---------------------------------------------------------------------------
+
+    /**
+     * The headline regression. BackupTestingEvent carried no groupId, so a restored
+     * event came back with groupId = null and TestingDao.getEventsForGroup could not
+     * find it. The coach restores, opens their group, and sees nothing -- even though
+     * the rows are in the database.
+     */
+    @Test
+    fun `restoreEntities keeps a testing event attached to its group`() = runTest {
+        val payload = basePayload(
+            groups = listOf(BackupGroup(id = "g1", name = "Team A", type = "TEAM", isActive = true)),
+            testingEvents = listOf(
+                BackupTestingEvent(
+                    id = "ev-1", name = "Spring Testing", timestamp = 5_000L,
+                    notes = null, groupId = "g1"
+                )
+            )
+        )
+
+        repository.restoreEntities(payload)
+
+        val restored = db.backupDao().getAllTestingEvents().single()
+        assertEquals("g1", restored.groupId)
+    }
+
+    /**
+     * Safety-critical: medicalAlert and isRestricted were not in the payload at all, so
+     * every athlete came back from a restore reading as having no medical alert.
+     */
+    @Test
+    fun `restoreEntities preserves medical alert and restriction flag`() = runTest {
+        val payload = basePayload(
+            individuals = listOf(
+                BackupIndividual(
+                    id = "ath-1", firstName = "Asha", lastName = "Rao", dateOfBirth = 1_000L,
+                    gender = BiologicalSex.FEMALE.name, notes = null,
+                    medicalAlert = "Asthma - inhaler on site", isRestricted = true,
+                    email = "asha@example.com", isActive = false
+                )
+            )
+        )
+
+        repository.restoreEntities(payload)
+
+        val restored = db.backupDao().getAllIndividuals().single()
+        assertEquals("Asthma - inhaler on site", restored.medicalAlert)
+        assertEquals(true, restored.isRestricted)
+        assertEquals("asha@example.com", restored.email)
+        assertEquals(false, restored.isActive)
+    }
+
+    /** percentile and ageAtTime were dropped, so restored results rendered grey and aged zero. */
+    @Test
+    fun `restoreEntities preserves percentile and ageAtTime on a result`() = runTest {
+        repository.restoreEntities(resultPayload(percentile = 92, ageAtTime = 14.5f, standardizedScore = 92.0))
+
+        val restored = db.backupDao().getAllTestResults().single()
+        assertEquals(92, restored.percentile)
+        assertEquals(14.5f, restored.ageAtTime, 0.001f)
+        assertEquals("SUPERIOR", restored.classification)
+    }
+
+    /**
+     * Recovery for backups already in Drive: they have standardizedScore (the write-only
+     * copy of the percentile) but no percentile field, so reading it back restores the
+     * zone colour retroactively.
+     */
+    @Test
+    fun `restoreEntities recovers percentile from standardizedScore on a legacy payload`() = runTest {
+        repository.restoreEntities(
+            resultPayload(percentile = null, ageAtTime = null, standardizedScore = 71.0, classification = null)
+        )
+
+        val restored = db.backupDao().getAllTestResults().single()
+        assertEquals(71, restored.percentile)
+    }
+
+    /**
+     * The load-bearing compatibility test. Gson instantiates data classes through Unsafe,
+     * bypassing the constructor, so a Kotlin default is NOT applied to a key missing from
+     * the JSON -- a non-null field added to the payload would arrive as null and throw.
+     *
+     * This must deserialize real JSON. Building the DTO in Kotlin applies the defaults and
+     * would test nothing.
+     */
+    @Test
+    fun `restoreEntities accepts a legacy payload whose JSON omits the new fields`() = runTest {
+        val legacyJson = """
+            {
+              "individuals": [
+                {"id":"ath-1","firstName":"Old","lastName":"Backup","dateOfBirth":0,"gender":"MALE","notes":null}
+              ],
+              "groups": [{"id":"g1","name":"Team A","type":"TEAM","isActive":true}],
+              "groupMembers": [],
+              "testingEvents": [{"id":"ev-1","name":"Old Event","timestamp":1000,"notes":null}],
+              "eventTests": [],
+              "testResults": [],
+              "users": []
+            }
+        """.trimIndent()
+
+        val payload = Gson().fromJson(legacyJson, BackupPayload::class.java)
+        repository.restoreEntities(payload)
+
+        val individual = db.backupDao().getAllIndividuals().single()
+        assertEquals("ath-1", individual.id)
+        assertNull("a legacy payload has no medical alert to restore", individual.medicalAlert)
+        assertEquals("absent isRestricted must fall back to false, not crash", false, individual.isRestricted)
+        assertEquals("absent isActive must fall back to true", true, individual.isActive)
+        // Legacy events genuinely have no groupId; they stay detached, which is correct.
+        assertNull(db.backupDao().getAllTestingEvents().single().groupId)
+    }
+
+    /**
+     * testing_events.groupId is ON DELETE SET NULL. An event pointing at a group that
+     * isn't in the payload would be silently detached by the foreign key, reproducing the
+     * original bug one restore later. Null it deliberately instead.
+     */
+    @Test
+    fun `restoreEntities detaches an event whose group is missing from the payload`() = runTest {
+        val payload = basePayload(
+            groups = emptyList(),
+            testingEvents = listOf(
+                BackupTestingEvent(
+                    id = "ev-1", name = "Orphan", timestamp = 1_000L,
+                    notes = null, groupId = "group-that-is-not-here"
+                )
+            )
+        )
+
+        repository.restoreEntities(payload)
+
+        assertNull(db.backupDao().getAllTestingEvents().single().groupId)
+    }
+
+    /** Group location and cycle were dropped, which breaks cycle-based roster filtering. */
+    @Test
+    fun `restoreEntities preserves group location and cycle`() = runTest {
+        val payload = basePayload(
+            groups = listOf(
+                BackupGroup(
+                    id = "g1", name = "Team A", type = "TEAM", isActive = true,
+                    location = "Main Field", cycle = "Winter 2026"
+                )
+            )
+        )
+
+        repository.restoreEntities(payload)
+
+        val restored = db.backupDao().getAllGroups().single()
+        assertEquals("Main Field", restored.location)
+        assertEquals("Winter 2026", restored.cycle)
+    }
+
+    /** A blank category (what `category ?: ""` writes) must land as null, not "". */
+    @Test
+    fun `restoreEntities stores a blank group category as null`() = runTest {
+        repository.restoreEntities(
+            basePayload(groups = listOf(BackupGroup(id = "g1", name = "Team A", type = "", isActive = true)))
+        )
+
+        assertNull(db.backupDao().getAllGroups().single().category)
+    }
+
+    // --- helpers -------------------------------------------------------------
+
+    private fun basePayload(
+        individuals: List<BackupIndividual> = emptyList(),
+        groups: List<BackupGroup> = emptyList(),
+        testingEvents: List<BackupTestingEvent> = emptyList(),
+        testResults: List<BackupTestResult> = emptyList()
+    ) = BackupPayload(
+        individuals = individuals,
+        groups = groups,
+        groupMembers = emptyList(),
+        testingEvents = testingEvents,
+        eventTests = emptyList(),
+        testResults = testResults,
+        users = emptyList()
+    )
+
+    /** An athlete, a custom test to satisfy the RESTRICT foreign key, an event, and one result. */
+    private fun resultPayload(
+        percentile: Int?,
+        ageAtTime: Float?,
+        standardizedScore: Double?,
+        classification: String? = "SUPERIOR"
+    ) = BackupPayload(
+        individuals = listOf(
+            BackupIndividual("ath-1", "Res", "Athlete", 0L, BiologicalSex.MALE.name, null)
+        ),
+        groups = emptyList(),
+        groupMembers = emptyList(),
+        testingEvents = listOf(BackupTestingEvent("ev-1", "Event", 1_000L, null)),
+        eventTests = emptyList(),
+        testResults = listOf(
+            BackupTestResult(
+                id = "res-1",
+                eventId = "ev-1",
+                individualId = "ath-1",
+                testId = "custom-test-1",
+                rawScore = 12.5,
+                standardizedScore = standardizedScore,
+                timestamp = 1_000L,
+                captureMethod = "MANUAL_ENTRY",
+                notes = null,
+                ageAtTime = ageAtTime,
+                percentile = percentile,
+                classification = classification
+            )
+        ),
+        users = emptyList(),
+        customCategories = listOf(BackupTestCategory("custom-cat-1", "Sport Specific", null, 99, null)),
+        customTests = listOf(customTest()),
+        customNorms = listOf(customNorm())
+    )
+
 }

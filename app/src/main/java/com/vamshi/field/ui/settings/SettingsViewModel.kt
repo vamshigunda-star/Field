@@ -3,7 +3,6 @@ package com.vamshi.field.ui.settings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.vamshi.field.data.storage.TourPreferencesStore
 import com.vamshi.field.domain.repository.BackupRepository
 import com.vamshi.field.domain.usecase.backup.BackupDataUseCase
 import com.vamshi.field.domain.usecase.backup.ListAvailableBackupsUseCase
@@ -26,8 +25,7 @@ class SettingsViewModel @Inject constructor(
     private val listAvailableBackupsUseCase: ListAvailableBackupsUseCase,
     private val restoreDataUseCase: RestoreDataUseCase,
     private val backupRepository: BackupRepository,
-    private val driveBackupHelper: DriveBackupHelper,
-    private val tourPreferencesStore: TourPreferencesStore
+    private val driveBackupHelper: DriveBackupHelper
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -63,19 +61,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsAction.DismissRestoreConfirmation -> dismissRestoreConfirmation()
             is SettingsAction.SelectBackup -> _uiState.update { it.copy(selectedBackupId = action.backupId) }
             is SettingsAction.RestoreData -> handleRestoreData()
-            is SettingsAction.OnOpenWelcomeTour -> _uiState.update { it.copy(showWelcomeTour = true) }
-            is SettingsAction.OnDismissWelcomeTour -> _uiState.update { it.copy(showWelcomeTour = false) }
-            is SettingsAction.OnOpenTestingTour -> _uiState.update { it.copy(showTestingTour = true) }
-            is SettingsAction.OnDismissTestingTour -> _uiState.update { it.copy(showTestingTour = false) }
-            is SettingsAction.OnResetAllTours -> handleResetAllTours()
             is SettingsAction.NavigateBack -> Unit
-        }
-    }
-
-    private fun handleResetAllTours() {
-        viewModelScope.launch {
-            tourPreferencesStore.resetAllToursAndChecklists()
-            _uiState.update { it.copy(tourResetMessage = "All walkthroughs and onboarding tips have been reset.") }
         }
     }
 

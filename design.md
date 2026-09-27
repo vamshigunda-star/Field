@@ -7,7 +7,7 @@ This document serves as the single source of truth for the UI/UX design and fron
 - **Architecture Strategy**: The UI is built using **Jetpack Compose** and **Material 3**, strictly adhering to **Clean Architecture**. The Presentation layer is completely decoupled from the Data layer.
 - **State Management**: Implements Unidirectional Data Flow (UDF). ViewModels expose a single immutable `StateFlow<UiState>` and receive user intents through a sealed `ScreenAction` interface.
 - **Design Philosophy**: 
-  - **Performance-Driven Visuals**: The app relies heavily on color-coded zones to instantly convey fitness performance percentiles (Green ≥60, Yellow 30-59, Red <30).
+  - **Performance-Driven Visuals**: The app relies heavily on color-coded zones to instantly convey fitness performance percentiles (Green ≥80, Yellow 40-79, Red <40, Grey = no norm).
   - **Offline-First & Durable**: UI interactions are designed to persist to local Room SQLite databases efficiently, ensuring no data loss during live physical testing.
   - **Action Isolation**: Critical data entry is currently isolated in modal dialogs to prevent accidental input during active sports scenarios.
 
@@ -177,7 +177,7 @@ When modifying the UI, the following strict rules apply based on this document:
 2. **Component Updates**:
    - If the data entry model shifts from Modal → Inline, you MUST update `AthleteRow.kt` and `ScoreCell.kt` to handle focus and keyboard IME actions, and immediately deprecate `ScoreEntryDialog`.
 3. **Performance Color Updates**:
-   - If threshold values change, they must be updated in `CalculatePercentileUseCase` and reflected visually in `ScoreCell`. The UI must never calculate its own percentiles.
+   - Thresholds live in `domain/model/reports/PerformanceThresholds.kt` and nowhere else. `ScoreCell` and every other zone-coloured surface get their colours from `performanceZoneColors(...)` in `ui/theme/PerformanceZoneColors.kt`. The UI must never calculate its own percentiles or re-type the thresholds — that is exactly how the grid drifted to 60/30 while the reports stayed at 80/40.
 4. **State Management**:
    - If addressing the O(N) lookup scalability limitation, you MUST modify `TestingGridViewModel` and `GetTestingGridDataUseCase`—do NOT attempt to fix it by writing complex memoization within `TestingGridComponents.kt`.
 

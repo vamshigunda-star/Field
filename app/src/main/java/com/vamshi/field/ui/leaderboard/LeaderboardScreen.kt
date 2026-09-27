@@ -40,29 +40,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.usecase.testing.LeaderboardEntry
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.theme.ElectricBlue
 import androidx.compose.foundation.isSystemInDarkTheme
-import com.vamshi.field.ui.theme.PerformanceGreen
-import com.vamshi.field.ui.theme.PerformanceGreenDark
 import com.vamshi.field.ui.theme.PerformanceGreenText
 import com.vamshi.field.ui.theme.PerformanceGreenTextDark
-import com.vamshi.field.ui.theme.PerformanceRed
-import com.vamshi.field.ui.theme.PerformanceRedDark
 import com.vamshi.field.ui.theme.PerformanceRedText
 import com.vamshi.field.ui.theme.PerformanceRedTextDark
-import com.vamshi.field.ui.theme.PerformanceYellow
-import com.vamshi.field.ui.theme.PerformanceYellowDark
-import com.vamshi.field.ui.theme.PerformanceYellowText
-import com.vamshi.field.ui.theme.PerformanceYellowTextDark
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import com.vamshi.field.ui.components.tour.TestingTourDialog
+import com.vamshi.field.ui.theme.performanceZoneColors
 
 @Composable
 fun LeaderboardScreen(
@@ -70,11 +57,9 @@ fun LeaderboardScreen(
     viewModel: LeaderboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showTestingTour by remember { mutableStateOf(false) }
 
     LeaderboardContent(
         uiState = uiState,
-        onOpenTestingTour = { showTestingTour = true },
         onAction = { action ->
             when (action) {
                 is LeaderboardAction.OnNavigateBack -> onNavigateBack()
@@ -82,19 +67,12 @@ fun LeaderboardScreen(
             }
         }
     )
-
-    if (showTestingTour) {
-        TestingTourDialog(
-            onDismiss = { showTestingTour = false }
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LeaderboardContent(
     uiState: LeaderboardUiState,
-    onOpenTestingTour: () -> Unit = {},
     onAction: (LeaderboardAction) -> Unit
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -108,11 +86,6 @@ fun LeaderboardContent(
                 navigationIcon = {
                     IconButton(onClick = { onAction(LeaderboardAction.OnNavigateBack) }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onOpenTestingTour) {
-                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Testing Guide")
                     }
                 }
             )
@@ -234,7 +207,7 @@ private fun LeaderboardBody(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(leaderboard.entries) { entry ->
+                items(leaderboard.entries, key = { it.individualId }) { entry ->
                     LeaderboardEntryRow(entry = entry)
                 }
             }
@@ -303,7 +276,7 @@ private fun LeaderboardEntryRow(entry: LeaderboardEntry) {
             ) {
                 Text(
                     text = entry.athleteName,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.5.sp),
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
@@ -317,7 +290,7 @@ private fun LeaderboardEntryRow(entry: LeaderboardEntry) {
                     val scoreStr = if (entry.rawScore % 1.0 == 0.0) entry.rawScore.toInt().toString() else String.format(java.util.Locale.US, "%.1f", entry.rawScore)
                     Text(
                         text = "$scoreStr ${entry.unit}",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp),
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -335,7 +308,6 @@ private fun LeaderboardEntryRow(entry: LeaderboardEntry) {
                             Text(
                                 text = entry.classification,
                                 style = MaterialTheme.typography.labelSmall,
-                                fontSize = 10.5.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = ElectricBlue,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.5.dp)
@@ -359,11 +331,8 @@ private fun LeaderboardEntryRow(entry: LeaderboardEntry) {
 
             // Percentile Pill
             entry.percentile?.let { p ->
-                val (bgColor, textColor) = when {
-                    p >= 80 -> if (isDark) PerformanceGreenDark to PerformanceGreenTextDark else PerformanceGreen to PerformanceGreenText
-                    p >= 40 -> if (isDark) PerformanceYellowDark to PerformanceYellowTextDark else PerformanceYellow to PerformanceYellowText
-                    else -> if (isDark) PerformanceRedDark to PerformanceRedTextDark else PerformanceRed to PerformanceRedText
-                }
+                val zone = performanceZoneColors(p)
+                val (bgColor, textColor) = zone.background to zone.text
                 Surface(
                     shape = RoundedCornerShape(6.dp),
                     color = bgColor
@@ -371,7 +340,6 @@ private fun LeaderboardEntryRow(entry: LeaderboardEntry) {
                     Text(
                         text = "$p%",
                         style = MaterialTheme.typography.labelSmall,
-                        fontSize = 11.5.sp,
                         color = textColor,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
