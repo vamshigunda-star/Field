@@ -1,6 +1,7 @@
 package com.vamshi.field.data.seed
 
 import android.content.Context
+import android.util.Log
 import com.vamshi.field.data.local.entities.standards.FitnessTestEntity
 import com.vamshi.field.data.local.entities.standards.NormReferenceEntity
 import com.vamshi.field.data.local.entities.standards.TestCategoryEntity
@@ -27,8 +28,7 @@ class SeedDataManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val importStandardsUseCase: ImportStandardsUseCase,
     private val importRecommendationsUseCase: ImportRecommendationsUseCase,
-    private val database: com.vamshi.field.data.AppDatabase,
-    private val logger: com.vamshi.field.domain.logging.AppLogger
+    private val database: com.vamshi.field.data.AppDatabase
 ) {
     companion object {
         private const val TAG = "SeedDataManager"
@@ -82,7 +82,7 @@ class SeedDataManager @Inject constructor(
             }
             val prepackagedCatalogIsCurrent = stampedCatalogVersion == CATALOG_VERSION
 
-            logger.debug(TAG, "seedIfNeeded: isAlreadySeeded=$isAlreadySeeded, stampedCatalog=$stampedCatalogVersion, testCount=$testCount, normCount=$normCount, athleteCount=$athleteCount")
+            Log.d(TAG, "seedIfNeeded: isAlreadySeeded=$isAlreadySeeded, stampedCatalog=$stampedCatalogVersion, testCount=$testCount, normCount=$normCount, athleteCount=$athleteCount")
 
             // Fast path: this build's catalog has already been applied, so the CSV import
             // would rebuild byte-identical data. Two distinct questions, deliberately not
@@ -111,7 +111,7 @@ class SeedDataManager @Inject constructor(
             // rewrite identical rows.
             if ((isAlreadySeeded || prepackagedCatalogIsCurrent) && normCount > 0 && testCount > 0) {
                 if (!isAlreadySeeded) {
-                    logger.debug(TAG, "Prepackaged catalog is current ($stampedCatalogVersion): $testCount tests, $normCount norms. Skipping CSV seeding entirely.")
+                    Log.d(TAG, "Prepackaged catalog is current ($stampedCatalogVersion): $testCount tests, $normCount norms. Skipping CSV seeding entirely.")
                     // Record both answers so later launches short-circuit on the flag alone.
                     //
                     // KEY_DEMO_DATA_SEEDED is settled here because the prepackaged asset ships
@@ -124,12 +124,12 @@ class SeedDataManager @Inject constructor(
                         .putBoolean(KEY_DEMO_DATA_SEEDED, true)
                         .apply()
                 } else {
-                    logger.debug(TAG, "Catalog already seeded for this version: $testCount tests, $normCount norms. Skipping runtime CSV seeding.")
+                    Log.d(TAG, "Catalog already seeded for this version: $testCount tests, $normCount norms. Skipping runtime CSV seeding.")
                 }
                 return
             }
 
-            logger.debug(TAG, "Starting standards and recommendations seeding from CSV...")
+            Log.d(TAG, "Starting standards and recommendations seeding from CSV...")
 
             // 1. Seed Test Library from CSV
             try {
@@ -142,7 +142,7 @@ class SeedDataManager @Inject constructor(
                 }
                 val normMaps = com.vamshi.field.util.CsvParser.parse(normsStream)
 
-                logger.debug(TAG, "Parsed ${categoryMaps.size} categories, ${testMaps.size} tests, ${normMaps.size} norms")
+                Log.d(TAG, "Parsed ${categoryMaps.size} categories, ${testMaps.size} tests, ${normMaps.size} norms")
 
                     val categories = categoryMaps.map { row ->
                         TestCategoryEntity(
@@ -196,14 +196,14 @@ class SeedDataManager @Inject constructor(
                         tests.map { it.toDomain() },
                         norms.map { it.toDomain() }
                     )
-                    logger.debug(TAG, "Successfully seeded ${categories.size} categories, ${tests.size} tests, and ${norms.size} norms")
+                    Log.d(TAG, "Successfully seeded ${categories.size} categories, ${tests.size} tests, and ${norms.size} norms")
                 } catch (e: Exception) {
-                    logger.error(TAG, "Failed to seed standards catalog", e)
+                    Log.e(TAG, "Failed to seed standards catalog", e)
                 }
 
                 // 2. Seed Recommendations
                 try {
-                    logger.debug(TAG, "Seeding recommendations...")
+                    Log.d(TAG, "Seeding recommendations...")
                     val recCategoryMaps = com.vamshi.field.util.CsvParser.parse(context.assets.open("recommendation_categories.csv"))
                     val recTestMaps = com.vamshi.field.util.CsvParser.parse(context.assets.open("recommendation_tests.csv"))
 
@@ -232,9 +232,9 @@ class SeedDataManager @Inject constructor(
                         links = recTestLinks,
                         clearExisting = true
                     )
-                    logger.debug(TAG, "Successfully seeded ${recCategories.size} recommendation categories and ${recTestLinks.size} test links")
+                    Log.d(TAG, "Successfully seeded ${recCategories.size} recommendation categories and ${recTestLinks.size} test links")
                 } catch (e: Exception) {
-                    logger.error(TAG, "Failed to seed recommendations", e)
+                    Log.e(TAG, "Failed to seed recommendations", e)
                 }
 
                 prefs.edit().putBoolean(KEY_SEEDED_VERSION, true).apply()
@@ -258,7 +258,7 @@ class SeedDataManager @Inject constructor(
                 }
                 val currentAthleteCount = database.peopleDao().getIndividualCount()
                 if (!demoDataSettled && currentAthleteCount == 0) {
-                    logger.debug(TAG, "Seeding preloaded athletes, groups, events, and results...")
+                    Log.d(TAG, "Seeding preloaded athletes, groups, events, and results...")
                     val peopleDao = database.peopleDao()
                     val testingDao = database.testingDao()
 
@@ -393,11 +393,10 @@ class SeedDataManager @Inject constructor(
                                 val pctBase = if (isHigherBetter) 30 + (i * 5) else 30 + (i * 5)
                                 val percentile = (pctBase + (Math.random() * 10).toInt()).coerceIn(1, 99)
 
-                                // Same labels norms.csv uses, so demo rows read like real ones.
                                 val classification = when {
-                                    percentile >= com.vamshi.field.domain.model.reports.PerformanceThresholds.SUPERIOR_MIN -> "Superior"
-                                    percentile >= com.vamshi.field.domain.model.reports.PerformanceThresholds.HEALTHY_MIN -> "Healthy Fitness Zone"
-                                    else -> "Needs Improvement"
+                                    percentile >= com.vamshi.field.domain.model.reports.PerformanceThresholds.SUPERIOR_MIN -> "SUPERIOR"
+                                    percentile >= com.vamshi.field.domain.model.reports.PerformanceThresholds.HEALTHY_MIN -> "HEALTHY"
+                                    else -> "NEEDS_IMPROVEMENT"
                                 }
 
                                 resultsToInsert += TestResultEntity(
@@ -414,7 +413,7 @@ class SeedDataManager @Inject constructor(
                         }
                     }
                     testingDao.insertResults(resultsToInsert)
-                    logger.debug(TAG, "Successfully seeded preloaded athletes, groups, events, and testing results!")
+                    Log.d(TAG, "Successfully seeded preloaded athletes, groups, events, and testing results!")
                 }
                 if (!demoDataSettled) {
                     // Set whether or not rows were inserted: both branches mean "the demo roster
@@ -422,12 +421,12 @@ class SeedDataManager @Inject constructor(
                     prefs.edit().putBoolean(KEY_DEMO_DATA_SEEDED, true).apply()
                 }
             } catch (e: Exception) {
-                logger.error(TAG, "Failed to seed dummy athletes and results", e)
+                Log.e(TAG, "Failed to seed dummy athletes and results", e)
             }
 
-            logger.debug(TAG, "Seeding pipeline finished.")
+            Log.d(TAG, "Seeding pipeline finished.")
         } catch (e: Throwable) {
-            logger.error(TAG, "Unexpected error in seedIfNeeded", e)
+            Log.e(TAG, "Unexpected error in seedIfNeeded", e)
         }
     }
 }
