@@ -41,6 +41,8 @@ import androidx.compose.ui.draw.alpha
 
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
+import com.vamshi.field.ui.components.FieldLoadingState
+import com.vamshi.field.ui.components.FieldProgressBar
 
 @Composable
 fun StopwatchScreen(
@@ -167,7 +169,7 @@ private fun StopwatchContent(
                 )
             }
             when {
-                uiState.isLoading -> LoadingBox(PaddingValues(0.dp))
+                uiState.isLoading -> FieldLoadingState()
                 !uiState.sessionLoaded -> ErrorBox(uiState.errorMessage ?: "Something went wrong", onAction, PaddingValues(0.dp))
                 uiState.mode == TimingMode.INDIVIDUAL -> IndividualModeContent(uiState, allAthletes, listState, onAction, PaddingValues(0.dp))
                 uiState.isSessionComplete -> {
@@ -328,8 +330,8 @@ private fun SaveProgressIndicator(completedCount: Int, totalCount: Int) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        LinearProgressIndicator(
-            progress = { progress },
+        FieldProgressBar(
+            progress = progress,
             modifier = Modifier.weight(1f).height(8.dp).padding(end = 12.dp),
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
@@ -409,13 +411,6 @@ private fun SubmitBar(pendingCount: Int, isSubmitting: Boolean, onSubmit: () -> 
 }
 
 @Composable
-private fun LoadingBox(padding: PaddingValues) {
-    Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
-    }
-}
-
-@Composable
 private fun ErrorBox(message: String, onAction: (StopwatchAction) -> Unit, padding: PaddingValues) {
     Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -489,7 +484,7 @@ private fun IndividualModeContent(
                     shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isRunning) MaterialTheme.colorScheme.error else ElectricBlue
+                        containerColor = if (isRunning) MaterialTheme.colorScheme.error else SportOrange
                     )
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {

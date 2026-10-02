@@ -85,6 +85,8 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import com.vamshi.field.domain.model.reports.Classification
 import com.vamshi.field.domain.model.reports.PerformanceThresholds
+import com.vamshi.field.ui.components.HeroNumber
+import androidx.compose.material3.LocalTextStyle
 
 /**
  * Modern, High-Polish Athletic Radar / Skill Matrix Chart.
@@ -260,10 +262,11 @@ fun RadarChart(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "${average}th",
+                        HeroNumber(
+                            value = average,
+                            suffix = "th",
+                            style = LocalTextStyle.current.copy(fontSize = 15.sp),
                             color = primaryColor,
-                            fontSize = 15.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
                         Spacer(modifier = Modifier.width(3.dp))
@@ -538,28 +541,32 @@ fun RadarChart(
                         val v = maxOf(score.normalizedScore * currentProgress, 0.03f)
                         val p = point(index, v)
                         val isSelected = selectedIndex == index
+                        // Strongest/focus are marked by the halo's shape, never by its colour:
+                        // the colour is always the zone, so a 79th-percentile best area stays
+                        // Yellow here exactly as it does on the reports.
+                        val zoneColor = performanceColor(score.normalizedScore, green, yellow, red)
 
                         when {
                             index == strongestIndex -> {
                                 // Animated breathing glow for top strength
                                 val glowRadius = maxOf(pulseScale.dp.toPx(), 1f)
                                 drawCircle(
-                                    color = green.copy(alpha = pulseAlpha),
+                                    color = zoneColor.copy(alpha = pulseAlpha),
                                     radius = glowRadius,
                                     center = p
                                 )
                                 drawCircle(color = Color.White, radius = 6.dp.toPx(), center = p)
-                                drawCircle(color = green, radius = 4.5.dp.toPx(), center = p)
+                                drawCircle(color = zoneColor, radius = 4.5.dp.toPx(), center = p)
                             }
                             index == focusIndex -> {
-                                // Glowing amber/red core for focus area
+                                // Static halo for the focus area
                                 drawCircle(
-                                    color = red.copy(alpha = 0.25f),
+                                    color = zoneColor.copy(alpha = 0.25f),
                                     radius = 11.dp.toPx(),
                                     center = p
                                 )
                                 drawCircle(color = Color.White, radius = 5.5.dp.toPx(), center = p)
-                                drawCircle(color = red, radius = 4.dp.toPx(), center = p)
+                                drawCircle(color = zoneColor, radius = 4.dp.toPx(), center = p)
                             }
                             isSelected -> {
                                 // Selected spoke vertex halo
@@ -572,9 +579,8 @@ fun RadarChart(
                                 drawCircle(color = primaryColor, radius = 4.5.dp.toPx(), center = p)
                             }
                             else -> {
-                                val pointColor = performanceColor(score.normalizedScore, green, yellow, red)
                                 drawCircle(color = Color.White, radius = 4.5.dp.toPx(), center = p)
-                                drawCircle(color = pointColor, radius = 3.2.dp.toPx(), center = p)
+                                drawCircle(color = zoneColor, radius = 3.2.dp.toPx(), center = p)
                             }
                         }
                     }
@@ -606,8 +612,6 @@ fun RadarChart(
                         val isSelected = selectedIndex == index
                         val scoreColor = when {
                             isSelected -> primaryColor
-                            index == strongestIndex -> green
-                            index == focusIndex -> red
                             score.testCount > 0 -> performanceColor(score.normalizedScore, green, yellow, red)
                             else -> secondaryText.copy(alpha = 0.5f)
                         }

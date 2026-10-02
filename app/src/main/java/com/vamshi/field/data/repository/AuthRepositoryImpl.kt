@@ -1,7 +1,6 @@
 package com.vamshi.field.data.repository
 
 import android.database.sqlite.SQLiteConstraintException
-import com.vamshi.field.data.auth.PasswordHasher
 import com.vamshi.field.data.local.daos.auth.UserDao
 import com.vamshi.field.data.local.entities.auth.UserEntity
 import com.vamshi.field.data.mapper.auth.toDomain
@@ -26,7 +25,6 @@ import javax.inject.Singleton
  *
  * Responsibilities:
  *  - Normalize usernames (trim + lowercase) before every DB operation.
- *  - Hash passwords and security answers via [PasswordHasher] (PBKDF2-SHA256).
  *  - Manage session via [SessionManager] (SharedPreferences).
  *  - Map [SQLiteConstraintException] to [AuthError.UsernameTaken].
  *  - Never expose raw entities — always map through [toDomain] before returning.
@@ -34,20 +32,16 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
-    private val sessionManager: SessionManager,
-    private val hasher: PasswordHasher
+    private val sessionManager: SessionManager
 ) : AuthRepository {
 
     override suspend fun signUp(
         firstName: String,
         lastName: String,
         username: String,
-        password: String,
         email: String?
     ): AuthResult = withContext(Dispatchers.IO) {
         val normalizedUsername = username.trim().lowercase()
-
-        val (pwdSalt, pwdHash) = hasher.hash(password)
 
         val entity = UserEntity(
             id = UUID.randomUUID().toString(),
@@ -55,8 +49,9 @@ class AuthRepositoryImpl @Inject constructor(
             lastName = lastName.trim(),
             username = normalizedUsername,
             email = email?.trim()?.ifBlank { null },
-            passwordHash = pwdHash,
-            passwordSalt = pwdSalt,
+            // Vestigial columns — Field has no password. See UserEntity.
+            passwordHash = ByteArray(0),
+            passwordSalt = ByteArray(0),
             createdAt = System.currentTimeMillis()
         )
 
@@ -70,10 +65,6 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             AuthResult.Failure(AuthError.Unknown)
         }
-    }
-
-    override suspend fun signOut() {
-        sessionManager.setCurrentUserId(null)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -95,32 +86,9 @@ class AuthRepositoryImpl @Inject constructor(
         userDao.count()
     }
 
-    override suspend fun getPrimaryAccount(): User? = withContext(Dispatchers.IO) {
-        // userDao.getAll() is already ordered by createdAt DESC, so the head of the
-        // list satisfies both the "single account" and "most recent" cases.
-        userDao.getAll().firstOrNull()?.toDomain()
-    }
-
-    override suspend fun listAccounts(): List<User> = withContext(Dispatchers.IO) {
-        userDao.getAll().map { it.toDomain() }
-    }
-
-    override suspend fun unlock(userId: String, password: String): AuthResult =
+    override suspend fun establishPrimarySession(): AuthResult =
         withContext(Dispatchers.IO) {
-            val entity = userDao.getById(userId)
-                ?: return@withContext AuthResult.Failure(AuthError.InvalidCredentials)
-
-            val valid = hasher.verify(password, entity.passwordSalt, entity.passwordHash)
-            if (!valid) {
-                return@withContext AuthResult.Failure(AuthError.InvalidCredentials)
-            }
-
-            sessionManager.setCurrentUserId(entity.id)
-            AuthResult.Success(entity.toDomain())
-        }
-
-    override suspend fun establishSessionAfterRestore(): AuthResult =
-        withContext(Dispatchers.IO) {
+            // userDao.getAll() is ordered by createdAt DESC, so the head is the most recent account.
             val user = userDao.getAll().firstOrNull()
                 ?: return@withContext AuthResult.Failure(AuthError.Unknown)
             sessionManager.setCurrentUserId(user.id)

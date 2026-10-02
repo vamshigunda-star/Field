@@ -82,6 +82,7 @@ import com.vamshi.field.util.CsvExporter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.platform.LocalLocale
 
 @Composable
 fun SessionReportScreen(
@@ -766,7 +767,7 @@ fun StatSummaryItem(
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
-    val valueStr = if ((value % 1.0) == 0.0) value.toInt().toString() else String.format(Locale.getDefault(), "%.1f", value)
+    val valueStr = if ((value % 1.0) == 0.0) value.toInt().toString() else String.format(LocalLocale.current.platformLocale, "%.1f", value)
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),

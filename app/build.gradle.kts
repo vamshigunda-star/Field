@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 
 plugins {
@@ -26,20 +27,41 @@ ksp {
 
 android {
     namespace = "com.vamshi.field"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.vamshi.field"
-        minSdk = 24
+        // 26, not lower: PasswordHasher uses PBKDF2WithHmacSHA256, which Android's
+        // crypto provider only supports from API 26. On 24-25 sign-up throws
+        // NoSuchAlgorithmException and the app is unusable without an account.
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "com.vamshi.field.HiltTestRunner"
     }
 
+    // Release signing reads an untracked keystore.properties at the repo root:
+    //   storeFile=C:/path/outside/repo/field-upload.jks
+    //   storePassword=…
+    //   keyAlias=…
+    //   keyPassword=…
+    // Without the file, release still builds (unsigned), so contributors and CI are not blocked.
+    val keystorePropsFile = rootProject.file("keystore.properties")
+    val releaseSigning = if (keystorePropsFile.exists()) {
+        val props = Properties().apply { keystorePropsFile.inputStream().use { load(it) } }
+        signingConfigs.create("release") {
+            storeFile = file(props.getProperty("storeFile"))
+            storePassword = props.getProperty("storePassword")
+            keyAlias = props.getProperty("keyAlias")
+            keyPassword = props.getProperty("keyPassword")
+        }
+    } else null
+
     buildTypes {
         release {
+            releaseSigning?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

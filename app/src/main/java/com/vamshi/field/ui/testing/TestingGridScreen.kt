@@ -19,6 +19,7 @@ import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.AppTopBarSubtitleColor
 import com.vamshi.field.ui.components.InlineErrorBanner
 import kotlinx.coroutines.delay
+import com.vamshi.field.ui.components.FieldLoadingState
 
 @Composable
 fun TestingGridScreen(
@@ -227,7 +228,7 @@ private fun TestingGridContent(
             }
 
             when {
-                uiState.isLoading -> LoadingState()
+                uiState.isLoading -> FieldLoadingState()
                 uiState.errorMessage != null && uiState.gridData == null -> ErrorState(
                     message = uiState.errorMessage,
                     onDismiss = { onAction(TestingGridAction.OnDismissError) }

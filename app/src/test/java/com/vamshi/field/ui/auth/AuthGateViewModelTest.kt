@@ -3,6 +3,7 @@ package com.vamshi.field.ui.auth
 import com.vamshi.field.domain.repository.AuthRepository
 import com.vamshi.field.domain.repository.SessionManager
 import com.vamshi.field.domain.usecase.auth.FakeAuthRepository
+import com.vamshi.field.domain.usecase.auth.ResumeSessionUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -73,9 +74,12 @@ class AuthGateViewModelTest {
         override suspend fun userCount(): Int = throw IllegalStateException("database is corrupt")
     }
 
+    private fun gate(sessionManager: SessionManager, repository: AuthRepository) =
+        AuthGateViewModel(ResumeSessionUseCase(sessionManager, repository))
+
     @Test
     fun authGate_whenRepositoryHangs_fallsBackToOnboardingWithinTimeout() = runTest(dispatcher) {
-        val viewModel = AuthGateViewModel(FakeSessionManager(null), HangingAuthRepository())
+        val viewModel = gate(FakeSessionManager(null), HangingAuthRepository())
 
         assertEquals(AuthGateState.Loading, viewModel.state.value)
 
@@ -87,21 +91,34 @@ class AuthGateViewModelTest {
         // Once the budget elapses it must abandon the read rather than wait forever.
         advanceTimeBy(2)
         runCurrent()
-        assertEquals(AuthGateState.UnauthenticatedNoUsers, viewModel.state.value)
+        assertEquals(AuthGateState.NoAccount, viewModel.state.value)
     }
 
     @Test
     fun authGate_whenRepositoryThrows_fallsBackToOnboarding() = runTest(dispatcher) {
-        val viewModel = AuthGateViewModel(FakeSessionManager(null), ThrowingAuthRepository())
+        val viewModel = gate(FakeSessionManager(null), ThrowingAuthRepository())
 
         advanceUntilIdle()
 
-        assertEquals(AuthGateState.UnauthenticatedNoUsers, viewModel.state.value)
+        assertEquals(AuthGateState.NoAccount, viewModel.state.value)
     }
 
     @Test
     fun authGate_whenSessionExists_resolvesToAuthenticated() = runTest(dispatcher) {
-        val viewModel = AuthGateViewModel(FakeSessionManager("user-0"), FakeAuthRepository())
+        val viewModel = gate(FakeSessionManager("user-0"), FakeAuthRepository())
+
+        advanceUntilIdle()
+
+        assertEquals(AuthGateState.Authenticated, viewModel.state.value)
+    }
+
+    /** A device signed out under the old password flow must open, not strand the coach. */
+    @Test
+    fun authGate_whenNoSessionButAccountsExist_resolvesToAuthenticated() = runTest(dispatcher) {
+        val repository = FakeAuthRepository()
+        repository.signUp("Ada", "Lovelace", "ada", null)
+
+        val viewModel = gate(FakeSessionManager(null), repository)
 
         advanceUntilIdle()
 
@@ -109,23 +126,11 @@ class AuthGateViewModelTest {
     }
 
     @Test
-    fun authGate_whenNoSessionButAccountsExist_resolvesToUnlock() = runTest(dispatcher) {
-        val repository = FakeAuthRepository()
-        repository.signUp("Ada", "Lovelace", "ada", "password1", null)
-
-        val viewModel = AuthGateViewModel(FakeSessionManager(null), repository)
-
-        advanceUntilIdle()
-
-        assertEquals(AuthGateState.UnauthenticatedHasUsers, viewModel.state.value)
-    }
-
-    @Test
     fun authGate_whenNoSessionAndNoAccounts_resolvesToOnboarding() = runTest(dispatcher) {
-        val viewModel = AuthGateViewModel(FakeSessionManager(null), FakeAuthRepository())
+        val viewModel = gate(FakeSessionManager(null), FakeAuthRepository())
 
         advanceUntilIdle()
 
-        assertEquals(AuthGateState.UnauthenticatedNoUsers, viewModel.state.value)
+        assertEquals(AuthGateState.NoAccount, viewModel.state.value)
     }
 }

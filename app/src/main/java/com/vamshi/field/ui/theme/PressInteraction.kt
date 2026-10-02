@@ -1,9 +1,7 @@
 package com.vamshi.field.ui.theme
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -36,16 +34,13 @@ fun Modifier.pressInteraction(
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) pressedScale else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        animationSpec = FieldMotion.fastSpatial(),
         label = "press_scale"
     )
 
     val elevation by animateDpAsState(
         targetValue = if (isPressed) 0.dp else baseElevation,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = FieldMotion.fastEffects(),
         label = "press_elevation"
     )
 

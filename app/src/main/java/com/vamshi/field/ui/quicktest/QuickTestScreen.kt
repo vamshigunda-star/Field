@@ -89,6 +89,9 @@ import com.vamshi.field.ui.theme.*
 import androidx.compose.material3.OutlinedCard
 import java.util.Locale
 import com.vamshi.field.ui.theme.performanceZoneColors
+import androidx.compose.ui.platform.LocalLocale
+import com.vamshi.field.ui.components.FieldLoadingState
+import com.vamshi.field.ui.components.HeroNumber
 
 @Composable
 fun QuickTestScreen(
@@ -207,7 +210,7 @@ fun QuickTestContent(
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         when {
-            uiState.isLoading -> LoadingState()
+            uiState.isLoading -> FieldLoadingState("Loading...")
             uiState.errorMessage != null && uiState.categories.isEmpty() -> ErrorState(
                 message = uiState.errorMessage,
                 onDismiss = { onAction(QuickTestAction.OnDismissError) }
@@ -773,12 +776,12 @@ fun QuickTestScoreCell(savedResult: RecordedTestResult?) {
         shadowElevation = if (savedResult != null) 1.dp else 0.dp
     ) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().resultEntrance(savedResult?.rawScore),
             contentAlignment = Alignment.Center
         ) {
             if (savedResult != null) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(String.format(Locale.getDefault(), "%.1f", savedResult.rawScore), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = textColor)
+                    Text(String.format(LocalLocale.current.platformLocale, "%.1f", savedResult.rawScore), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = textColor)
                     savedResult.percentile?.let { p -> Text("${p}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium, color = textColor.copy(alpha = 0.8f)) }
                 }
             } else {
@@ -1023,8 +1026,9 @@ private fun OverallStandingCard(avgPercentile: Int) {
                 Text(label, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = fg)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    "${avgPercentile}%",
+                HeroNumber(
+                    value = avgPercentile,
+                    suffix = "%",
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.Black,
                     color = fg
@@ -1079,22 +1083,6 @@ private fun ResultCard(result: RecordedTestResult) {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun LoadingState(message: String = "Loading...") {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CircularProgressIndicator(strokeWidth = 3.dp)
-            Text(message, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

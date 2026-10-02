@@ -22,6 +22,7 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -44,9 +45,11 @@ import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.theme.*
 import com.vamshi.field.ui.theme.getCategoryVisual
 import com.vamshi.field.ui.util.youtubeThumbnailUrl
+import com.vamshi.field.ui.components.FieldLoadingState
 
 @Composable
 fun TestLibraryScreen(
+    showNavigationIcon: Boolean,
     onNavigateBack: () -> Unit,
     onNavigateToEditTest: (testId: String) -> Unit = {},
     viewModel: TestLibraryViewModel = hiltViewModel()
@@ -55,6 +58,7 @@ fun TestLibraryScreen(
 
     TestLibraryContent(
         uiState = uiState,
+        showNavigationIcon = showNavigationIcon,
         onAction = { action ->
             when (action) {
                 is TestLibraryAction.OnNavigateBack -> onNavigateBack()
@@ -69,6 +73,7 @@ fun TestLibraryScreen(
 @Composable
 fun TestLibraryContent(
     uiState: TestLibraryUiState,
+    showNavigationIcon: Boolean = true,
     onAction: (TestLibraryAction) -> Unit
 ) {
     Scaffold(
@@ -78,15 +83,17 @@ fun TestLibraryContent(
             AppTopBar(
                 title = "Tests Library",
                 navigationIcon = {
-                    IconButton(onClick = { onAction(TestLibraryAction.OnNavigateBack) }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (showNavigationIcon) {
+                        IconButton(onClick = { onAction(TestLibraryAction.OnNavigateBack) }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 }
             )
         }
     ) { padding ->
         when {
-            uiState.isLoading -> LoadingState()
+            uiState.isLoading -> FieldLoadingState("Loading...")
             uiState.errorMessage != null -> ErrorState(
                 message = uiState.errorMessage,
                 onDismiss = { onAction(TestLibraryAction.OnDismissError) }
@@ -167,29 +174,6 @@ private fun DeleteTestDialog(
 }
 
 @Composable
-private fun LoadingState(message: String = "Loading...") {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 3.dp
-            )
-            Text(
-                message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
 private fun ErrorState(
     message: String,
     onDismiss: () -> Unit
@@ -231,10 +215,11 @@ private fun TestLibraryBody(
     padding: PaddingValues
 ) {
     val navigator = rememberListDetailPaneScaffoldNavigator<Any>()
+    val scope = rememberCoroutineScope()
     var activeVideoModal by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     BackHandler(navigator.canNavigateBack()) {
-        navigator.navigateBack()
+        scope.launch { navigator.navigateBack() }
     }
 
     NavigableListDetailPaneScaffold(
@@ -292,7 +277,7 @@ private fun TestLibraryBody(
                                                 NetflixTestCard(
                                                     test = test,
                                                     onClick = {
-                                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, test.id)
+                                                        scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, test.id) }
                                                     },
                                                     onPlayVideo = { videoId, title ->
                                                         activeVideoModal = Pair(videoId, title)
@@ -310,7 +295,7 @@ private fun TestLibraryBody(
         },
         detailPane = {
             AnimatedPane {
-                val testId = navigator.currentDestination?.content as? String
+                val testId = navigator.currentDestination?.contentKey as? String
                 val selectedTest = remember(testId, uiState.allTests) {
                     uiState.allTests.find { it.id == testId }
                 }

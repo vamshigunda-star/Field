@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Shared top-level error banner for the auth screens (Onboarding, Unlock, RestoreBackup).
+ * Shared top-level error banner for the auth screens (Onboarding, RestoreBackup).
  *
  * Originally lived inside `ui/auth/signup/SignUpScreen.kt` — hoisted here so every
  * auth screen (old and new) can share one definition instead of duplicating it.

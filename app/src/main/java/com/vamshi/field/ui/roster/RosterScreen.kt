@@ -35,6 +35,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,20 +44,41 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.ui.athlete.AthleteDashboardScreen
 import com.vamshi.field.ui.components.AppTopBar
+import com.vamshi.field.ui.components.FieldLoadingState
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun RosterScreen(
+    showNavigationIcon: Boolean,
     onNavigateBack: () -> Unit,
     onNavigateToAthleteReport: (String) -> Unit, // no longer invoked for athlete clicks
     onNavigateToTest: (String, String, String?) -> Unit,
     viewModel: RosterViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val navigator = rememberListDetailPaneScaffoldNavigator<Any>()
+    // adaptive 1.3 auto-focuses the destination pane on every navigation. Back from the athlete
+    // detail that lands on the list's first focusable, the search field, and pops the keyboard
+    // over the bottom nav. Same directive as the default, minus the auto-focus.
+    val defaultDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
+    val navigator = rememberListDetailPaneScaffoldNavigator<Any>(
+        scaffoldDirective = PaneScaffoldDirective(
+            maxHorizontalPartitions = defaultDirective.maxHorizontalPartitions,
+            horizontalPartitionSpacerSize = defaultDirective.horizontalPartitionSpacerSize,
+            maxVerticalPartitions = defaultDirective.maxVerticalPartitions,
+            verticalPartitionSpacerSize = defaultDirective.verticalPartitionSpacerSize,
+            defaultPanePreferredWidth = defaultDirective.defaultPanePreferredWidth,
+            defaultPanePreferredHeight = defaultDirective.defaultPanePreferredHeight,
+            excludedBounds = defaultDirective.excludedBounds,
+            shouldAutoFocusCurrentDestination = false
+        )
+    )
+    val scope = rememberCoroutineScope()
 
     BackHandler(navigator.canNavigateBack()) {
-        navigator.navigateBack()
+        scope.launch { navigator.navigateBack() }
     }
 
     NavigableListDetailPaneScaffold(
@@ -64,17 +87,18 @@ fun RosterScreen(
             AnimatedPane {
                 RosterContent(
                     uiState = uiState,
+                    showNavigationIcon = showNavigationIcon,
                     onAction = { action ->
                         when (action) {
                             is RosterAction.OnNavigateBack -> {
                                 if (navigator.canNavigateBack()) {
-                                    navigator.navigateBack()
+                                    scope.launch { navigator.navigateBack() }
                                 } else {
                                     onNavigateBack()
                                 }
                             }
                             is RosterAction.OnNavigateToAthleteReport ->
-                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, action.individualId as Any)
+                                scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, action.individualId as Any) }
                             else -> viewModel.onAction(action)
                         }
                     }
@@ -83,7 +107,7 @@ fun RosterScreen(
                 RosterDialogs(uiState = uiState, onAction = { action ->
                     when (action) {
                         is RosterAction.OnNavigateToAthleteReport ->
-                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, action.individualId as Any)
+                            scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, action.individualId as Any) }
                         else -> viewModel.onAction(action)
                     }
                 })
@@ -91,12 +115,12 @@ fun RosterScreen(
         },
         detailPane = {
             AnimatedPane {
-                val athleteId = navigator.currentDestination?.content as? String
+                val athleteId = navigator.currentDestination?.contentKey as? String
                 if (athleteId != null) {
                     AthleteDashboardScreen(
                         athleteId = athleteId,
                         contextSessionId = null,
-                        onNavigateBack = { navigator.navigateBack() },
+                        onNavigateBack = { scope.launch { navigator.navigateBack() } },
                         onNavigateToTest = onNavigateToTest,
                         onStartQuickTest = { _, _ -> /* no-op in detail pane or handle if needed */ }
                     )
@@ -114,6 +138,7 @@ fun RosterScreen(
 @Composable
 fun RosterContent(
     uiState: RosterUiState,
+    showNavigationIcon: Boolean = true,
     onAction: (RosterAction) -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -148,8 +173,10 @@ fun RosterContent(
             AppTopBar(
                 title = "Roster",
                 navigationIcon = {
-                    IconButton(onClick = { onAction(RosterAction.OnNavigateBack) }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (showNavigationIcon) {
+                        IconButton(onClick = { onAction(RosterAction.OnNavigateBack) }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 }
             )
@@ -187,7 +214,7 @@ fun RosterContent(
 
             Box(modifier = Modifier.weight(1f)) {
                 when {
-                    uiState.isLoading -> LoadingState()
+                    uiState.isLoading -> FieldLoadingState()
                     uiState.errorMessage != null && uiState.allAthletes.isEmpty() -> ErrorState(
                         message = uiState.errorMessage,
                         onDismiss = { onAction(RosterAction.OnDismissError) }

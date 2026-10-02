@@ -9,12 +9,11 @@ import javax.inject.Inject
  *
  * Call this only after [com.vamshi.field.domain.usecase.backup.RestoreDataUseCase]
  * (the pre-existing wrapper around [com.vamshi.field.domain.repository.BackupRepository.restoreFromDrive])
- * has completed — the restored payload already contains a full, valid account, so
- * this does not re-prompt for a password. Thin wrapper around
- * [AuthRepository.establishSessionAfterRestore].
+ * has completed — the restored payload already contains the coach's account. Thin wrapper
+ * around [AuthRepository.establishPrimarySession].
  */
 class CompleteRestoreUseCase @Inject constructor(
     private val repository: AuthRepository
 ) {
-    suspend operator fun invoke(): AuthResult = repository.establishSessionAfterRestore()
+    suspend operator fun invoke(): AuthResult = repository.establishPrimarySession()
 }

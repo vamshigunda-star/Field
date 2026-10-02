@@ -50,6 +50,7 @@ import com.vamshi.field.ui.theme.PerformanceGreenTextDark
 import com.vamshi.field.ui.theme.PerformanceRedText
 import com.vamshi.field.ui.theme.PerformanceRedTextDark
 import com.vamshi.field.ui.theme.performanceZoneColors
+import com.vamshi.field.ui.components.FieldLoadingState
 
 @Composable
 fun LeaderboardScreen(
@@ -92,7 +93,7 @@ fun LeaderboardContent(
         }
     ) { padding ->
         when {
-            uiState.isLoading -> LoadingState()
+            uiState.isLoading -> FieldLoadingState("Loading...")
             uiState.errorMessage != null && uiState.tests.isEmpty() -> ErrorState(
                 message = uiState.errorMessage,
                 onDismiss = { onAction(LeaderboardAction.OnDismissError) }
@@ -108,29 +109,6 @@ fun LeaderboardContent(
             else -> {
                 LeaderboardBody(uiState = uiState, onAction = onAction, padding = padding)
             }
-        }
-    }
-}
-
-@Composable
-private fun LoadingState(message: String = "Loading...") {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 3.dp
-            )
-            Text(
-                message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
@@ -194,7 +172,7 @@ private fun LeaderboardBody(
         // Leaderboard entries
         val leaderboard = uiState.leaderboard
         if (leaderboard == null) {
-            LoadingState()
+            FieldLoadingState("Loading...")
         } else if (leaderboard.entries.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),

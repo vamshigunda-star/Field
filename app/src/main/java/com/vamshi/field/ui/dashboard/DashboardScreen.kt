@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChevronRight
@@ -67,17 +66,9 @@ fun DashboardScreen(
     onNavigateToLeaderboard: (eventId: String, groupId: String, mode: String) -> Unit,
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToSignIn: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(uiState.navigateToSignIn) {
-        if (uiState.navigateToSignIn) {
-            viewModel.onAction(DashboardAction.NavigationConsumed)
-            onNavigateToSignIn()
-        }
-    }
 
     DashboardContent(
         modifier = modifier,
@@ -117,8 +108,7 @@ fun DashboardContent(
         Scaffold(
             topBar = {
                 DashboardHeader(
-                    onSettingsClick = { onAction(DashboardAction.OnSettingsClick) },
-                    onSignOutClick = { onAction(DashboardAction.OnSignOutClick) }
+                    onSettingsClick = { onAction(DashboardAction.OnSettingsClick) }
                 )
             },
             containerColor = MaterialTheme.colorScheme.background,
@@ -331,8 +321,7 @@ private fun LeaderboardEventPickerSheet(
  */
 @Composable
 private fun DashboardHeader(
-    onSettingsClick: () -> Unit,
-    onSignOutClick: () -> Unit
+    onSettingsClick: () -> Unit
 ) {
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -371,18 +360,11 @@ private fun DashboardHeader(
                     style = MaterialTheme.typography.titleLarge
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DashboardHeaderIconButton(
-                    icon = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    onClick = onSettingsClick
-                )
-                DashboardHeaderIconButton(
-                    icon = Icons.AutoMirrored.Filled.Logout,
-                    contentDescription = "Sign out",
-                    onClick = onSignOutClick
-                )
-            }
+            DashboardHeaderIconButton(
+                icon = Icons.Default.Settings,
+                contentDescription = "Settings",
+                onClick = onSettingsClick
+            )
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), thickness = 1.dp)
     }

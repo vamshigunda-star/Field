@@ -79,6 +79,7 @@ import com.vamshi.field.ui.theme.SportOrange
 
 @Composable
 fun ReportScreen(
+    showNavigationIcon: Boolean,
     onNavigateBack: () -> Unit,
     onNavigateToGroup: (String) -> Unit,
     onNavigateToSession: (String, String) -> Unit,
@@ -118,11 +119,13 @@ fun ReportScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                    if (showNavigationIcon) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
                     }
                 },
                 actions = {
@@ -515,13 +518,11 @@ private fun AthletePickerRow(
                     }
                 }
                 if (athleteData != null) {
-                    val avg = athleteData.athleteSessionAvgPctile
-                    val cls = com.vamshi.field.domain.model.reports.PerformanceThresholds.classify(avg)
-                    val healthText = com.vamshi.field.ui.report.components.zoneLabel(cls)
-                    val testCountText = "${athleteData.sessionTestCount} Test${if (athleteData.sessionTestCount == 1) "" else "s"}"
-                    
                     Text(
-                        text = "$healthText • $testCountText",
+                        text = com.vamshi.field.ui.report.components.lastEventSummary(
+                            athleteData.athleteSessionAvgPctile,
+                            athleteData.sessionTestCount
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

@@ -239,7 +239,8 @@ for i in range(10):
             final_score = round(base_score + (factor * i) + noise, 2)
             pct_base = 30 + (i * 5)
             pct = min(99, max(1, pct_base + random.randint(0, 10)))
-            cls = "SUPERIOR" if pct >= 80 else ("HEALTHY" if pct >= 40 else "NEEDS_IMPROVEMENT")
+            # Same labels norms.csv uses, so demo rows read like real results.
+            cls = "Superior" if pct >= 80 else ("Healthy Fitness Zone" if pct >= 40 else "Needs Improvement")
             cursor.execute(
                 """INSERT INTO test_results (
                     id, eventId, individualId, testId, rawScore, ageAtTime, weightAtTime, bodyWeightKg,

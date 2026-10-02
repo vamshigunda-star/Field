@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vamshi.field.ui.theme.*
+import com.vamshi.field.ui.components.FieldProgressBar
 
 data class GettingStartedStep(
     val id: String,
@@ -139,8 +140,8 @@ fun GettingStartedCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Progress Bar
-            LinearProgressIndicator(
-                progress = { progress },
+            FieldProgressBar(
+                progress = progress,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp)

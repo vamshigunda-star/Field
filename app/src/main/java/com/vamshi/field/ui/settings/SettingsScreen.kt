@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.platform.LocalLocale
 
 @Composable
 fun SettingsScreen(
@@ -193,7 +194,7 @@ fun SettingsContent(
             Spacer(modifier = Modifier.height(16.dp))
 
             if (uiState.lastBackupTimestamp != null) {
-                val dateString = SimpleDateFormat("MMM dd, yyyy HH:mm:ss", Locale.getDefault())
+                val dateString = SimpleDateFormat("MMM dd, yyyy HH:mm:ss", LocalLocale.current.platformLocale)
                     .format(Date(uiState.lastBackupTimestamp))
                 Text(
                     text = "Last Backup: $dateString",
@@ -242,7 +243,7 @@ fun SettingsContent(
                                             val dateText = if (backup.lastModified == 0L) {
                                                 "Backed up date unknown"
                                             } else {
-                                                "Backed up " + SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+                                                "Backed up " + SimpleDateFormat("MMM dd, yyyy HH:mm", LocalLocale.current.platformLocale)
                                                     .format(Date(backup.lastModified))
                                             }
                                             Text(

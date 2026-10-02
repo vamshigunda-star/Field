@@ -167,6 +167,9 @@ data class BackupUser(
     val firstName: String,
     val lastName: String,
     val username: String,
+    // Vestigial: Field has no password, so new accounts back up "" here, and older backups
+    // carry Base64 PBKDF2 bytes that restore writes back unread. Kept so neither the key set
+    // (BackupJsonContractTest) nor backups already in Drive change shape.
     val passwordHash: String,
     val passwordSalt: String,
     val email: String? = null,

@@ -69,6 +69,8 @@ import com.vamshi.field.ui.theme.*
 import com.vamshi.field.ui.components.testing.TestInputSwitcher
 import java.util.Locale
 import com.vamshi.field.ui.theme.performanceZoneColors
+import androidx.compose.ui.platform.LocalLocale
+import com.vamshi.field.ui.components.FieldProgressBar
 
 @Composable
 fun TimingChoiceDialog(
@@ -485,7 +487,7 @@ fun ScoreCell(
         shadowElevation = if (savedResult != null) 1.dp else 0.dp
     ) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().resultEntrance(savedResult?.rawScore),
             contentAlignment = Alignment.Center
         ) {
             if (isFailed) {
@@ -510,7 +512,7 @@ fun ScoreCell(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(String.format(Locale.getDefault(), "%.1f", savedResult.rawScore), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
+                        Text(String.format(LocalLocale.current.platformLocale, "%.1f", savedResult.rawScore), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
                         savedResult.percentile?.let { p -> Text("${p}%", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = textColor.copy(alpha = 0.8f)) }
                     }
                 }
@@ -643,8 +645,8 @@ fun TestingProgressBanner(totalAthletes: Int, testedAthletes: Int, totalTestsCom
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            LinearProgressIndicator(
-                progress = { progress },
+            FieldProgressBar(
+                progress = progress,
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
                 color = MaterialTheme.colorScheme.primary
             )
@@ -655,13 +657,6 @@ fun TestingProgressBanner(totalAthletes: Int, testedAthletes: Int, totalTestsCom
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
-    }
-}
-
-@Composable
-fun LoadingState() {
-    Box(Modifier.fillMaxSize(), Alignment.Center) {
-        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
     }
 }
 

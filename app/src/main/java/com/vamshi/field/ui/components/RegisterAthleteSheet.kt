@@ -45,6 +45,7 @@ import com.vamshi.field.ui.theme.SportOrange
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.platform.LocalLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,7 +109,7 @@ fun RegisterAthleteSheet(
                     Text(
                         text = if (datePickerState.selectedDateMillis != null) {
                             val date = Date(datePickerState.selectedDateMillis!!)
-                            SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(date)
+                            SimpleDateFormat("MMM dd, yyyy", LocalLocale.current.platformLocale).format(date)
                         } else "Date of Birth *",
                         color = if (datePickerState.selectedDateMillis != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )

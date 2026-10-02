@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.vamshi.field.domain.model.people.Individual
@@ -94,6 +95,7 @@ object CsvExporter {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveToDownloadsViaMediaStore(context: Context, fileName: String, content: String): Uri? {
         val resolver = context.contentResolver
         val values = ContentValues().apply {

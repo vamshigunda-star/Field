@@ -9,11 +9,13 @@
          through MediaStore and needs no permission. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
+    <!-- allowBackup is off on purpose: Field's supported backup is the explicit Drive backup
+         in Settings. Android Auto Backup would also copy the whole database (athletes' dates
+         of birth, medical alerts, password hashes) to the device's Google account, which is a
+         second, undeclared restore path. -->
     <application
         android:name=".FieldApplication"
-        android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

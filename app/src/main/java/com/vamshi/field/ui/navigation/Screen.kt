@@ -79,11 +79,9 @@ sealed class Screen(val route: String) {
     }
 
     // ----- Auth screens -----
-    /** First-launch account creation: Coach Name + Password (+ optional Email). Replaces SignUp. */
+    /** First-launch account creation: Coach Name (+ optional Email). No password, no lock screen. */
     data object Onboarding : Screen("onboarding")
-    /** Returning-coach "Welcome back" password unlock. Replaces SignIn. */
-    data object Unlock : Screen("unlock")
-    /** Pre-auth Google Drive restore, reachable from both Onboarding and Unlock. Replaces ResetPassword. */
+    /** Pre-auth Google Drive restore, reachable from Onboarding. */
     data object RestoreBackup : Screen("restore_backup")
     data object Settings : Screen("settings")
 }

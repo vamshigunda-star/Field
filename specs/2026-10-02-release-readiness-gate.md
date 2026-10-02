@@ -245,6 +245,38 @@ Ran `gradlew testDebugUnitTest lintDebug --continue` on the current uncommitted 
     `targetSdk = 35`**, which backs up B4.
 - **Not run yet:** `connectedAndroidTest`, any release-variant task.
 
+### 7.1b Results after executing §5 (2026-10-02)
+
+Builds were run one at a time, at the user's request:
+
+- `testDebugUnitTest`: **139 passed, 0 failed**, including `BackupJsonContractTest` (3 tests).
+- `lintDebug`: **0 errors** (was 2). New warnings: `ObsoleteSdkInt` ×2 (now-redundant SDK
+  checks after minSdk 26) and `DataExtractionRules` (with `allowBackup=false`, Android 12+
+  still permits phone-to-phone transfer; that is acceptable and helps a coach changing phones).
+- `assembleRelease`: **succeeds; this is the first release build ever produced.** No
+  `missing_rules.txt`. In `mapping.txt`, R8 renamed 10,629 fields app-wide and **0** in
+  `domain.model.backup.*` / `StoredPreset`, so the backup JSON keys survive minification.
+- Release APK (signed locally with the debug key) installed **over** the existing debug install
+  on `Medium_Phone` (API 36). The coach's data survived the upgrade: 5 athletes, 11 events,
+  signed-in session. Cold start **751 ms**, against ~4.5 s for debug. Crash buffer empty.
+- Smoke on release: dashboard, roster (medical-alert markers), athlete dashboard (alert chip,
+  radar, zone chips), Reports, CSV export to Downloads. All work.
+- **Not covered:** Drive backup/restore on release (needs a Google sign-in, which is the user's
+  to do), API 26 device (no image installed), tablet layout, `connectedAndroidTest`.
+- Emulator note: with the default GPU mode the emulator rendered **every** app black and
+  dropped taps, including system Settings. Restarting with `-gpu swiftshader_indirect` fixed it.
+  It is an environment issue, not an app issue.
+
+**Pre-existing issues found during smoke (not release-specific):**
+- `RadarChart.kt:609-610` colours the strongest area green and the weakest red regardless of
+  zone, so a 79th-percentile best area reads green on the radar and Yellow on reports.
+- Report header shows "Needs Improvement • 1 Test" for an athlete with 6 tests and a 64th
+  percentile average.
+- CSV `Classification` column mixes display labels ("Needs Improvement") with enum names
+  (`HEALTHY`, `SUPERIOR`) from the demo seed.
+- `Log.d` output still appears in release logcat despite `-assumenosideeffects`. Harmless, but
+  the rule is not taking effect.
+
 ### 7.2 Regression tests that fail today
 
 - **`BackupJsonContractTest`** (JVM, `app/src/test`): deserialize `backup_v1_fixture.json`

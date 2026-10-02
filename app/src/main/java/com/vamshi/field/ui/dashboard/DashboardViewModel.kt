@@ -8,7 +8,6 @@ import com.vamshi.field.domain.model.testing.TestingEvent
 import com.vamshi.field.domain.repository.PeopleRepository
 import com.vamshi.field.domain.repository.TestingRepository
 import com.vamshi.field.domain.usecase.auth.ObserveCurrentUserUseCase
-import com.vamshi.field.domain.usecase.auth.SignOutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,8 +28,6 @@ data class DashboardUiState(
     val coachFirstName: String = "",
     /** Coach's last name; included so the greeting can use a full name if desired. */
     val coachLastName: String = "",
-    /** True after sign-out; screen navigates to SignIn via LaunchedEffect. */
-    val navigateToSignIn: Boolean = false,
     /** True while the leaderboard event picker is open. */
     val showLeaderboardPicker: Boolean = false,
     /** Whether the user has dismissed the Getting Started checklist. */
@@ -50,8 +47,6 @@ sealed interface DashboardAction {
     data object OnDismissLeaderboardPicker : DashboardAction
     data class OnPickLeaderboardEvent(val eventId: String, val groupId: String) : DashboardAction
     data object OnAnalyticsClick : DashboardAction
-    data object OnSignOutClick : DashboardAction
-    data object NavigationConsumed : DashboardAction
     data object OnDismissGettingStarted : DashboardAction
 }
 
@@ -60,7 +55,6 @@ class DashboardViewModel @Inject constructor(
     private val peopleRepository: PeopleRepository,
     private val testingRepository: TestingRepository,
     private val observeCurrentUser: ObserveCurrentUserUseCase,
-    private val signOutUseCase: SignOutUseCase,
     private val onboardingPreferencesStore: OnboardingPreferencesStore
 ) : ViewModel() {
 
@@ -77,15 +71,6 @@ class DashboardViewModel @Inject constructor(
         when (action) {
             is DashboardAction.OnDismissError -> {
                 _uiState.update { it.copy(errorMessage = null) }
-            }
-            DashboardAction.OnSignOutClick -> {
-                viewModelScope.launch {
-                    signOutUseCase()
-                    _uiState.update { it.copy(navigateToSignIn = true) }
-                }
-            }
-            DashboardAction.NavigationConsumed -> {
-                _uiState.update { it.copy(navigateToSignIn = false) }
             }
             DashboardAction.OnLeaderboardClick -> {
                 _uiState.update { it.copy(showLeaderboardPicker = true) }

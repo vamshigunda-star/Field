@@ -76,6 +76,7 @@ import com.vamshi.field.ui.theme.ElectricBlue
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.platform.LocalLocale
 
 @Composable
 fun AthleteTestDetailScreen(
@@ -108,7 +109,7 @@ fun AthleteTestDetailScreen(
             onDismissRequest = { viewModel.onAction(AthleteTestDetailAction.OnDismissDelete) },
             title = { Text("Delete Test Result?") },
             text = { 
-                val scoreStr = if (attempt.rawScore % 1.0 == 0.0) attempt.rawScore.toInt().toString() else String.format(Locale.getDefault(), "%.1f", attempt.rawScore)
+                val scoreStr = if (attempt.rawScore % 1.0 == 0.0) attempt.rawScore.toInt().toString() else String.format(LocalLocale.current.platformLocale, "%.1f", attempt.rawScore)
                 Text("This will permanently remove the score of $scoreStr recorded on ${df.format(Date(attempt.date))}. This action cannot be undone.")
             },
             confirmButton = {

@@ -32,6 +32,7 @@ import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.components.testing.TestSelectionCard
 import com.vamshi.field.ui.theme.*
+import com.vamshi.field.ui.components.FieldLoadingState
 
 @Composable
 fun CreateEventScreen(
@@ -85,9 +86,10 @@ fun CreateEventContent(
 
             val gradientBrush = if (isReady && !uiState.isCreating) {
                 Brush.horizontalGradient(
+                    // Brand orange is reserved for start actions, and this commits the event.
                     colors = listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                        SportOrange,
+                        SportOrange.copy(alpha = 0.85f)
                     )
                 )
             } else {
@@ -113,7 +115,7 @@ fun CreateEventContent(
                             .shadow(
                                 elevation = if (isReady && !uiState.isCreating) 6.dp else 0.dp,
                                 shape = RoundedCornerShape(16.dp),
-                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                                spotColor = SportOrange.copy(alpha = 0.35f)
                             ),
                         shape = RoundedCornerShape(16.dp),
                         color = Color.Transparent
@@ -174,7 +176,7 @@ fun CreateEventContent(
         }
     ) { padding ->
         when {
-            uiState.isLoading -> LoadingState()
+            uiState.isLoading -> FieldLoadingState("Loading...")
             uiState.errorMessage != null && uiState.groups.isEmpty() -> InternalErrorState(
                 message = uiState.errorMessage,
                 onDismiss = { onAction(CreateEventAction.ClearError) }
@@ -246,29 +248,6 @@ private fun SavePresetDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
-}
-
-@Composable
-private fun LoadingState(message: String = "Loading...") {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 3.dp
-            )
-            Text(
-                message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
 }
 
 @Composable

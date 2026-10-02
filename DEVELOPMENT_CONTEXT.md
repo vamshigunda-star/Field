@@ -32,9 +32,8 @@ All routes are defined as objects in [Screen.kt](file:///c:/Users/APF/AndroidStu
 
 | Screen | Nav Route | ViewModel | Primary Responsibility |
 |---|---|---|---|
-| **Unlock** | `"unlock"` | `UnlockViewModel` | Returning-coach "Welcome back" password unlock (PBKDF2 hash check), keyed by resolved account ID rather than a typed username. |
-| **Onboarding** | `"onboarding"` | `OnboardingViewModel` | First-launch account creation: Coach Name + Password (+ optional Email for Drive backup). Generates a username automatically. |
-| **RestoreBackup** | `"restore_backup"` | `RestoreBackupViewModel` | Pre-auth Google Drive restore for a reinstalling coach; re-establishes account + session without a password. |
+| **Onboarding** | `"onboarding"` | `OnboardingViewModel` | First-launch account creation: Coach Name (+ optional Email for Drive backup). No password. Generates a username automatically. |
+| **RestoreBackup** | `"restore_backup"` | `RestoreBackupViewModel` | Pre-auth Google Drive restore for a reinstalling coach; re-establishes account + session. |
 | **Dashboard** | `"dashboard"` | `DashboardViewModel` | Home hub: displays statistics, recent events, and quick actions. |
 | **Roster** | `"roster"` | `RosterViewModel` | Group creation, athlete registration, and roster management. |
 | **Athletes** | `"athletes"` | (Shared/Roster UI) | Read-only listing of all athletes with navigation to dashboards. |
@@ -95,7 +94,7 @@ Contains the pure business logic. It defines the models, repositories, and use c
 
 ### Functional Use Cases
 Use cases are divided into namespaces corresponding to core areas:
-- **`auth`**: `OnboardingUseCase`, `UnlockUseCase`, `SignOutUseCase`, `GenerateUsernameUseCase`, `GetPrimaryAccountUseCase`, `ListAccountsUseCase`, `CompleteRestoreUseCase`, `ObserveCurrentUserUseCase`, `ValidateNameUseCase`, `ValidatePasswordUseCase`, `ValidateUsernameUseCase`
+- **`auth`**: `OnboardingUseCase`, `ResumeSessionUseCase`, `GenerateUsernameUseCase`, `CompleteRestoreUseCase`, `ObserveCurrentUserUseCase`, `ValidateNameUseCase`, `ValidateUsernameUseCase`
 - **`people`**: `RegisterAthleteUseCase`, `CreateGroupUseCase`, `ManageRosterUseCase`
 - **`standards`**: `CalculatePercentileUseCase`, `GetTestLibraryUseCase`, `ImportStandardsUseCase`
 - **`testing`**: 
@@ -122,7 +121,7 @@ An offline-first Room SQLite implementation containing the following tables:
 - `testing_events`: Testing event sessions.
 - `event_test_cross_ref`: Many-to-many event-test relationships.
 - `test_results`: Finalized result scores with percentile snapshots.
-- `users`: Registered coaches (IDs, user names, salt/password hashes, optional email, legacy security-question credentials).
+- `users`: Registered coaches (IDs, display name, generated username, optional email). The salt/hash columns are vestigial — see §5.3.
 - `pending_test_entries`: Staged, in-flight grid scores that survive app process death during live testing sessions.
 
 ### Seeding Mechanism
@@ -203,26 +202,29 @@ sequenceDiagram
     participant Main as MainActivity
     participant Nav as ALearningNavGraph
     participant VM as AuthGateViewModel
-    participant Rep as AuthRepository
+    participant UC as ResumeSessionUseCase
 
     Main->>Nav: Composition starts
     Nav->>VM: Collect state Flow
-    VM->>Rep: Check current logged-in user session
-    Rep-->>VM: SessionState
-    alt Determining authentication...
+    VM->>UC: Session exists? Else any account? (re-establish session on most recent)
+    UC-->>VM: true / false
+    alt Determining...
         VM-->>Nav: State = Loading
         Nav->>Main: Display fullscreen CircularProgressIndicator
-    else Authenticated Session Found
+    else A coach account exists on this device
         VM-->>Nav: State = Authenticated
         Nav->>Nav: Set startDestination = Screen.Dashboard.route
-    else Unauthenticated & Database has Users
-        VM-->>Nav: State = UnauthenticatedHasUsers
-        Nav->>Nav: Set startDestination = Screen.Unlock.route
-    else Unauthenticated & Database is Empty
-        VM-->>Nav: State = UnauthenticatedNoUsers
+    else No account (or timeout / error)
+        VM-->>Nav: State = NoAccount
         Nav->>Nav: Set startDestination = Screen.Onboarding.route
     end
 ```
+
+Field has **no password, lock screen or sign-out by design** — a forgotten password must never
+lock a coach out of their athletes' data, so the device's own screen lock is the security
+boundary. The `users.passwordHash`/`passwordSalt` columns (and the matching `BackupUser` keys) are
+vestigial: empty for new accounts, never read, kept only to avoid a schema bump. Drop them in the
+next schema change made for its own reasons.
 
 ### 5.4 Stopwatch Session Lifecycle
 ```mermaid

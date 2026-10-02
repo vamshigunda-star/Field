@@ -1,7 +1,7 @@
 package com.vamshi.field.ui.auth.onboarding
 
 /**
- * UI state for the redesigned onboarding screen (Coach Name + Password + optional Email).
+ * UI state for the onboarding screen (Coach Name + optional Email).
  *
  * [isLoading] defaults to `false` — the form starts idle and becomes `true` only during
  * the async submit operation.
@@ -11,14 +11,11 @@ package com.vamshi.field.ui.auth.onboarding
  */
 data class OnboardingUiState(
     val coachName: String = "",
-    val password: String = "",
     val email: String = "",
-    val passwordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val onboardingSuccess: Boolean = false,
 
-    // Per-field validation error strings
-    val coachNameError: String? = null,
-    val passwordError: String? = null
+    // Per-field validation error string
+    val coachNameError: String? = null
 )

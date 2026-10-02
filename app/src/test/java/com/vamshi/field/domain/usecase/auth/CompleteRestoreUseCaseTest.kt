@@ -20,12 +20,11 @@ class CompleteRestoreUseCaseTest {
     }
 
     @Test
-    fun `restore that produced one account establishes a session without a password`() = runTest {
+    fun `restore that produced one account establishes a session`() = runTest {
         val user = (repository.signUp(
-            firstName = "Jordan Reyes", lastName = "", username = "jordan.reyes",
-            password = "goodpass1", email = null
+            firstName = "Jordan Reyes", lastName = "", username = "jordan.reyes", email = null
         ) as AuthResult.Success).user
-        repository.signOut()
+        repository.clearSession()
 
         val result = completeRestore()
 
@@ -36,14 +35,12 @@ class CompleteRestoreUseCaseTest {
     @Test
     fun `restore that produced multiple accounts picks the most recently created`() = runTest {
         repository.signUp(
-            firstName = "Jordan Reyes", lastName = "", username = "jordan.reyes",
-            password = "goodpass1", email = null
+            firstName = "Jordan Reyes", lastName = "", username = "jordan.reyes", email = null
         )
         val second = (repository.signUp(
-            firstName = "Alex Kim", lastName = "", username = "alex.kim",
-            password = "goodpass1", email = null
+            firstName = "Alex Kim", lastName = "", username = "alex.kim", email = null
         ) as AuthResult.Success).user
-        repository.signOut()
+        repository.clearSession()
 
         val result = completeRestore()
 

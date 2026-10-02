@@ -26,6 +26,7 @@ import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.CategoryDescription
 import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.components.video.TestVideoPreview
+import com.vamshi.field.ui.components.FieldLoadingState
 
 @Composable
 fun RecommendationsScreen(
@@ -91,7 +92,7 @@ fun RecommendationsContent(
         }
     ) { padding ->
         when {
-            uiState.isLoading -> LoadingState(Modifier.padding(padding))
+            uiState.isLoading -> FieldLoadingState("Loading recommendations...", Modifier.padding(padding))
             uiState.errorMessage != null -> ErrorState(
                 message = uiState.errorMessage,
                 modifier = Modifier.padding(padding),
@@ -108,23 +109,6 @@ fun RecommendationsContent(
             else -> {
                 RecommendationsBody(uiState = uiState, onAction = onAction, padding = padding)
             }
-        }
-    }
-}
-
-@Composable
-private fun LoadingState(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, strokeWidth = 3.dp)
-            Text(
-                "Loading recommendations...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

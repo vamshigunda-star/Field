@@ -82,7 +82,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import com.vamshi.field.domain.model.standards.FitnessTest
 import com.vamshi.field.ui.report.components.ZoneChip
-import com.vamshi.field.ui.report.components.zoneLabel
 import com.vamshi.field.ui.theme.AquaCyan
 import com.vamshi.field.ui.theme.ElectricBlue
 import com.vamshi.field.domain.usecase.testing.AthleteRadarData
@@ -90,12 +89,10 @@ import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.AppTopBarSubtitleColor
 import com.vamshi.field.ui.components.charts.RadarChart
 import com.vamshi.field.ui.report.components.ZoneChip
-import com.vamshi.field.ui.report.components.zoneLabel
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.vamshi.field.ui.theme.*
 import com.vamshi.field.util.CsvExporter
 import kotlinx.coroutines.launch
-import com.vamshi.field.domain.model.reports.PerformanceThresholds
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -184,13 +181,13 @@ fun AthleteDashboardContent(
                             val ind = data.athlete
                             val grp = data.groups.firstOrNull()?.name?.let { " • $it" } ?: ""
                             
-                            val avg = data.athleteSessionAvgPctile
-                            val cls = PerformanceThresholds.classify(avg)
-                            val healthText = zoneLabel(cls)
-                            val testCountText = "${data.sessionTestCount} Test${if (data.sessionTestCount == 1) "" else "s"}"
+                            val lastEvent = com.vamshi.field.ui.report.components.lastEventSummary(
+                                data.athleteSessionAvgPctile,
+                                data.sessionTestCount
+                            )
 
                             Text(
-                                "${ind.currentAge}y • ${ind.sex.name.lowercase().replaceFirstChar { it.uppercase() }}$grp • $healthText • $testCountText",
+                                "${ind.currentAge}y • ${ind.sex.name.lowercase().replaceFirstChar { it.uppercase() }}$grp • $lastEvent",
                                 style = MaterialTheme.typography.labelSmall, color = AppTopBarSubtitleColor,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis
                             )

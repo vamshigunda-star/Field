@@ -14,29 +14,20 @@ class OnboardingUseCaseTest {
     private val onboarding = OnboardingUseCase(
         repository = repository,
         validateName = ValidateNameUseCase(),
-        validatePassword = ValidatePasswordUseCase(),
         generateUsername = GenerateUsernameUseCase(repository)
     )
 
     @Test
     fun `blank coach name is rejected before touching the repository`() = runTest {
-        val result = onboarding(coachName = "   ", password = "goodpass1", email = null)
+        val result = onboarding(coachName = "   ", email = null)
 
         assertEquals(AuthResult.Failure(AuthError.InvalidName), result)
         assertEquals(0, repository.userCount())
     }
 
     @Test
-    fun `weak password is rejected before touching the repository`() = runTest {
-        val result = onboarding(coachName = "Jordan Reyes", password = "short", email = null)
-
-        assertEquals(AuthResult.Failure(AuthError.WeakPassword), result)
-        assertEquals(0, repository.userCount())
-    }
-
-    @Test
-    fun `valid input creates an account with the full name as firstName and blank lastName`() = runTest {
-        val result = onboarding(coachName = "Jordan Reyes", password = "goodpass1", email = null)
+    fun `a name alone is enough to create an account`() = runTest {
+        val result = onboarding(coachName = "Jordan Reyes", email = null)
 
         assertTrue(result is AuthResult.Success)
         val user = (result as AuthResult.Success).user
@@ -48,21 +39,21 @@ class OnboardingUseCaseTest {
 
     @Test
     fun `blank email is normalized to null`() = runTest {
-        val result = onboarding(coachName = "Jordan Reyes", password = "goodpass1", email = "   ")
+        val result = onboarding(coachName = "Jordan Reyes", email = "   ")
 
         assertNull((result as AuthResult.Success).user.email)
     }
 
     @Test
     fun `non-blank email is trimmed and kept`() = runTest {
-        val result = onboarding(coachName = "Alex Kim", password = "goodpass1", email = "  alex@school.edu  ")
+        val result = onboarding(coachName = "Alex Kim", email = "  alex@school.edu  ")
 
         assertEquals("alex@school.edu", (result as AuthResult.Success).user.email)
     }
 
     @Test
     fun `onboarding auto-signs-in the new account`() = runTest {
-        val result = onboarding(coachName = "Jordan Reyes", password = "goodpass1", email = null)
+        val result = onboarding(coachName = "Jordan Reyes", email = null)
 
         val user = (result as AuthResult.Success).user
         assertEquals(user.id, repository.currentSessionUserId())
@@ -70,8 +61,8 @@ class OnboardingUseCaseTest {
 
     @Test
     fun `two coaches with the same name on one device get distinct usernames`() = runTest {
-        val first = onboarding(coachName = "Alex Kim", password = "goodpass1", email = null)
-        val second = onboarding(coachName = "Alex Kim", password = "differentpass2", email = null)
+        val first = onboarding(coachName = "Alex Kim", email = null)
+        val second = onboarding(coachName = "Alex Kim", email = null)
 
         val firstUsername = (first as AuthResult.Success).user.username
         val secondUsername = (second as AuthResult.Success).user.username

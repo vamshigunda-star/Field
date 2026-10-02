@@ -24,6 +24,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 On Windows, use `gradlew` (without `./`).
 
+**Release builds are minified (R8); debug is not.** Anything reflected over by Gson — the Drive
+backup DTOs in `domain/model/backup/` and `CustomPresetsStore.StoredPreset` — needs a keep rule in
+`app/proguard-rules.pro`, and `BackupJsonContractTest` pins the backup key names. Verify
+backup/restore on a release APK, never only on debug.
+
 ---
 
 ## Architecture Strictness (Clean Architecture)
@@ -42,7 +47,7 @@ Presentation (ui/) → Domain (domain/) ← Data (data/)
 - **Version:** Room database is currently at **Version 17**.
 - **Seeding:** The DB ships prepackaged (`createFromAsset("database/alearning.db")`, built by `tools/build_prepackaged_db.py` from the CSVs in `assets/`). `SeedDataManager` then tops up from those CSVs unless the prepackaged catalog is already current.
 - **Catalog stamp:** the build script writes its catalog generation into `catalog_metadata`
-  (`catalog_version` → e.g. `v30`), and `SeedDataManager` skips the CSV import outright when that
+  (`catalog_version` → e.g. `v31`), and `SeedDataManager` skips the CSV import outright when that
   stamp matches `SeedDataManager.CATALOG_VERSION`. This is what makes a fresh install fast: the
   asset and the CSVs are generated from the same source at build time, so importing them again
   rewrites ~2.4k identical norm rows. Skipping it cut first launch from 13.6s to 6.2s.
@@ -54,7 +59,7 @@ Presentation (ui/) → Domain (domain/) ← Data (data/)
   Room refuses to open an asset whose identity hash disagrees with the compiled schema, so any
   schema change means: build once to export the new JSON, copy its `identityHash` into the script,
   then regenerate.
-- **Seed Flag:** Guarded by a versioned SharedPreferences key (`KEY_SEEDED_VERSION` in `SeedDataManager`, currently `data_seeded_version_v30`).
+- **Seed Flag:** Guarded by a versioned SharedPreferences key (`KEY_SEEDED_VERSION` in `SeedDataManager`, currently `data_seeded_version_v31`).
 - **Reseeding is safe:** bumping the seed key re-imports the catalog by upserting `test_categories`/`fitness_tests` and wholesale-replacing `norm_references` and the recommendation tables. It must NEVER delete user-generated data (`testing_events`, `test_results`, `event_test_cross_ref`, athletes, groups).
 
 ---

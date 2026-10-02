@@ -7,11 +7,12 @@ import androidx.room3.PrimaryKey
 /**
  * Room entity for coach accounts.
  *
- * Password storage format:
- *  - [passwordSalt]: 16 random bytes from [java.security.SecureRandom].
- *  - [passwordHash]: 32-byte PBKDF2WithHmacSHA256 derived key (120,000 iterations).
- *  Salt and hash are stored separately (both as BLOB) so the verifier can
- *  reconstruct the same KDF invocation without encoding overhead.
+ * [passwordHash] and [passwordSalt] are vestigial. Field has had no password since
+ * passwordless onboarding (specs/2026-10-02-passwordless-onboarding.md): new accounts write
+ * empty arrays, and accounts from older installs or Drive backups may still hold PBKDF2
+ * bytes. Nothing reads either column. They stay only because dropping them needs a schema
+ * bump, a migration and a regenerated prepackaged DB — fold that into the next schema
+ * change made for its own reasons.
  *
  * The [username] column has a unique index; the DB layer enforces uniqueness
  * at insert time (SQLiteConstraintException), and the repository catches it
@@ -38,10 +39,10 @@ data class UserEntity(
      */
     val email: String? = null,
 
-    /** PBKDF2 derived key bytes (32 bytes / 256 bits). */
+    /** Vestigial — see class KDoc. Empty for new accounts. */
     val passwordHash: ByteArray,
 
-    /** 16-byte random salt used when deriving [passwordHash]. */
+    /** Vestigial — see class KDoc. Empty for new accounts. */
     val passwordSalt: ByteArray,
 
     val createdAt: Long

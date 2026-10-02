@@ -1,0 +1,116 @@
+{
+  "individuals": [
+    {
+      "id": "ind-1",
+      "firstName": "Asha",
+      "lastName": "Rao",
+      "dateOfBirth": 1262304000000,
+      "gender": "FEMALE",
+      "notes": "Left-handed",
+      "medicalAlert": "Asthma - inhaler in kit bag",
+      "isRestricted": true,
+      "email": null,
+      "isActive": true,
+      "isDeleted": false,
+      "createdAt": 1767225600000,
+      "updatedAt": 1767225600000
+    }
+  ],
+  "groups": [
+    {
+      "id": "grp-1",
+      "name": "U16 Squad",
+      "type": "TEAM",
+      "isActive": true,
+      "location": "North Field",
+      "cycle": "Spring 2027",
+      "createdAt": 1767225600000
+    }
+  ],
+  "groupMembers": [
+    { "groupId": "grp-1", "individualId": "ind-1" }
+  ],
+  "testingEvents": [
+    {
+      "id": "evt-1",
+      "name": "Baseline",
+      "timestamp": 1767312000000,
+      "notes": null,
+      "groupId": "grp-1",
+      "location": "North Field",
+      "createdAt": 1767312000000
+    }
+  ],
+  "eventTests": [
+    { "eventId": "evt-1", "testId": "custom-sprint" }
+  ],
+  "testResults": [
+    {
+      "id": "res-1",
+      "eventId": "evt-1",
+      "individualId": "ind-1",
+      "testId": "custom-sprint",
+      "rawScore": 7.42,
+      "standardizedScore": 60.0,
+      "timestamp": 1767312000000,
+      "captureMethod": "STOPWATCH",
+      "notes": null,
+      "ageAtTime": 16.0,
+      "percentile": 60,
+      "classification": "Healthy Fitness Zone",
+      "normVariantUsed": null,
+      "weightAtTime": null,
+      "bodyWeightKg": null
+    }
+  ],
+  "users": [
+    {
+      "id": "usr-1",
+      "firstName": "Coach",
+      "lastName": "Test",
+      "username": "coach",
+      "passwordHash": "aGFzaA==",
+      "passwordSalt": "c2FsdA==",
+      "email": null,
+      "createdAt": 1767225600000
+    }
+  ],
+  "customCategories": [
+    { "id": "cat-custom", "name": "Club Tests", "description": null, "sortOrder": 99, "radarAxis": null }
+  ],
+  "customTests": [
+    {
+      "id": "custom-sprint",
+      "categoryId": "cat-custom",
+      "name": "Shuttle 40m",
+      "unit": "s",
+      "isHigherBetter": false,
+      "description": null,
+      "timingMode": "STOPWATCH",
+      "inputParadigm": "TIME",
+      "athletesPerHeat": 1,
+      "trialsPerAthlete": 2,
+      "validMin": 3.0,
+      "validMax": 30.0,
+      "interpretationStrategy": "NORMS",
+      "calculationConfig": null,
+      "youtubeId": null,
+      "isDeleted": false
+    }
+  ],
+  "customNorms": [
+    {
+      "id": "norm-1",
+      "testId": "custom-sprint",
+      "variant": null,
+      "sex": "FEMALE",
+      "ageMin": 13.0,
+      "ageMax": 19.0,
+      "minScore": 7.0,
+      "maxScore": 8.0,
+      "percentile": 60,
+      "classification": "Healthy Fitness Zone"
+    }
+  ],
+  "schemaVersion": 1
+}

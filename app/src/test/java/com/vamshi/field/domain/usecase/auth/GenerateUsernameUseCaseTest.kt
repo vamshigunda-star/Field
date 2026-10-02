@@ -45,7 +45,6 @@ class GenerateUsernameUseCaseTest {
             firstName = "Jordan",
             lastName = "Reyes",
             username = "jordan.reyes",
-            password = "whatever1",
             email = null
         )
 
@@ -57,12 +56,10 @@ class GenerateUsernameUseCaseTest {
     @Test
     fun `a second collision keeps incrementing past the first taken suffix`() = runTest {
         repository.signUp(
-            firstName = "Jordan", lastName = "", username = "jordan.reyes",
-            password = "whatever1", email = null
+            firstName = "Jordan", lastName = "", username = "jordan.reyes", email = null
         )
         repository.signUp(
-            firstName = "Jordan", lastName = "", username = "jordan.reyes2",
-            password = "whatever1", email = null
+            firstName = "Jordan", lastName = "", username = "jordan.reyes2", email = null
         )
 
         val username = generateUsername("Jordan Reyes")

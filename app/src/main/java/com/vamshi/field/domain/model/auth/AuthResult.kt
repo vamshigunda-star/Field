@@ -11,22 +11,10 @@ sealed class AuthResult {
     data class Failure(val error: AuthError) : AuthResult()
 }
 
-/**
- * Enumeration of all possible auth failure modes.
- *
- * Security note: [InvalidCredentials] is intentionally generic — it covers both
- * "no such account" and "wrong password" so the presentation layer cannot be used
- * to enumerate usernames.
- */
+/** Enumeration of all possible auth failure modes. */
 enum class AuthError {
     /** The requested username is already registered on this device. */
     UsernameTaken,
-
-    /** Username/password combination does not match any stored account. */
-    InvalidCredentials,
-
-    /** Password does not satisfy the complexity rules. */
-    WeakPassword,
 
     /** First or last name is blank or exceeds the max length. */
     InvalidName,

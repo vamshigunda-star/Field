@@ -3,8 +3,7 @@ package com.vamshi.field.ui.auth
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.vamshi.field.domain.repository.AuthRepository
-import com.vamshi.field.domain.repository.SessionManager
+import com.vamshi.field.domain.usecase.auth.ResumeSessionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,10 +16,12 @@ import javax.inject.Inject
  * Determines the app's initial destination on launch.
  *
  * Decision logic:
- *  - [AuthGateState.Loading]              — async check in progress; show a spinner.
- *  - [AuthGateState.Authenticated]        — session exists → navigate to Dashboard.
- *  - [AuthGateState.UnauthenticatedHasUsers] — accounts exist, no session → go to SignIn.
- *  - [AuthGateState.UnauthenticatedNoUsers]  — no accounts at all → go to SignUp.
+ *  - [AuthGateState.Loading]       — async check in progress; show a spinner.
+ *  - [AuthGateState.Authenticated] — a coach account exists on this device → Dashboard.
+ *  - [AuthGateState.NoAccount]     — no account at all → Onboarding.
+ *
+ * There is no lock screen: Field has no password, so an existing account always opens the
+ * app ([ResumeSessionUseCase]).
  *
  * This ViewModel is consumed by [com.vamshi.field.ui.navigation.ALearningNavGraph]
  * to determine the [NavHost] start destination. Once the destination is resolved the
@@ -34,14 +35,12 @@ import javax.inject.Inject
 sealed interface AuthGateState {
     data object Loading : AuthGateState
     data object Authenticated : AuthGateState
-    data object UnauthenticatedHasUsers : AuthGateState
-    data object UnauthenticatedNoUsers : AuthGateState
+    data object NoAccount : AuthGateState
 }
 
 @HiltViewModel
 class AuthGateViewModel @Inject constructor(
-    private val sessionManager: SessionManager,
-    private val authRepository: AuthRepository
+    private val resumeSession: ResumeSessionUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<AuthGateState>(AuthGateState.Loading)
@@ -51,25 +50,18 @@ class AuthGateViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val result = withTimeoutOrNull(RESOLUTION_TIMEOUT_MS) {
-                    val currentId = sessionManager.currentUserIdOnce()
-                    if (currentId != null) {
-                        AuthGateState.Authenticated
-                    } else if (authRepository.userCount() == 0) {
-                        AuthGateState.UnauthenticatedNoUsers
-                    } else {
-                        AuthGateState.UnauthenticatedHasUsers
-                    }
+                    if (resumeSession()) AuthGateState.Authenticated else AuthGateState.NoAccount
                 }
 
                 if (result == null) {
                     Log.w(TAG, "Auth resolution timed out after ${RESOLUTION_TIMEOUT_MS}ms; falling back to onboarding.")
-                    _state.value = AuthGateState.UnauthenticatedNoUsers
+                    _state.value = AuthGateState.NoAccount
                 } else {
                     _state.value = result
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error resolving auth state", e)
-                _state.value = AuthGateState.UnauthenticatedNoUsers
+                _state.value = AuthGateState.NoAccount
             }
         }
     }

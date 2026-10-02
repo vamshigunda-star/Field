@@ -48,11 +48,10 @@ import java.util.Date
 import java.util.Locale
 
  /**
- * Pre-auth "restore from Google Drive" screen, reachable from both Onboarding and
- * Unlock for a coach reinstalling the app who already has a backup.
+ * Pre-auth "restore from Google Drive" screen, reachable from Onboarding for a coach
+ * reinstalling the app who already has a backup.
  *
- * No password field, no security question: restoring the backup re-establishes
- * the whole account and session by itself.
+ * Restoring the backup re-establishes the whole account and session by itself.
  */
 @Composable
 fun RestoreBackupScreen(

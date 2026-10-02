@@ -74,6 +74,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import androidx.compose.ui.platform.LocalLocale
 
 data class GroupTrendLinePoint(
     val date: Long,
@@ -289,7 +290,7 @@ private fun TrendChartHeader(
                             modifier = Modifier.size(13.dp)
                         )
                         Text(
-                            text = if (isZero) "Stable" else String.format(Locale.getDefault(), "%s%.1f%%", if (isPositive) "+" else "-", deltaAbs),
+                            text = if (isZero) "Stable" else String.format(LocalLocale.current.platformLocale, "%s%.1f%%", if (isPositive) "+" else "-", deltaAbs),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
                             color = badgeColor

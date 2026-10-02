@@ -5,10 +5,9 @@ import com.vamshi.field.domain.model.backup.DriveBackupSummary
 /**
  * UI state for the pre-auth "restore from Google Drive" screen.
  *
- * Reachable from both Onboarding ("Restore existing data") and Unlock ("Trouble signing
- * in?") — for a coach reinstalling the app who already has a Drive backup, this route
- * skips onboarding/unlock entirely: the restored payload re-establishes the whole
- * account and session, so there's no password field or security question here.
+ * Reachable from Onboarding ("Restore existing data") — for a coach reinstalling the app
+ * who already has a Drive backup, this route skips onboarding entirely: the restored
+ * payload re-establishes the whole account and session.
  *
  * Sign-in is followed by a device picker: [availableBackups] lists every backup found for
  * the signed-in account (one per device that has ever backed up) so the coach can pick the

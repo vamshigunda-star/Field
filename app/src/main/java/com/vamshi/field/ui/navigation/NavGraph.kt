@@ -18,10 +18,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -33,7 +35,6 @@ import com.vamshi.field.ui.auth.AuthGateState
 import com.vamshi.field.ui.auth.AuthGateViewModel
 import com.vamshi.field.ui.auth.onboarding.OnboardingScreen
 import com.vamshi.field.ui.auth.restore.RestoreBackupScreen
-import com.vamshi.field.ui.auth.unlock.UnlockScreen
 import com.vamshi.field.ui.customtest.CustomTestScreen
 import com.vamshi.field.ui.dashboard.DashboardScreen
 import com.vamshi.field.ui.groupoverview.GroupOverviewScreen
@@ -81,9 +82,8 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
 
     val startDestination = when (authGateState) {
         AuthGateState.Authenticated -> Screen.Dashboard.route
-        AuthGateState.UnauthenticatedHasUsers -> Screen.Unlock.route
-        AuthGateState.UnauthenticatedNoUsers -> Screen.Onboarding.route
-        AuthGateState.Loading -> Screen.Unlock.route // unreachable — handled above
+        AuthGateState.NoAccount -> Screen.Onboarding.route
+        AuthGateState.Loading -> Screen.Onboarding.route // unreachable — handled above
     }
 
     NavHost(
@@ -96,20 +96,6 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
         popExitTransition = { slideOutHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { fullWidth -> fullWidth / 4 } + fadeOut(animationSpec = tween(220)) }
     ) {
         // ───── Auth screens ─────
-
-        composable(Screen.Unlock.route) {
-
-            UnlockScreen(
-                onUnlockSuccess = {
-                    navController.navigate(Screen.Dashboard.route) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
-                onNavigateToRestore = {
-                    navController.navigate(Screen.RestoreBackup.route)
-                }
-            )
-        }
 
         composable(Screen.Onboarding.route) {
 
@@ -152,18 +138,14 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                     navController.navigate(Screen.Leaderboard.createRoute(eventId, groupId, mode))
                 },
                 onNavigateToReports = { navController.navigate(Screen.Report.route) },
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                onNavigateToSignIn = {
-                    navController.navigate(Screen.Unlock.route) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                }
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
             )
         }
 
-        composable(Screen.Roster.route) {
+        composable(Screen.Roster.route) { entry ->
 
             RosterScreen(
+                showNavigationIcon = navController.rememberShowBack(entry),
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToAthleteReport = { athleteId ->
                     navController.navigate(Screen.AthleteDashboard.createRoute(athleteId))
@@ -176,9 +158,10 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
 
 
 
-        composable(Screen.TestLibrary.route) {
+        composable(Screen.TestLibrary.route) { entry ->
 
             TestLibraryScreen(
+                showNavigationIcon = navController.rememberShowBack(entry),
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEditTest = { testId ->
                     navController.navigate(Screen.CustomTest.createRoute(testId))
@@ -256,9 +239,10 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
 
         // ───── Reports & Results layer ─────
 
-        composable(Screen.Report.route) {
+        composable(Screen.Report.route) { entry ->
 
             ReportScreen(
+                showNavigationIcon = navController.rememberShowBack(entry),
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToGroup = { groupId ->
                     navController.navigate(Screen.GroupOverview.createRoute(groupId))
@@ -421,4 +405,18 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
             )
         }
     }
+}
+
+/**
+ * Tab screens show Back only when pushed over something other than Home. A tab switch always
+ * pops to Home first (see AdaptiveNavigationWrapper), so a tab tap never gets an arrow, and a
+ * Home shortcut doesn't either: Back would only reach Home, and the Home tab is already showing.
+ *
+ * Read once, when the entry first composes as the top destination, so the answer doesn't
+ * change while a child screen is pushed over it and popped again.
+ */
+@Composable
+private fun NavHostController.rememberShowBack(entry: NavBackStackEntry): Boolean = remember(entry) {
+    val below = previousBackStackEntry?.destination?.route
+    below != null && below != Screen.Dashboard.route
 }
