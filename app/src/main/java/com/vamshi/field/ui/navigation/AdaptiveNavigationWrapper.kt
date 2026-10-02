@@ -58,7 +58,6 @@ import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.vamshi.field.ui.theme.SportOrange
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @Composable
@@ -187,9 +186,9 @@ fun AdaptiveNavigationWrapper(
                                 }
                             },
                             colors = NavigationRailItemDefaults.colors(
-                                selectedIconColor = SportOrange,
-                                selectedTextColor = SportOrange,
-                                indicatorColor = SportOrange.copy(alpha = 0.14f),
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -220,7 +219,7 @@ private fun FloatingBottomNavItem(
 
     val iconColor by animateColorAsState(
         targetValue = if (selected) {
-            SportOrange
+            MaterialTheme.colorScheme.onPrimaryContainer
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
         },
@@ -230,7 +229,7 @@ private fun FloatingBottomNavItem(
 
     val indicatorColor by animateColorAsState(
         targetValue = if (selected) {
-            SportOrange.copy(alpha = 0.14f)
+            MaterialTheme.colorScheme.primaryContainer
         } else {
             Color.Transparent
         },
@@ -240,7 +239,7 @@ private fun FloatingBottomNavItem(
 
     val textColor by animateColorAsState(
         targetValue = if (selected) {
-            SportOrange
+            MaterialTheme.colorScheme.onPrimaryContainer
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
         },
@@ -258,7 +257,7 @@ private fun FloatingBottomNavItem(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(
                     bounded = true,
-                    color = SportOrange
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 ),
                 role = Role.Tab,
                 onClick = onClick

@@ -30,9 +30,19 @@ data class PerformanceZoneColors(
  * 0.7 for density. Dark-theme tokens are already muted, so it is only applied to the light set.
  */
 @Composable
-fun performanceZoneColors(percentile: Int?, alpha: Float = 1f): PerformanceZoneColors {
-    val isDark = isSystemInDarkTheme()
-    return when (PerformanceThresholds.classify(percentile)) {
+fun performanceZoneColors(percentile: Int?, alpha: Float = 1f): PerformanceZoneColors =
+    performanceZoneColors(PerformanceThresholds.classify(percentile), alpha)
+
+@Composable
+fun performanceZoneColors(classification: Classification, alpha: Float = 1f): PerformanceZoneColors =
+    performanceZoneColors(classification, isSystemInDarkTheme(), alpha)
+
+/**
+ * Non-composable core, for callers that already resolved the theme (Canvas draw scopes,
+ * helpers outside composition). The chips used to carry their own copies of this table.
+ */
+fun performanceZoneColors(classification: Classification, isDark: Boolean, alpha: Float = 1f): PerformanceZoneColors =
+    when (classification) {
         Classification.SUPERIOR -> if (isDark) {
             PerformanceZoneColors(PerformanceGreenDark, PerformanceGreenTextDark, PerformanceGreenBorderDark, "Superior")
         } else {
@@ -54,4 +64,3 @@ fun performanceZoneColors(percentile: Int?, alpha: Float = 1f): PerformanceZoneC
             PerformanceZoneColors(PerformanceGrey, PerformanceGreyText, PerformanceGreyBorder, "No Norm")
         }
     }
-}

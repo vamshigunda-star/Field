@@ -9,12 +9,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.vamshi.field.domain.model.reports.Classification
 import com.vamshi.field.domain.model.reports.Distribution
+import com.vamshi.field.ui.theme.performanceZoneColors
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 
 @Composable
@@ -24,11 +24,10 @@ fun DistributionBar(
     height: Dp = 10.dp
 ) {
     val total = distribution.total.coerceAtLeast(1)
-    val isDark = isSystemInDarkTheme()
     val trackBg = MaterialTheme.colorScheme.surfaceVariant
-    val superiorColor = if (isDark) Color(0xFF4ADE80) else Color(0xFF1B5E20)
-    val healthyColor = if (isDark) Color(0xFFFDE047) else Color(0xFFF57F17)
-    val needsColor = if (isDark) Color(0xFFF87171) else Color(0xFFB71C1C)
+    val superiorColor = performanceZoneColors(Classification.SUPERIOR).text
+    val healthyColor = performanceZoneColors(Classification.HEALTHY).text
+    val needsColor = performanceZoneColors(Classification.NEEDS_IMPROVEMENT).text
     val noDataColor = MaterialTheme.colorScheme.outlineVariant
 
     Row(

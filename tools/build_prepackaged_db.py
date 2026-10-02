@@ -6,7 +6,8 @@ import time
 import re
 import random
 
-ASSETS_DIR = r"c:\Users\APF\AndroidStudioProjects\Alearning\app\src\main\assets"
+# Resolved from this file so the script works from any checkout, not just the original machine.
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "assets")
 DB_DIR = os.path.join(ASSETS_DIR, "database")
 DB_PATH = os.path.join(DB_DIR, "alearning.db")
 

@@ -5,25 +5,20 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.googlefonts.GoogleFont
-import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.font.Font
 import com.vamshi.field.R
 
-val provider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs
-)
-
-val fontName = GoogleFont("Plus Jakarta Sans")
-
+// Bundled rather than fetched through the Google Fonts provider: Field is offline-first, and a
+// downloadable font silently falls back to Roboto when the first launch has no network.
+// Plus Jakarta Sans stops at ExtraBold (800), so Black maps to that file instead of letting the
+// platform synthesize a fake heavier weight. Licence: assets/licenses/OFL-PlusJakartaSans.txt.
 val AppFontFamily = FontFamily(
-    Font(googleFont = fontName, fontProvider = provider),
-    Font(googleFont = fontName, fontProvider = provider, weight = FontWeight.Medium),
-    Font(googleFont = fontName, fontProvider = provider, weight = FontWeight.SemiBold),
-    Font(googleFont = fontName, fontProvider = provider, weight = FontWeight.Bold),
-    Font(googleFont = fontName, fontProvider = provider, weight = FontWeight.ExtraBold),
-    Font(googleFont = fontName, fontProvider = provider, weight = FontWeight.Black)
+    Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal),
+    Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium),
+    Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
+    Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold),
+    Font(R.font.plus_jakarta_sans_extrabold, FontWeight.ExtraBold),
+    Font(R.font.plus_jakarta_sans_extrabold, FontWeight.Black)
 )
 
 // Complete Material 3 typography scale styled with Plus Jakarta Sans
@@ -33,49 +28,57 @@ val Typography = Typography(
         fontWeight = FontWeight.Bold,
         fontSize = 57.sp,
         lineHeight = 64.sp,
-        letterSpacing = (-0.25).sp
+        letterSpacing = (-0.25).sp,
+        // Tabular figures: scores in a column line up digit-for-digit.
+        fontFeatureSettings = "tnum"
     ),
     displayMedium = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 45.sp,
         lineHeight = 52.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.sp,
+        fontFeatureSettings = "tnum"
     ),
     displaySmall = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 36.sp,
         lineHeight = 44.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.sp,
+        fontFeatureSettings = "tnum"
     ),
     headlineLarge = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 32.sp,
         lineHeight = 40.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.sp,
+        fontFeatureSettings = "tnum"
     ),
     headlineMedium = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 28.sp,
         lineHeight = 36.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.sp,
+        fontFeatureSettings = "tnum"
     ),
     headlineSmall = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
         lineHeight = 32.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.sp,
+        fontFeatureSettings = "tnum"
     ),
     titleLarge = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.sp,
+        fontFeatureSettings = "tnum"
     ),
     titleMedium = TextStyle(
         fontFamily = AppFontFamily,

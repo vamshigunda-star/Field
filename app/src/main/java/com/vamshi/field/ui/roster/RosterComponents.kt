@@ -7,6 +7,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -84,8 +86,12 @@ fun AthleteFilterRow(
                 onClick = { onSexToggled(BiologicalSex.FEMALE) }
             )
         }
+        // Scrolls rather than splitting the width five ways: equal weights truncated
+        // "Adults 20-40" and "Adults 41-62" to an identical "Adults".
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             AthleteAgeRange.entries.forEach { range ->
@@ -93,7 +99,6 @@ fun AthleteFilterRow(
                     label = range.label,
                     isSelected = selectedAgeRange == range,
                     onClick = { onAgeRangeSelected(if (selectedAgeRange == range) null else range) },
-                    modifier = Modifier.weight(1f),
                     compact = true
                 )
             }

@@ -2,6 +2,7 @@ package com.vamshi.field.ui.report.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -18,7 +19,8 @@ import androidx.compose.ui.unit.dp
 fun MiniSparkline(
     points: List<Float>,
     modifier: Modifier = Modifier.size(width = 80.dp, height = 24.dp),
-    color: Color = Color(0xFF0D47A1)
+    // Neutral on purpose: the line shows shape; zone meaning is carried by the value beside it.
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
     Canvas(modifier = modifier) {
         if (points.isEmpty()) return@Canvas

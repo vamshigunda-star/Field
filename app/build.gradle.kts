@@ -104,7 +104,6 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.ui.text.google.fonts)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.windowsizeclass)
     implementation(libs.androidx.compose.material3.adaptive)
@@ -206,9 +205,15 @@ tasks.register<Exec>("generatePrepackagedDb") {
     workingDir = rootDir
     commandLine = listOf("python", "${rootDir}/tools/build_prepackaged_db.py")
     
-    // Incremental build inputs/outputs
-    inputs.dir("${projectDir}/src/main/assets").withPropertyName("assetsDir")
-    inputs.file("${rootDir}/tools/build_prepackaged_db.py").withPropertyName("scriptFile")
+    // Only the catalog CSVs and the script feed the database. Declaring the whole assets
+    // directory made the task its own input (the .db lives under assets/), so it reran on
+    // every build and, because the script writes fresh UUIDs, forced a repackage each time.
+    inputs.files(fileTree("${projectDir}/src/main/assets") { include("*.csv") })
+        .withPropertyName("catalogCsvs")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file("${rootDir}/tools/build_prepackaged_db.py")
+        .withPropertyName("scriptFile")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.file("${projectDir}/src/main/assets/database/alearning.db").withPropertyName("outputDb")
 }
 

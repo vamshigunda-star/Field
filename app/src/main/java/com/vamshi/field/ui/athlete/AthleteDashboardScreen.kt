@@ -75,6 +75,11 @@ import com.vamshi.field.domain.model.reports.AthleteFlag
 import com.vamshi.field.domain.model.reports.AthleteTestTile
 import com.vamshi.field.domain.model.reports.Classification
 import com.vamshi.field.domain.model.reports.FlagType
+import com.vamshi.field.ui.report.components.MiniSparkline
+import com.vamshi.field.ui.report.components.PercentileChip
+import com.vamshi.field.ui.theme.performanceZoneColors
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import com.vamshi.field.domain.model.standards.FitnessTest
 import com.vamshi.field.ui.report.components.ZoneChip
 import com.vamshi.field.ui.report.components.zoneLabel
@@ -186,7 +191,8 @@ fun AthleteDashboardContent(
 
                             Text(
                                 "${ind.currentAge}y • ${ind.sex.name.lowercase().replaceFirstChar { it.uppercase() }}$grp • $healthText • $testCountText",
-                                style = MaterialTheme.typography.labelSmall, color = AppTopBarSubtitleColor
+                                style = MaterialTheme.typography.labelSmall, color = AppTopBarSubtitleColor,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -261,7 +267,12 @@ fun AthleteBody(
         item {
             CategoryRadarCard(
                 radarData = uiState.radarData,
-                hasResults = data.tiles.isNotEmpty()
+                hasResults = data.tiles.isNotEmpty(),
+                onCategoryClick = { categoryId ->
+                    // Resolved on tap, not during composition.
+                    val ids = data.outstandingTests.filter { it.categoryId == categoryId }.map { it.id }
+                    if (ids.isNotEmpty()) onAction(AthleteDashboardAction.OnStartQuickTest(ids))
+                }
             )
         }
 
@@ -484,6 +495,20 @@ fun TestBreakdownItemRow(
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
+    val zone = performanceZoneColors(tile.classification)
+    val percentile = tile.latestResult?.percentile
+    val delta = tile.deltaPercentile?.takeIf { it != 0 }
+    val scoreText = tile.latestResult?.rawScore?.let { raw ->
+        if (raw % 1.0 == 0.0) raw.toInt().toString() else String.format(java.util.Locale.US, "%.1f", raw)
+    }
+    // One sentence for TalkBack instead of five fragments read separately.
+    val description = buildString {
+        append(tile.test.name)
+        if (scoreText != null) append(", $scoreText ${tile.test.unit}") else append(", not tested")
+        if (percentile != null) append(", percentile $percentile")
+        append(", ${zone.label}")
+        if (delta != null) append(if (delta > 0) ", up $delta points" else ", down ${-delta} points")
+    }
 
     Surface(
         onClick = onClick,
@@ -494,52 +519,38 @@ fun TestBreakdownItemRow(
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.40f else 0.65f)
         ),
         shadowElevation = 0.dp,
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            .clearAndSetSemantics { contentDescription = description }
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 1. Left: Test Name & Classification
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
+            // Line 1: test name, then the score in its zone colour.
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = tile.test.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
-
-                val tileLabel = tile.latestResult?.classification?.takeIf { it.isNotBlank() }
-                    ?: zoneLabel(tile.classification)
-                ZoneChip(classification = tile.classification, label = tileLabel)
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            // 2. Right: Score + Unit & Subtle Chevron
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                tile.latestResult?.let { res ->
-                    val s = if (res.rawScore % 1.0 == 0.0) res.rawScore.toInt().toString() else String.format(java.util.Locale.US, "%.1f", res.rawScore)
+                Spacer(Modifier.width(12.dp))
+                if (scoreText != null) {
                     Row(
                         verticalAlignment = Alignment.Bottom,
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Text(
-                            text = s,
+                            text = scoreText,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = if (tile.classification == Classification.NO_DATA) MaterialTheme.colorScheme.onSurface else zone.text
                         )
                         Text(
                             text = tile.test.unit,
@@ -549,20 +560,41 @@ fun TestBreakdownItemRow(
                             modifier = Modifier.padding(bottom = 2.dp)
                         )
                     }
-                } ?: run {
+                } else {
                     Text(
                         text = "—",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "View test details",
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.40f),
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.padding(start = 8.dp).size(18.dp)
                 )
+            }
+
+            // Line 2: where the athlete sits (percentile + zone) and which way they're moving.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (percentile != null) PercentileChip(percentile = percentile)
+                ZoneChip(classification = tile.classification)
+                if (delta != null) {
+                    val deltaZone = if (delta > 0) Classification.SUPERIOR else Classification.NEEDS_IMPROVEMENT
+                    Text(
+                        text = if (delta > 0) "↑ $delta pts" else "↓ ${-delta} pts",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = performanceZoneColors(deltaZone).text
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                if (tile.sparkline.size >= 2) {
+                    MiniSparkline(points = tile.sparkline)
+                }
             }
         }
     }
@@ -571,12 +603,27 @@ fun TestBreakdownItemRow(
 @Composable
 fun FlagListRow(flag: AthleteFlag, onClick: () -> Unit) {
     val isActionable = flag.testId != null || flag.testIds.isNotEmpty() || flag.type == FlagType.MISSING_DATA
-    val textColor = MaterialTheme.colorScheme.onSecondaryContainer
+    // Severity comes from the zone tokens, not brand orange: orange means "start something".
+    val zone = performanceZoneColors(
+        when (flag.type) {
+            FlagType.BELOW_HEALTHY -> Classification.NEEDS_IMPROVEMENT
+            FlagType.REGRESSION -> Classification.NEEDS_IMPROVEMENT
+            FlagType.ABSENT -> Classification.NO_DATA
+            FlagType.MISSING_DATA -> Classification.NO_DATA
+        }
+    )
+    val title = when (flag.type) {
+        FlagType.BELOW_HEALTHY -> "Below Healthy zone"
+        FlagType.REGRESSION -> "Declining"
+        FlagType.ABSENT -> "Absent"
+        FlagType.MISSING_DATA -> "Missing tests"
+    }
+    val textColor = zone.text
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)),
+        colors = CardDefaults.cardColors(containerColor = zone.background),
+        border = BorderStroke(1.dp, zone.border),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -584,7 +631,7 @@ fun FlagListRow(flag: AthleteFlag, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(flag.type.name.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }, fontWeight = FontWeight.SemiBold, color = textColor)
+                Text(title, fontWeight = FontWeight.SemiBold, color = textColor)
                 Text(flag.message, style = MaterialTheme.typography.bodySmall, color = textColor)
                 if (flag.type == FlagType.MISSING_DATA && flag.testNames.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
@@ -643,13 +690,18 @@ fun MissingTestsCard(tests: List<FitnessTest>, onTestClick: (String) -> Unit, on
 }
 
 @Composable
-fun CategoryRadarCard(radarData: AthleteRadarData?, hasResults: Boolean) {
+fun CategoryRadarCard(
+    radarData: AthleteRadarData?,
+    hasResults: Boolean,
+    onCategoryClick: ((categoryId: String) -> Unit)? = null
+) {
     val hasAxes = radarData != null && radarData.axisScores.size >= 3 && radarData.axisScores.any { it.testCount > 0 }
     
     if (hasAxes && radarData != null) {
         RadarChart(
             data = radarData,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            onCategoryClick = onCategoryClick
         )
     } else {
         Card(

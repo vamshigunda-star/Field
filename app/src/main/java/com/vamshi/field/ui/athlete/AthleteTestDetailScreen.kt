@@ -73,7 +73,6 @@ import com.vamshi.field.ui.report.components.zoneLabel
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import com.vamshi.field.ui.theme.ElectricBlue
-import com.vamshi.field.ui.theme.SportOrange
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -292,7 +291,6 @@ private fun DetailBody(
                             bands = data.bandsByDate,
                             isHigherBetter = data.test.isHigherBetter,
                             unit = data.test.unit,
-                            lineColor = SportOrange,
                             selectedRange = uiState.selectedRange,
                             modifier = Modifier
                                 .fillMaxWidth()

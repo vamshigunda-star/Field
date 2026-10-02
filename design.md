@@ -10,6 +10,7 @@ This document serves as the single source of truth for the UI/UX design and fron
   - **Performance-Driven Visuals**: The app relies heavily on color-coded zones to instantly convey fitness performance percentiles (Green ≥80, Yellow 40-79, Red <40, Grey = no norm).
   - **Offline-First & Durable**: UI interactions are designed to persist to local Room SQLite databases efficiently, ensuring no data loss during live physical testing.
   - **Action Isolation**: Critical data entry is currently isolated in modal dialogs to prevent accidental input during active sports scenarios.
+- **Typography**: **Plus Jakarta Sans**, bundled in `res/font/` (Regular, Medium, SemiBold, Bold, ExtraBold) and wired in `ui/theme/Type.kt`. It is bundled, not fetched through the Google Fonts provider, because a downloadable font falls back to Roboto when the first launch is offline. The family stops at ExtraBold (800); `FontWeight.Black` maps to the ExtraBold file. Display, headline and `titleLarge` styles use tabular figures (`tnum`) so scores line up. Licence: `assets/licenses/OFL-PlusJakartaSans.txt` (SIL OFL 1.1).
 
 ## 2. Information Architecture
 
@@ -109,6 +110,8 @@ The modal-heavy approach guarantees input safety but sacrifices speed. Evaluatin
 
 1. **"ViewModels Do Not Navigate"**: Navigation is handled strictly via sealed action classes returned to the UI layer.
 2. **"Colors Dictate Performance, Not Branding"**: Green, Yellow, and Red are reserved exclusively for physiological performance zones and medical alerts, never for generic primary buttons.
+   - The reverse also holds: brand orange (`SportOrange`) means "start something" and is used only on primary start actions. Warning flags, selected navigation and chart lines take zone tokens or `colorScheme.primary`, never orange, because orange sits close enough to Healthy-yellow text to be misread as a zone.
+   - The skill radar always shows every axis; vertices and outline are drawn only for tested axes, and untested axes show "—". Never plot an untested axis at a placeholder value.
 3. **"Medical Alerts supersede UI space"**: If an athlete has an alert, a warning icon must prefix their name across all list views.
 4. **"Explicit Commits"**: Data is never auto-saved on text change; it always requires a button press.
 
@@ -143,7 +146,7 @@ To change the app's colors, modify the Hex values here and rebuild the app.
 | PerformanceGreenText | #1B5E20 |
 | PerformanceGreenBorder | #A5D6A7 |
 | PerformanceYellow | #FFFDE7 |
-| PerformanceYellowText | #F57F17 |
+| PerformanceYellowText | #8A6A00 |
 | PerformanceYellowBorder | #FFF59D |
 | PerformanceRed | #FFEBEE |
 | PerformanceRedText | #B71C1C |
@@ -163,6 +166,8 @@ To change the app's colors, modify the Hex values here and rebuild the app.
 | PerformanceGreyDark | #374151 |
 | PerformanceGreyTextDark | #D1D5DB |
 | PerformanceGreyBorderDark | #4B5563 |
+
+> `PerformanceYellowText` is a deep gold (`#8A6A00`, hue 46°, ≥4.8:1 on the chip, card and page backgrounds). The previous `#F57F17` read as orange beside `SportOrange` and only reached 2.6:1 contrast. Keep Healthy text in the yellow hue family and at ≥4.5:1; pure yellow text is unreadable on light surfaces.
 
 ## 13. Design Control Layer (Rules for Agents/Engineers)
 

@@ -34,7 +34,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vamshi.field.domain.model.reports.NormBandsForAge
-import com.vamshi.field.ui.theme.SportOrange
+import com.vamshi.field.domain.model.reports.Classification
+import com.vamshi.field.ui.theme.performanceZoneColors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -76,11 +77,11 @@ fun NormBandLineChart(
     modifier: Modifier = Modifier,
     isHigherBetter: Boolean = true,
     unit: String = "",
-    lineColor: Color = SportOrange,
+    lineColor: Color = MaterialTheme.colorScheme.primary,
     selectedRange: ChartRangeFilter = ChartRangeFilter.ALL,
-    superiorColor: Color = if (isSystemInDarkTheme()) Color(0xFF4ADE80) else Color(0xFF1B5E20),
-    healthyColor: Color = if (isSystemInDarkTheme()) Color(0xFF60A5FA) else Color(0xFF0D47A1),
-    needsColor: Color = if (isSystemInDarkTheme()) Color(0xFFF87171) else Color(0xFFB71C1C)
+    superiorColor: Color = performanceZoneColors(Classification.SUPERIOR).text,
+    healthyColor: Color = performanceZoneColors(Classification.HEALTHY).text,
+    needsColor: Color = performanceZoneColors(Classification.NEEDS_IMPROVEMENT).text
 ) {
     val filteredPoints = remember(points, selectedRange) {
         selectedRange.filter(points)

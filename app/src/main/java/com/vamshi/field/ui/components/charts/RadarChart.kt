@@ -72,8 +72,6 @@ import com.vamshi.field.ui.theme.AquaCyan
 import com.vamshi.field.ui.theme.ElectricBlue
 import com.vamshi.field.ui.theme.PerformanceGreenText
 import com.vamshi.field.ui.theme.PerformanceGreenTextDark
-import com.vamshi.field.ui.theme.PerformanceGreyText
-import com.vamshi.field.ui.theme.PerformanceGreyTextDark
 import com.vamshi.field.ui.theme.PerformanceRedText
 import com.vamshi.field.ui.theme.PerformanceRedTextDark
 import com.vamshi.field.ui.theme.PerformanceYellowText
@@ -108,6 +106,12 @@ fun RadarChart(
 ) {
     val scores = data.axisScores
     if (scores.size < 3) return
+    // Every axis keeps its spoke and label; only measured axes get a vertex. Untested axes used
+    // to be plotted at a placeholder 4%, dragging the outline into the centre, so a 4-of-11
+    // profile read as "weak everywhere".
+    val testedIndices = remember(scores) {
+        partitionAxes(scores.withIndex().toList()) { it.value.testCount }.tested.map { it.index }
+    }
 
     val isDark = isSystemInDarkTheme()
     val textMeasurer = rememberTextMeasurer()
@@ -124,7 +128,6 @@ fun RadarChart(
     val green = if (isDark) PerformanceGreenTextDark else PerformanceGreenText
     val yellow = if (isDark) PerformanceYellowTextDark else PerformanceYellowText
     val red = if (isDark) PerformanceRedTextDark else PerformanceRedText
-    val grey = if (isDark) PerformanceGreyTextDark else PerformanceGreyText
 
     // Modern Grid & Axis Styling Tokens
     val gridStrokeColor = if (isDark) Color(0xFF334155) else outlineVariant.copy(alpha = 0.8f)
@@ -234,7 +237,7 @@ fun RadarChart(
                     }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${scores.size}-dimension athletic percentile profile",
+                        text = "${testedIndices.size} of ${scores.size} areas tested",
                         style = MaterialTheme.typography.bodySmall,
                         color = secondaryText
                     )
@@ -456,45 +459,53 @@ fun RadarChart(
                         )
                     }
 
-                    // C. Data Area Geometry & Gradient Fill
+                    // C. Data Area Geometry & Gradient Fill (tested axes only)
                     val currentProgress = animProgress.value
-                    if (currentProgress > 0.005f) {
-                        val dataPath = Path()
-                        scores.forEachIndexed { index, score ->
-                            val rawVal = if (score.testCount > 0) score.normalizedScore else 0.04f
-                            val animatedVal = maxOf(rawVal * currentProgress, 0.03f)
-                            val p = point(index, animatedVal)
-                            if (index == 0) dataPath.moveTo(p.x, p.y) else dataPath.lineTo(p.x, p.y)
-                        }
-                        dataPath.close()
+                    if (currentProgress > 0.005f && testedIndices.isNotEmpty()) {
+                        fun vertex(index: Int): Offset =
+                            point(index, maxOf(scores[index].normalizedScore * currentProgress, 0.03f))
 
-                        // Glowing Radial Gradient Mesh Fill (safeguard radius > 0)
-                        val dataRadius = maxOf(radius * currentProgress, 1f)
-                        drawPath(
-                            path = dataPath,
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    gradientAccent.copy(alpha = if (isDark) 0.40f else 0.28f),
-                                    gradientPrimary.copy(alpha = if (isDark) 0.25f else 0.16f),
-                                    Color.Transparent
-                                ),
-                                center = center,
-                                radius = dataRadius
+                        // An area needs three vertices; with fewer there is only an outline.
+                        if (testedIndices.size >= 3) {
+                            val dataPath = Path()
+                            testedIndices.forEachIndexed { k, index ->
+                                val p = vertex(index)
+                                if (k == 0) dataPath.moveTo(p.x, p.y) else dataPath.lineTo(p.x, p.y)
+                            }
+                            dataPath.close()
+
+                            // Glowing Radial Gradient Mesh Fill (safeguard radius > 0)
+                            val dataRadius = maxOf(radius * currentProgress, 1f)
+                            drawPath(
+                                path = dataPath,
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        gradientAccent.copy(alpha = if (isDark) 0.40f else 0.28f),
+                                        gradientPrimary.copy(alpha = if (isDark) 0.25f else 0.16f),
+                                        Color.Transparent
+                                    ),
+                                    center = center,
+                                    radius = dataRadius
+                                )
                             )
-                        )
+                        }
 
-                        // D. Multi-Segment Gradient Data Outline
-                        scores.forEachIndexed { index, _ ->
-                            val nextIndex = (index + 1) % n
-                            val v1 = maxOf((if (scores[index].testCount > 0) scores[index].normalizedScore else 0.04f) * currentProgress, 0.03f)
-                            val v2 = maxOf((if (scores[nextIndex].testCount > 0) scores[nextIndex].normalizedScore else 0.04f) * currentProgress, 0.03f)
-
-                            val p1 = point(index, v1)
-                            val p2 = point(nextIndex, v2)
+                        // D. Multi-Segment Gradient Data Outline, joining consecutive tested axes.
+                        // Two tested axes give one segment, not a closed there-and-back loop.
+                        val segmentCount = when {
+                            testedIndices.size >= 3 -> testedIndices.size
+                            testedIndices.size == 2 -> 1
+                            else -> 0
+                        }
+                        for (k in 0 until segmentCount) {
+                            val index = testedIndices[k]
+                            val nextIndex = testedIndices[(k + 1) % testedIndices.size]
+                            val p1 = vertex(index)
+                            val p2 = vertex(nextIndex)
 
                             val dist = sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y))
-                            val c1 = if (scores[index].testCount > 0) performanceColor(scores[index].normalizedScore, green, yellow, red) else grey
-                            val c2 = if (scores[nextIndex].testCount > 0) performanceColor(scores[nextIndex].normalizedScore, green, yellow, red) else grey
+                            val c1 = performanceColor(scores[index].normalizedScore, green, yellow, red)
+                            val c2 = performanceColor(scores[nextIndex].normalizedScore, green, yellow, red)
 
                             if (dist > 1.5f) {
                                 drawLine(
@@ -522,7 +533,9 @@ fun RadarChart(
 
                     // E. Vertices, Highlights & Breathing Pulses
                     scores.forEachIndexed { index, score ->
-                        val v = maxOf((if (score.testCount > 0) score.normalizedScore else 0.04f) * currentProgress, 0.03f)
+                        // Untested axes keep their spoke and "—" label but get no vertex.
+                        if (score.testCount <= 0) return@forEachIndexed
+                        val v = maxOf(score.normalizedScore * currentProgress, 0.03f)
                         val p = point(index, v)
                         val isSelected = selectedIndex == index
 
@@ -558,13 +571,10 @@ fun RadarChart(
                                 drawCircle(color = Color.White, radius = 6.5.dp.toPx(), center = p)
                                 drawCircle(color = primaryColor, radius = 4.5.dp.toPx(), center = p)
                             }
-                            score.testCount > 0 -> {
+                            else -> {
                                 val pointColor = performanceColor(score.normalizedScore, green, yellow, red)
                                 drawCircle(color = Color.White, radius = 4.5.dp.toPx(), center = p)
                                 drawCircle(color = pointColor, radius = 3.2.dp.toPx(), center = p)
-                            }
-                            else -> {
-                                drawCircle(color = grey.copy(alpha = 0.6f), radius = 2.5.dp.toPx(), center = p)
                             }
                         }
                     }
@@ -788,3 +798,11 @@ private fun formatRadarLabel(name: String): String {
 }
 
 
+
+internal data class RadarAxisPartition<T>(val tested: List<T>, val untested: List<T>)
+
+/** Splits axes into measured and unmeasured, preserving their order around the chart. */
+internal fun <T> partitionAxes(scores: List<T>, testCount: (T) -> Int): RadarAxisPartition<T> {
+    val (tested, untested) = scores.partition { testCount(it) > 0 }
+    return RadarAxisPartition(tested, untested)
+}
