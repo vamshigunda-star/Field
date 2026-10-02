@@ -142,8 +142,7 @@ class SeedDataManager @Inject constructor(
                 }
                 val normMaps = com.vamshi.field.util.CsvParser.parse(normsStream)
 
-
-                    Log.d(TAG, "Parsed ${categoryMaps.size} categories, ${testMaps.size} tests, ${normMaps.size} norms")
+                Log.d(TAG, "Parsed ${categoryMaps.size} categories, ${testMaps.size} tests, ${normMaps.size} norms")
 
                     val categories = categoryMaps.map { row ->
                         TestCategoryEntity(

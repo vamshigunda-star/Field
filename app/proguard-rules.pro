@@ -1,21 +1,36 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# R8 rules for the release build. Debug is never minified, so nothing here is exercised
+# until assembleRelease — verify any change against a release APK, not a debug run.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# --- Persisted JSON: field names ARE the format -------------------------------------------
+# BackupRepositoryImpl writes the Drive backup with plain Gson reflection, and none of the
+# Backup* DTOs carry @SerializedName. Without these rules R8 renames every field to a/b/c, and
+# the short names shift whenever the classes change — so a backup written by one release stops
+# restoring on the next, and backups from debug builds never restore at all.
+-keep class com.vamshi.field.domain.model.backup.** { <fields>; <init>(...); }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Custom stopwatch presets are stored in SharedPreferences as Gson JSON (same reasoning).
+-keep class com.vamshi.field.data.storage.CustomPresetsStore$StoredPreset { <fields>; <init>(...); }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Gson needs generic signatures to resolve TypeToken<List<StoredPreset>>.
+-keepattributes Signature,*Annotation*,EnclosingMethod,InnerClasses
+
+# --- Google API client (Drive) -------------------------------------------------------------
+# google-http-client maps JSON onto the Drive model classes through @Key field reflection.
+-keepclassmembers class * {
+    @com.google.api.client.util.Key <fields>;
+}
+-dontwarn com.google.api.client.**
+-dontwarn org.apache.http.**
+-dontwarn javax.naming.**
+-dontwarn org.ietf.jgss.**
+
+# --- Logging --------------------------------------------------------------------------------
+# Strip debug/verbose logcat output from release. Warnings and errors stay.
+-assumenosideeffects class android.util.Log {
+    public static int d(...);
+    public static int v(...);
+}
+
+# Keep line numbers so crash reports from the field map back to source via mapping.txt.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

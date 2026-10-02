@@ -31,8 +31,11 @@ See [DEVELOPMENT_CONTEXT.md](DEVELOPMENT_CONTEXT.md) for the full architecture r
 ### Requirements
 
 - Android Studio (recent stable release)
-- JDK 11
-- Android SDK: minSdk 24, targetSdk 34, compileSdk 36
+- JDK 17
+- Android SDK: minSdk 26, targetSdk 35, compileSdk 35
+- **Python 3 on PATH.** The build regenerates the prepackaged database
+  (`app/src/main/assets/database/alearning.db`, not committed) from the CSVs via
+  `tools/build_prepackaged_db.py`; without Python the build fails at `preBuild`.
 
 ### Build
 
@@ -49,6 +52,26 @@ Other useful commands:
 ./gradlew connectedAndroidTest   # Instrumented tests (requires a device/emulator)
 ./gradlew lint                   # Lint checks
 ```
+
+### Release build
+
+Release builds are minified with R8. Debug builds are not, so anything that only breaks under
+R8 (most importantly the Drive backup JSON, see `app/proguard-rules.pro`) is invisible in
+debug. Always test a release APK before publishing.
+
+Signing reads an **untracked** `keystore.properties` at the repo root:
+
+```properties
+storeFile=C:/path/outside/the/repo/field-upload.jks
+storePassword=...
+keyAlias=...
+keyPassword=...
+```
+
+Without it, `assembleRelease` still succeeds but produces an unsigned APK. Never commit the
+keystore or this file (both are in `.gitignore`). Keep the R8 `mapping.txt` from
+`app/build/outputs/mapping/release/` for every published version, so crash stack traces can be
+decoded.
 
 On first launch, the app seeds its test catalog and norm reference data from CSV files bundled in `app/src/main/assets/`.
 
