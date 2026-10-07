@@ -56,7 +56,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
@@ -139,13 +138,7 @@ fun AdaptiveNavigationWrapper(
                                     selected = selected,
                                     onClick = {
                                         if (currentRoute != screen.route) {
-                                            navController.navigate(screen.route) {
-                                                popUpTo(navController.graph.findStartDestination().id) {
-                                                    saveState = true
-                                                }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
+                                            navController.navigateToTab(screen.route)
                                         }
                                     },
                                     modifier = Modifier.weight(1f)
@@ -176,13 +169,7 @@ fun AdaptiveNavigationWrapper(
                             selected = selected,
                             onClick = {
                                 if (currentRoute != screen.route) {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                                    navController.navigateToTab(screen.route)
                                 }
                             },
                             colors = NavigationRailItemDefaults.colors(

@@ -26,6 +26,7 @@ data class CreateEventUiState(
     val groups: List<Group> = emptyList(),
     val categories: List<TestCategory> = emptyList(),
     val allTests: List<FitnessTest> = emptyList(),
+    val testsByCategory: Map<String, List<FitnessTest>> = emptyMap(), // categoryId -> tests, grouped once when the catalog loads
     val presets: List<TestPreset> = emptyList(),
     val groupAthleteCounts: Map<String, Int> = emptyMap(),
     val selectedGroupId: String? = null,
@@ -45,6 +46,7 @@ sealed interface CreateEventAction {
     data class SelectGroup(val groupId: String) : CreateEventAction
     data class ToggleCategoryExpanded(val categoryId: String) : CreateEventAction
     data class ToggleTest(val testId: String) : CreateEventAction
+    data class ToggleCategorySelection(val categoryId: String) : CreateEventAction
     data class ApplyPreset(val presetId: String) : CreateEventAction
     data class DeletePreset(val presetId: String) : CreateEventAction
     data class SetPendingPresetName(val name: String) : CreateEventAction
@@ -89,6 +91,7 @@ class CreateEventViewModel @Inject constructor(
                     state.copy(
                         categories = categories,
                         allTests = tests,
+                        testsByCategory = tests.groupBy { it.categoryId },
                         expandedCategoryId = state.expandedCategoryId,
                         presets = buildPresets(categories, tests)
                     )
@@ -136,6 +139,10 @@ class CreateEventViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(selectedTestIds = if (action.testId in current) current - action.testId else current + action.testId)
                 }
+            }
+            is CreateEventAction.ToggleCategorySelection -> _uiState.update { state ->
+                val categoryTestIds = state.testsByCategory[action.categoryId].orEmpty().map { it.id }.toSet()
+                state.copy(selectedTestIds = toggleCategory(state.selectedTestIds, categoryTestIds))
             }
             is CreateEventAction.ApplyPreset -> applyPreset(action.presetId)
             is CreateEventAction.DeletePreset -> deletePreset(action.presetId)
@@ -237,3 +244,11 @@ class CreateEventViewModel @Inject constructor(
         }
     }
 }
+
+/**
+ * Select-all toggle for one category: if any of its tests is unselected, select them all;
+ * if all are already selected, clear them. Selections in other categories are never touched.
+ */
+internal fun toggleCategory(selected: Set<String>, categoryTestIds: Set<String>): Set<String> =
+    if (categoryTestIds.isNotEmpty() && selected.containsAll(categoryTestIds)) selected - categoryTestIds
+    else selected + categoryTestIds

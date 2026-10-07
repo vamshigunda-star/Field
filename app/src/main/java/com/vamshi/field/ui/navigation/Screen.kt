@@ -84,6 +84,8 @@ sealed class Screen(val route: String) {
     /** Pre-auth Google Drive restore, reachable from Onboarding. */
     data object RestoreBackup : Screen("restore_backup")
     data object Settings : Screen("settings")
+    /** Static "How to use Field" help page. Opened from Home and Settings; never forced. */
+    data object HowToUse : Screen("how_to_use")
 }
 
 sealed class BottomNavItem(

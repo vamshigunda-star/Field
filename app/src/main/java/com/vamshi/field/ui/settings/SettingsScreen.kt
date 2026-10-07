@@ -4,9 +4,13 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +36,7 @@ import androidx.compose.ui.platform.LocalLocale
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToHowToUse: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -39,10 +44,10 @@ fun SettingsScreen(
     SettingsContent(
         uiState = uiState,
         onAction = { action ->
-            if (action == SettingsAction.NavigateBack) {
-                onNavigateBack()
-            } else {
-                viewModel.onAction(action)
+            when (action) {
+                SettingsAction.NavigateBack -> onNavigateBack()
+                SettingsAction.OpenHowToUse -> onNavigateToHowToUse()
+                else -> viewModel.onAction(action)
             }
         },
     )
@@ -129,6 +134,7 @@ fun SettingsContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -206,6 +212,27 @@ fun SettingsContent(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
+
+            HorizontalDivider()
+
+            Text(
+                text = "Help",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            ListItem(
+                headlineContent = { Text("How to use Field") },
+                supportingContent = { Text("Short guides to adding athletes, recording tests and reading results") },
+                leadingContent = {
+                    Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null)
+                },
+                trailingContent = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onAction(SettingsAction.OpenHowToUse) },
+            )
         }
 
         if (uiState.showRestoreConfirmation) {

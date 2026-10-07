@@ -13,6 +13,8 @@ sealed interface SettingsAction {
     data class SelectBackup(val backupId: String) : SettingsAction
     object RestoreData : SettingsAction           // now only fired by dialog confirm
     object NavigateBack : SettingsAction
+    /** Nav-only: handled by the screen, ignored by the ViewModel. */
+    object OpenHowToUse : SettingsAction
 }
 
 data class SettingsUiState(

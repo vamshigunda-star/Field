@@ -11,6 +11,7 @@ import com.vamshi.field.domain.model.standards.TimingMode
 import com.vamshi.field.domain.model.testing.TestingEvent
 import com.vamshi.field.domain.usecase.standards.CalculatePercentileUseCase
 import com.vamshi.field.domain.usecase.standards.FakeStandardsRepository
+import com.vamshi.field.domain.usecase.testing.DiscardEmptyEventUseCase
 import com.vamshi.field.domain.usecase.testing.FakePeopleRepository
 import com.vamshi.field.domain.usecase.testing.FakeTestingRepository
 import com.vamshi.field.domain.usecase.testing.GetTestingGridDataUseCase
@@ -266,6 +267,69 @@ class GroupTestingSelectAllTestsTest {
         assertTrue(report("tests mishandling an out-of-range score", failures), failures.isEmpty())
     }
 
+    /**
+     * Editing a score used to delete the old result *before* recording the new one, so a
+     * rejected edit (a typo outside the valid range) left the cell empty. The original must
+     * survive until its replacement is stored.
+     */
+    @Test
+    fun `a rejected edit keeps the original score`() = runTest(dispatcher) {
+        val viewModel = gridViewModel()
+        advanceUntilIdle()
+        val athlete = athletes.first()
+        val index = catalog.indexOfFirst { midpointOf(it) != null }
+        val test = catalog[index]
+        val original = midpointOf(test)!!
+
+        viewModel.onAction(TestingGridAction.OnSelectTestTab(index))
+        viewModel.onAction(TestingGridAction.OnStartEditing(athlete, test))
+        viewModel.onAction(TestingGridAction.OnSaveScore(original))
+        advanceUntilIdle()
+
+        viewModel.onAction(TestingGridAction.OnStartEditing(athlete, test))
+        viewModel.onAction(TestingGridAction.OnSaveScore(test.validMin!! - 1.0))
+        advanceUntilIdle()
+
+        assertNotNull("the rejected edit should surface an error", viewModel.uiState.value.errorMessage)
+        assertEquals(original, testingRepository.resultFor(athlete.id, test.id)?.rawScore)
+    }
+
+    @Test
+    fun `a successful edit replaces the score rather than adding one`() = runTest(dispatcher) {
+        val viewModel = gridViewModel()
+        advanceUntilIdle()
+        val athlete = athletes.first()
+        val index = catalog.indexOfFirst { midpointOf(it) != null }
+        val test = catalog[index]
+
+        viewModel.onAction(TestingGridAction.OnSelectTestTab(index))
+        viewModel.onAction(TestingGridAction.OnStartEditing(athlete, test))
+        viewModel.onAction(TestingGridAction.OnSaveScore(midpointOf(test)!!))
+        advanceUntilIdle()
+
+        viewModel.onAction(TestingGridAction.OnStartEditing(athlete, test))
+        viewModel.onAction(TestingGridAction.OnSaveScore(test.validMin!!))
+        advanceUntilIdle()
+
+        val stored = testingRepository.storedResults().filter { it.individualId == athlete.id && it.testId == test.id }
+        assertEquals(listOf(test.validMin), stored.map { it.rawScore })
+    }
+
+    // --- Leaving the grid ---
+
+    @Test
+    fun `discarding an event with no scores deletes it and leaves`() = runTest(dispatcher) {
+        val viewModel = gridViewModel()
+        advanceUntilIdle()
+
+        viewModel.onAction(TestingGridAction.OnRequestLeave)
+        viewModel.onAction(TestingGridAction.OnDiscardAndLeave)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.leaveConfirmed)
+        assertEquals(null, testingRepository.getEventById(EVENT_ID))
+    }
+
     // --- The stopwatch ---
 
     /**
@@ -308,7 +372,8 @@ class GroupTestingSelectAllTestsTest {
         testingRepository = testingRepository,
         peopleRepository = peopleRepository,
         getGridData = GetTestingGridDataUseCase(peopleRepository, testingRepository),
-        recordTestResult = recordTestResult()
+        recordTestResult = recordTestResult(),
+        discardEmptyEvent = DiscardEmptyEventUseCase(testingRepository)
     )
 
     private fun stopwatchViewModel(testId: String, mode: TimingMode) = StopwatchViewModel(

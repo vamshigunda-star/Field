@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Bolt
@@ -66,6 +67,7 @@ fun DashboardScreen(
     onNavigateToLeaderboard: (eventId: String, groupId: String, mode: String) -> Unit,
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToHowToUse: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -89,6 +91,7 @@ fun DashboardScreen(
                 }
                 DashboardAction.OnAnalyticsClick -> onNavigateToReports()
                 DashboardAction.OnSettingsClick -> onNavigateToSettings()
+                DashboardAction.OnHowToUseClick -> onNavigateToHowToUse()
                 else -> viewModel.onAction(it)
             }
         }
@@ -135,6 +138,10 @@ fun DashboardContent(
                         coachFirstName = uiState.coachFirstName,
                         coachLastName = uiState.coachLastName
                     )
+                }
+
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    HowToUseEntry(onClick = { onAction(DashboardAction.OnHowToUseClick) })
                 }
 
                 if (!uiState.isGettingStartedDismissed) {
@@ -458,6 +465,45 @@ private fun ContextHeaderCard(
                 color = Color.White.copy(alpha = 0.85f)
             )
         }
+    }
+}
+
+/** Quiet link to the "How to use Field" help page. Always available; never auto-opens. */
+@Composable
+private fun HowToUseEntry(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClickLabel = "Open How to use Field", onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.AutoMirrored.Filled.HelpOutline,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = buildAnnotatedString {
+                withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                    append("New to Field? ")
+                }
+                withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)) {
+                    append("Start here")
+                }
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 

@@ -10,6 +10,7 @@ import com.vamshi.field.domain.model.testing.TestResult
 import com.vamshi.field.domain.model.testing.TestingEvent
 import com.vamshi.field.domain.repository.PeopleRepository
 import com.vamshi.field.domain.repository.TestingRepository
+import com.vamshi.field.domain.usecase.testing.DiscardEmptyEventUseCase
 import com.vamshi.field.domain.usecase.testing.GetTestingGridDataUseCase
 import com.vamshi.field.domain.usecase.testing.RecordTestResultUseCase
 import com.vamshi.field.domain.usecase.testing.TestingGridData
@@ -33,6 +34,8 @@ data class TestingGridUiState(
     val testCapturePreferences: Map<String, CaptureMethodPreference> = emptyMap(),
     val deleteCandidate: DeleteCandidate? = null,
     val showCompletionDialog: Boolean = false,
+    val showLeaveDialog: Boolean = false,
+    val leaveConfirmed: Boolean = false, // consumed by the screen, which navigates back
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val failedAction: FailedGridAction? = null
@@ -42,7 +45,9 @@ sealed interface FailedGridAction {
     data class Save(
         val athlete: Individual,
         val test: FitnessTest,
-        val rawScore: Double
+        val rawScore: Double,
+        /** The score this save was replacing, so a retry still removes it. */
+        val replacing: TestResult? = null
     ) : FailedGridAction
 
     data class Delete(
@@ -84,6 +89,11 @@ sealed interface TestingGridAction {
     data object OnRetryFailedAction : TestingGridAction
     data object OnRequestSaveSession : TestingGridAction
     data object OnDismissCompletionDialog : TestingGridAction
+    data object OnRequestLeave : TestingGridAction
+    data object OnDismissLeave : TestingGridAction
+    data object OnConfirmLeave : TestingGridAction
+    data object OnDiscardAndLeave : TestingGridAction
+    data object OnLeaveConsumed : TestingGridAction
     
     // Navigation actions — handled by the screen composable
     data object OnNavigateBack : TestingGridAction
@@ -105,7 +115,8 @@ class TestingGridViewModel @Inject constructor(
     private val testingRepository: TestingRepository,
     private val peopleRepository: PeopleRepository,
     private val getGridData: GetTestingGridDataUseCase,
-    private val recordTestResult: RecordTestResultUseCase
+    private val recordTestResult: RecordTestResultUseCase,
+    private val discardEmptyEvent: DiscardEmptyEventUseCase
 ) : ViewModel() {
 
     val eventId: String = savedStateHandle["eventId"] ?: ""
@@ -170,7 +181,7 @@ class TestingGridViewModel @Inject constructor(
             is TestingGridAction.OnSaveScore -> {
                 val cell = _uiState.value.editingCell
                 if (cell != null) {
-                    saveScore(cell.athlete, cell.test, action.rawScore)
+                    saveScore(cell.athlete, cell.test, action.rawScore, cell.currentResult)
                 }
             }
             is TestingGridAction.OnRequestDelete -> {
@@ -193,7 +204,7 @@ class TestingGridViewModel @Inject constructor(
             TestingGridAction.OnRetryFailedAction -> {
                 val failed = _uiState.value.failedAction
                 when (failed) {
-                    is FailedGridAction.Save -> saveScore(failed.athlete, failed.test, failed.rawScore)
+                    is FailedGridAction.Save -> saveScore(failed.athlete, failed.test, failed.rawScore, failed.replacing)
                     is FailedGridAction.Delete -> retryDelete(failed)
                     null -> Unit
                 }
@@ -204,13 +215,25 @@ class TestingGridViewModel @Inject constructor(
             TestingGridAction.OnDismissCompletionDialog -> {
                 _uiState.update { it.copy(showCompletionDialog = false) }
             }
+            TestingGridAction.OnRequestLeave -> {
+                _uiState.update { it.copy(showLeaveDialog = true) }
+            }
+            TestingGridAction.OnDismissLeave -> {
+                _uiState.update { it.copy(showLeaveDialog = false) }
+            }
+            TestingGridAction.OnConfirmLeave -> {
+                _uiState.update { it.copy(showLeaveDialog = false, leaveConfirmed = true) }
+            }
+            TestingGridAction.OnDiscardAndLeave -> discardAndLeave()
+            TestingGridAction.OnLeaveConsumed -> {
+                _uiState.update { it.copy(leaveConfirmed = false) }
+            }
             else -> Unit
         }
     }
 
-    private fun saveScore(athlete: Individual, test: FitnessTest, rawScore: Double) {
+    private fun saveScore(athlete: Individual, test: FitnessTest, rawScore: Double, currentResult: TestResult?) {
         if (_uiState.value.gridData == null) return
-        val currentResult = _uiState.value.editingCell?.currentResult
 
         // A fresh attempt supersedes any prior failure; clearing the editing cell
         // dismisses the keyboard while the save is in flight.
@@ -218,25 +241,25 @@ class TestingGridViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                // If editing an existing score, delete the previous result so the updated score replaces it cleanly
-                if (currentResult != null) {
-                    testingRepository.deleteResultById(currentResult.id)
-                }
-
                 // Get full athlete data to calculate age
                 val fullAthlete = peopleRepository.getIndividualById(athlete.id)
-                if (fullAthlete != null) {
-                    val ageMillis = System.currentTimeMillis() - fullAthlete.dateOfBirth
-                    val ageYears = (ageMillis / (365.25 * 24 * 60 * 60 * 1000)).toFloat()
+                    ?: throw IllegalStateException("Athlete not found — score not saved")
+                val ageMillis = System.currentTimeMillis() - fullAthlete.dateOfBirth
+                val ageYears = (ageMillis / (365.25 * 24 * 60 * 60 * 1000)).toFloat()
 
-                    recordTestResult(
-                        eventId = eventId,
-                        individualId = fullAthlete.id,
-                        testId = test.id,
-                        rawScore = rawScore,
-                        ageAtTime = ageYears,
-                        sex = fullAthlete.sex
-                    )
+                recordTestResult(
+                    eventId = eventId,
+                    individualId = fullAthlete.id,
+                    testId = test.id,
+                    rawScore = rawScore,
+                    ageAtTime = ageYears,
+                    sex = fullAthlete.sex
+                )
+
+                // Only once the new score is stored does the one it replaces go. Deleting first
+                // meant a rejected edit (e.g. a typo outside the valid range) lost the original.
+                if (currentResult != null) {
+                    testingRepository.deleteResultById(currentResult.id)
                 }
             } catch (e: Exception) {
                 Log.e(
@@ -248,9 +271,27 @@ class TestingGridViewModel @Inject constructor(
                     it.copy(
                         errorMessage = e.message,
                         editingCell = null,
-                        failedAction = FailedGridAction.Save(athlete, test, rawScore)
+                        failedAction = FailedGridAction.Save(athlete, test, rawScore, currentResult)
                     )
                 }
+            }
+        }
+    }
+
+    private fun discardAndLeave() {
+        viewModelScope.launch {
+            val discarded = try {
+                discardEmptyEvent(eventId)
+            } catch (e: Exception) {
+                Log.e("TestingGridViewModel", "discardEmptyEvent FAILED event=$eventId", e)
+                false
+            }
+            _uiState.update {
+                it.copy(
+                    showLeaveDialog = false,
+                    leaveConfirmed = true,
+                    errorMessage = if (discarded) it.errorMessage else "Scores were recorded, so the event was kept."
+                )
             }
         }
     }

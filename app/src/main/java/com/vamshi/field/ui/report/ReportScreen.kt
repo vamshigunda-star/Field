@@ -36,6 +36,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -49,7 +51,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -87,11 +88,21 @@ fun ReportScreen(
     onNavigateToTest: (String, String) -> Unit = { _, _ -> },
     onStartQuickTest: (String, List<String>) -> Unit = { _, _ -> },
     onResumeTesting: (String, String?, String?, List<String>?) -> Unit = { _, _, _, _ -> },
+    // eventId to groupId: open Event Report on this event (set when a coach finishes testing).
+    openEventRequest: Pair<String, String>? = null,
+    onOpenEventRequestConsumed: () -> Unit = {},
     viewModel: ReportsHubViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(openEventRequest) {
+        openEventRequest?.let { (eventId, groupId) ->
+            viewModel.onAction(ReportsHubAction.OpenEvent(eventId, groupId))
+            onOpenEventRequestConsumed()
+        }
+    }
     
-    var selectedTab by remember { mutableIntStateOf(0) }
+    val selectedTab = uiState.selectedTab.ordinal
     val context = LocalContext.current
 
     LaunchedEffect(viewModel.exportEvent) {
@@ -168,7 +179,7 @@ fun ReportScreen(
             ReportsHubContent(
                 uiState = uiState,
                 selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
+                onTabSelected = { viewModel.onAction(ReportsHubAction.SelectTab(ReportsHubTab.entries[it])) },
                 onAction = { action -> 
                     when (action) {
                         is ReportsHubAction.OnStartQuickTest -> onStartQuickTest(action.athleteId, action.testIds)
@@ -405,11 +416,7 @@ private fun EventReportTab(
             }
         }
 
-        if (uiState.isLoadingEvent) {
-            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (uiState.selectedEventId != null && uiState.eventData != null) {
+        if (uiState.selectedEventId != null && uiState.eventData != null) {
             val sessionState = SessionReportUiState(
                 data = uiState.eventData,
                 selectedTestId = uiState.selectedEventTestId,
@@ -440,17 +447,33 @@ private fun EventReportTab(
                     }
                 },
                 headerContent = {
-                    EventPickerRow(
-                        sessions = sessions,
-                        selectedEventId = uiState.selectedEventId,
-                        eventData = uiState.eventData,
-                        onSelect = { row ->
-                            val gid = row.groupId ?: return@EventPickerRow
-                            onAction(ReportsHubAction.SelectEvent(row.event.id, gid))
+                    Column {
+                        if (uiState.isLoadingEvent) {
+                            androidx.compose.material3.LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth().height(3.dp),
+                                color = SportOrange
+                            )
                         }
-                    )
+                        EventPickerRow(
+                            sessions = sessions,
+                            selectedEventId = uiState.selectedEventId,
+                            eventData = uiState.eventData,
+                            onSelect = { row ->
+                                val gid = row.groupId ?: return@EventPickerRow
+                                onAction(ReportsHubAction.SelectEvent(row.event.id, gid))
+                            },
+                            onEdit = {
+                                val eventId = uiState.selectedEventId ?: return@EventPickerRow
+                                onResumeTesting(eventId, uiState.selectedEventGroupId ?: uiState.eventData?.group?.id, null, null)
+                            }
+                        )
+                    }
                 }
             )
+        } else if (uiState.isLoadingEvent) {
+            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
         } else if (uiState.selectedEventId != null && uiState.eventData == null) {
             Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                 Text("Unable to load report for the selected event.", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -614,7 +637,10 @@ private fun EventPickerRow(
     sessions: List<RecentSessionRow>,
     selectedEventId: String?,
     eventData: com.vamshi.field.domain.model.reports.SessionReportData?,
-    onSelect: (RecentSessionRow) -> Unit
+    onSelect: (RecentSessionRow) -> Unit,
+    // Opens the event's testing grid, where tapping a filled cell edits that score.
+    // Null hides the pencil (the picker shown before any event is loaded).
+    onEdit: (() -> Unit)? = null
 ) {
     val df = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
     var showSheet by remember { mutableStateOf(false) }
@@ -648,6 +674,19 @@ private fun EventPickerRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(displayText, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(subtitleText, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (onEdit != null) {
+                // Its own touch target: the pencil edits, the rest of the card opens the picker.
+                IconButton(
+                    onClick = onEdit,
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit results")
+                }
+                Spacer(Modifier.width(4.dp))
             }
             Icon(Icons.Default.ArrowDropDown, contentDescription = "Change")
         }

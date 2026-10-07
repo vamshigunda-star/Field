@@ -48,6 +48,8 @@ sealed interface DashboardAction {
     data class OnPickLeaderboardEvent(val eventId: String, val groupId: String) : DashboardAction
     data object OnAnalyticsClick : DashboardAction
     data object OnDismissGettingStarted : DashboardAction
+    /** Nav-only: opens the "How to use Field" page. */
+    data object OnHowToUseClick : DashboardAction
 }
 
 @HiltViewModel

@@ -128,73 +128,87 @@ fun TestSelectorHeroCard(
                 }
             }
 
+            // Overlays sit in a Box that matches the LazyRow's measured size, so fillMaxHeight()
+            // has a bounded height to fill. Not IntrinsicSize.Min: a LazyRow can't answer
+            // intrinsic queries and Compose throws.
+
             // Left Navigation Button Overlay
-            this@Card.AnimatedVisibility(
-                visible = canScrollBack,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier.align(Alignment.CenterStart)
-            ) {
-                Box(
+            Box(modifier = Modifier.matchParentSize()) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = canScrollBack,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
                     modifier = Modifier
+                        .align(Alignment.CenterStart)
                         .fillMaxHeight()
-                        .width(64.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.surface,
-                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                                    Color.Transparent
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.CenterStart
                 ) {
-                    CarouselNavButton(
-                        icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                        contentDescription = "Scroll to previous test",
-                        onClick = {
-                            coroutineScope.launch {
-                                val prevIndex = (listState.firstVisibleItemIndex - 1).coerceAtLeast(0)
-                                listState.animateScrollToItem(prevIndex)
-                            }
-                        }
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(64.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.surface,
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                        Color.Transparent
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        CarouselNavButton(
+                            icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            contentDescription = "Scroll to previous test",
+                            onClick = {
+                                coroutineScope.launch {
+                                    val prevIndex = (listState.firstVisibleItemIndex - 1).coerceAtLeast(0)
+                                    listState.animateScrollToItem(prevIndex)
+                                }
+                            },
+                            modifier = Modifier.padding(start = 6.dp)
+                        )
+                    }
                 }
             }
 
             // Right Navigation Button Overlay
-            this@Card.AnimatedVisibility(
-                visible = canScrollFwd,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier.align(Alignment.CenterEnd)
-            ) {
-                Box(
+            Box(modifier = Modifier.matchParentSize()) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = canScrollFwd,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
                     modifier = Modifier
+                        .align(Alignment.CenterEnd)
                         .fillMaxHeight()
-                        .width(64.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color.Transparent,
-                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                                    MaterialTheme.colorScheme.surface
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.CenterEnd
                 ) {
-                    CarouselNavButton(
-                        icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Scroll to next test",
-                        onClick = {
-                            coroutineScope.launch {
-                                val nextIndex = (listState.firstVisibleItemIndex + 1).coerceAtMost(tests.lastIndex)
-                                listState.animateScrollToItem(nextIndex)
-                            }
-                        }
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(64.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        Color.Transparent,
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                        MaterialTheme.colorScheme.surface
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        CarouselNavButton(
+                            icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Scroll to next test",
+                            onClick = {
+                                coroutineScope.launch {
+                                    val nextIndex = (listState.firstVisibleItemIndex + 1).coerceAtMost(tests.lastIndex)
+                                    listState.animateScrollToItem(nextIndex)
+                                }
+                            },
+                            modifier = Modifier.padding(end = 6.dp)
+                        )
+                    }
                 }
             }
         }
@@ -222,9 +236,7 @@ private fun CarouselNavButton(
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (isDark) 0.50f else 0.70f)
         ),
         modifier = modifier
-            .fillMaxHeight()
-            .padding(horizontal = 4.dp, vertical = 2.dp)
-            .width(36.dp)
+            .size(36.dp)
             .clip(RoundedCornerShape(18.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },

@@ -1,5 +1,6 @@
 package com.vamshi.field.ui.report
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vamshi.field.domain.model.reports.AthleteDashboardData
@@ -35,6 +36,7 @@ import com.vamshi.field.domain.model.standards.FitnessTest
 data class ReportsHubUiState(
     val athleteRoster: List<Pair<String, String>> = emptyList(),
     val homeData: ReportsHomeData? = null,
+    val selectedTab: ReportsHubTab = ReportsHubTab.ATHLETE_PROFILE,
     val isLoadingHome: Boolean = true,
 
     // Athlete Profile tab
@@ -61,7 +63,12 @@ data class ReportsHubUiState(
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 
+enum class ReportsHubTab { ATHLETE_PROFILE, EVENT_REPORT }
+
 sealed interface ReportsHubAction {
+    data class SelectTab(val tab: ReportsHubTab) : ReportsHubAction
+    /** Open Event Report on a specific event — sent when a coach finishes testing. */
+    data class OpenEvent(val eventId: String, val groupId: String) : ReportsHubAction
     data class SelectAthlete(val id: String) : ReportsHubAction
     data class SelectEvent(val eventId: String, val groupId: String) : ReportsHubAction
     data class SelectEventTest(val testId: String) : ReportsHubAction
@@ -90,10 +97,19 @@ class ReportsHubViewModel @Inject constructor(
     private val testingRepository: TestingRepository,
     private val peopleRepository: PeopleRepository,
     private val standardsRepository: StandardsRepository,
-    private val getAthleteRadarData: GetAthleteRadarDataUseCase
+    private val getAthleteRadarData: GetAthleteRadarDataUseCase,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ReportsHubUiState())
+    // The tab lives here, not in the composable: a coach who opens an event's grid from
+    // Event Report and comes back expects to land on Event Report, not the first tab.
+    private val _uiState = MutableStateFlow(
+        ReportsHubUiState(
+            selectedTab = savedStateHandle.get<String>(KEY_SELECTED_TAB)
+                ?.let { saved -> ReportsHubTab.entries.firstOrNull { it.name == saved } }
+                ?: ReportsHubTab.ATHLETE_PROFILE
+        )
+    )
     val uiState: StateFlow<ReportsHubUiState> = _uiState.asStateFlow()
 
     private val _exportEvent = kotlinx.coroutines.flow.MutableSharedFlow<ExportRequest>()
@@ -153,6 +169,15 @@ class ReportsHubViewModel @Inject constructor(
 
     fun onAction(action: ReportsHubAction) {
         when (action) {
+            is ReportsHubAction.SelectTab -> {
+                savedStateHandle[KEY_SELECTED_TAB] = action.tab.name
+                _uiState.update { it.copy(selectedTab = action.tab) }
+            }
+            is ReportsHubAction.OpenEvent -> {
+                savedStateHandle[KEY_SELECTED_TAB] = ReportsHubTab.EVENT_REPORT.name
+                _uiState.update { it.copy(selectedTab = ReportsHubTab.EVENT_REPORT) }
+                loadEvent(action.eventId, action.groupId)
+            }
             is ReportsHubAction.SelectAthlete -> loadAthlete(action.id)
             is ReportsHubAction.SelectEvent -> loadEvent(action.eventId, action.groupId)
             is ReportsHubAction.SelectEventTest -> _uiState.update { it.copy(selectedEventTestId = action.testId) }
@@ -368,5 +393,9 @@ class ReportsHubViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private companion object {
+        const val KEY_SELECTED_TAB = "reports_selected_tab"
     }
 }

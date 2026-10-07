@@ -62,6 +62,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsAction.SelectBackup -> _uiState.update { it.copy(selectedBackupId = action.backupId) }
             is SettingsAction.RestoreData -> handleRestoreData()
             is SettingsAction.NavigateBack -> Unit
+            is SettingsAction.OpenHowToUse -> Unit
         }
     }
 

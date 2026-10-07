@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Leaderboard
@@ -65,6 +66,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.reports.Classification
@@ -157,7 +159,8 @@ fun SessionReportContent(
     onAction: (SessionReportAction) -> Unit,
 ) {
     val data = uiState.data
-    val df = remember { SimpleDateFormat("EEEE, MMM d", Locale.getDefault()) }
+    // Short weekday: with four top-bar actions, "Wednesday, Oct 7" wraps mid-date on a phone.
+    val df = remember { SimpleDateFormat("EEE, MMM d", Locale.getDefault()) }
 
     Scaffold(
         topBar = {
@@ -166,7 +169,9 @@ fun SessionReportContent(
                     Column {
                         Text(
                             data?.event?.let { df.format(Date(it.date)) } ?: "Session",
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         data?.group?.name?.let {
                             Text(it, style = MaterialTheme.typography.labelSmall, color = AppTopBarSubtitleColor)
@@ -180,6 +185,14 @@ fun SessionReportContent(
                 },
                 actions = {
                     if (data != null) {
+                        // The testing grid is the editor: tapping a filled cell edits that score.
+                        // Always offered, because the "Resume testing" links in the body only
+                        // appear while data is missing — a fully scored event had no way back in.
+                        AppTopBarActionButton(
+                            icon = Icons.Default.Edit,
+                            contentDescription = "Edit results",
+                            onClick = { onAction(SessionReportAction.OnResumeTesting) }
+                        )
                         if (data.tests.isNotEmpty()) {
                             AppTopBarActionButton(
                                 icon = Icons.Default.Lightbulb,
@@ -382,7 +395,7 @@ fun SessionReportBody(
                                 isExpanded = isAbsentExpanded,
                                 onToggle = { isAbsentExpanded = !isAbsentExpanded },
                                 icon = Icons.Default.PersonOff,
-                                badgeColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                badgeColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f),
                                 badgeTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 

@@ -1,5 +1,7 @@
 package com.vamshi.field.ui.testing
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -50,6 +52,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -508,12 +511,17 @@ fun ScoreCell(
                         tint = textColor.copy(alpha = 0.45f),
                         modifier = Modifier.size(11.dp).align(Alignment.TopEnd)
                     )
+                    val scoreText = String.format(LocalLocale.current.platformLocale, "%.1f", savedResult.rawScore)
+                    // Colour alone carries the zone here — the percentile number meant nothing to a
+                    // coach mid-testing (it is still stored and feeds the radar). The zone name is
+                    // given to screen readers so the colour isn't the only signal.
                     Column(
-                        modifier = Modifier.align(Alignment.Center),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .semantics { contentDescription = "$scoreText, ${zone.label}" },
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(String.format(LocalLocale.current.platformLocale, "%.1f", savedResult.rawScore), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
-                        savedResult.percentile?.let { p -> Text("${p}%", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = textColor.copy(alpha = 0.8f)) }
+                        Text(scoreText, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
                     }
                 }
             } else {
@@ -553,7 +561,8 @@ fun ScoreEntryDialog(
     validMin: Double? = null,
     validMax: Double? = null
 ) {
-    var scoreText by remember(athleteName, currentResult) { mutableStateOf(currentResult?.rawScore?.toString() ?: "") }
+    // Saveable so half-typed digits survive rotation and the coach switching apps.
+    var scoreText by rememberSaveable(athleteName, currentResult?.id) { mutableStateOf(currentResult?.rawScore?.toString() ?: "") }
     val scrollState = rememberScrollState()
 
     val isInRange = if (scoreText.isEmpty()) false else {
@@ -750,7 +759,7 @@ fun TestingCompleteDialog(
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("View Session Report")
+                Text("View Event Report")
             }
         },
         dismissButton = {
@@ -769,3 +778,44 @@ fun TestingCompleteDialog(
     )
 }
 
+/**
+ * Shown when the coach presses back on the testing grid. Scores are already stored as they are
+ * entered, so this never says "unsaved" — it only stops an accidental exit and, for an event with
+ * no scores yet, offers to discard the empty event instead of leaving it in Reports.
+ */
+@Composable
+fun LeaveTestingDialog(
+    hasResults: Boolean,
+    onKeepTesting: () -> Unit,
+    onLeave: () -> Unit,
+    onDiscard: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onKeepTesting,
+        title = { Text(if (hasResults) "Leave testing?" else "No scores recorded") },
+        text = {
+            Text(
+                if (hasResults) {
+                    "Scores are saved as you enter them. You can come back to this event from Reports."
+                } else {
+                    "This event has no scores yet. Keep it to test later, or discard it."
+                }
+            )
+        },
+        confirmButton = {
+            Button(onClick = onKeepTesting) { Text("Keep testing") }
+        },
+        dismissButton = {
+            Row {
+                if (!hasResults) {
+                    TextButton(onClick = onDiscard) {
+                        Text("Discard", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                TextButton(onClick = onLeave) {
+                    Text(if (hasResults) "Leave" else "Keep for later")
+                }
+            }
+        }
+    )
+}

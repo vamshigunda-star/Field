@@ -15,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -23,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,7 +60,12 @@ fun CategoryAccordionHeader(
     iconOverride: ImageVector? = null,
     selectedCount: Int = 0,
     subtitle: String? = null,
-    isDocked: Boolean = false
+    isDocked: Boolean = false,
+    // Whole-category select box. Null (the default) renders no box, so screens without a
+    // selection concept are unaffected. The box is its own touch target: tapping it never
+    // expands the card, and tapping the card never changes the selection.
+    selectionState: ToggleableState? = null,
+    onToggleSelection: (() -> Unit)? = null
 ) {
     val visual = remember(name, radarAxis) { getCategoryVisual(name, radarAxis) }
     val accentColor = accentColorOverride ?: visual.accentColor
@@ -183,6 +192,15 @@ fun CategoryAccordionHeader(
                         }
                     }
                 }
+            }
+
+            if (selectionState != null && onToggleSelection != null) {
+                TriStateCheckbox(
+                    state = selectionState,
+                    onClick = onToggleSelection,
+                    colors = CheckboxDefaults.colors(checkedColor = accentColor),
+                    modifier = Modifier.semantics { contentDescription = "Select all $name tests" }
+                )
             }
 
             // Minimalist Modern Chevron Indicator

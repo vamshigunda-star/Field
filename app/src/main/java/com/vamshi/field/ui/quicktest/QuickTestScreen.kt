@@ -1,5 +1,7 @@
 package com.vamshi.field.ui.quicktest
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -780,9 +782,13 @@ fun QuickTestScoreCell(savedResult: RecordedTestResult?) {
             contentAlignment = Alignment.Center
         ) {
             if (savedResult != null) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(String.format(LocalLocale.current.platformLocale, "%.1f", savedResult.rawScore), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = textColor)
-                    savedResult.percentile?.let { p -> Text("${p}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium, color = textColor.copy(alpha = 0.8f)) }
+                val scoreText = String.format(LocalLocale.current.platformLocale, "%.1f", savedResult.rawScore)
+                // Colour carries the zone; screen readers get the zone name (see TestingGridComponents).
+                Column(
+                    modifier = Modifier.semantics { contentDescription = "$scoreText, ${zone.label}" },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(scoreText, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = textColor)
                 }
             } else {
                 Row(

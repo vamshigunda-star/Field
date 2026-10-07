@@ -1,6 +1,7 @@
 package com.vamshi.field.ui.testing
 
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -10,6 +11,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -28,9 +30,23 @@ fun TestingGridScreen(
     onNavigateToLeaderboard: (String, String, String) -> Unit,
     onNavigateToGroupReport: (String, String) -> Unit,
     onNavigateToStopwatch: (String, String, String, String?, String?) -> Unit = { _, _, _, _, _ -> },
+    // Finish Testing exits: both leave the grid for good, unlike the top-bar report icon.
+    onFinishToEventReport: (eventId: String, groupId: String) -> Unit = { _, _ -> },
+    onFinishToHome: () -> Unit = onNavigateBack,
     viewModel: TestingGridViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // System back asks first, same as the top-bar arrow. Dialogs shown over the grid consume
+    // back themselves, so this only fires from the bare grid.
+    BackHandler { viewModel.onAction(TestingGridAction.OnRequestLeave) }
+
+    LaunchedEffect(uiState.leaveConfirmed) {
+        if (uiState.leaveConfirmed) {
+            viewModel.onAction(TestingGridAction.OnLeaveConsumed)
+            onNavigateBack()
+        }
+    }
 
     TestingGridContent(
         uiState = uiState,
@@ -58,15 +74,24 @@ fun TestingGridScreen(
             testsRecordedCount = totalResults,
             onViewReport = {
                 viewModel.onAction(TestingGridAction.OnDismissCompletionDialog)
-                onNavigateToGroupReport(viewModel.eventId, viewModel.groupId)
+                onFinishToEventReport(viewModel.eventId, viewModel.groupId)
             },
             onBackToDashboard = {
                 viewModel.onAction(TestingGridAction.OnDismissCompletionDialog)
-                onNavigateBack()
+                onFinishToHome()
             },
             onContinueTesting = {
                 viewModel.onAction(TestingGridAction.OnDismissCompletionDialog)
             }
+        )
+    }
+
+    if (uiState.showLeaveDialog) {
+        LeaveTestingDialog(
+            hasResults = !uiState.gridData?.results.isNullOrEmpty(),
+            onKeepTesting = { viewModel.onAction(TestingGridAction.OnDismissLeave) },
+            onLeave = { viewModel.onAction(TestingGridAction.OnConfirmLeave) },
+            onDiscard = { viewModel.onAction(TestingGridAction.OnDiscardAndLeave) }
         )
     }
 
@@ -113,7 +138,7 @@ private fun TestingGridContent(
     groupId: String,
     onAction: (TestingGridAction) -> Unit
 ) {
-    var sessionSeconds by remember { mutableIntStateOf(0) }
+    var sessionSeconds by rememberSaveable { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -136,7 +161,7 @@ private fun TestingGridContent(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { onAction(TestingGridAction.OnNavigateBack) }) {
+                    IconButton(onClick = { onAction(TestingGridAction.OnRequestLeave) }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -206,7 +231,7 @@ private fun TestingGridContent(
                         Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Save Results",
+                            text = "Finish Testing",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )

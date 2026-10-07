@@ -38,6 +38,7 @@ import com.vamshi.field.ui.auth.restore.RestoreBackupScreen
 import com.vamshi.field.ui.customtest.CustomTestScreen
 import com.vamshi.field.ui.dashboard.DashboardScreen
 import com.vamshi.field.ui.groupoverview.GroupOverviewScreen
+import com.vamshi.field.ui.help.HowToUseScreen
 import com.vamshi.field.ui.leaderboard.LeaderboardScreen
 import com.vamshi.field.ui.quicktest.QuickTestScreen
 import com.vamshi.field.ui.recommendations.RecommendationsScreen
@@ -49,6 +50,16 @@ import com.vamshi.field.ui.testing.CreateEventScreen
 import com.vamshi.field.ui.testing.TestingGridScreen
 import com.vamshi.field.ui.testing.stopwatch.StopwatchScreen
 import com.vamshi.field.ui.testlibrary.TestLibraryScreen
+
+private const val OPEN_EVENT_ID = "open_event_id"
+private const val OPEN_EVENT_GROUP_ID = "open_event_group_id"
+
+private val MainTabRoutes = setOf(
+    Screen.Dashboard.route,
+    Screen.Roster.route,
+    Screen.TestLibrary.route,
+    Screen.Report.route
+)
 
 @Composable
 fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
@@ -90,10 +101,34 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
         navController = navController,
         startDestination = startDestination,
         modifier = modifier,
-        enterTransition = { slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { fullWidth -> fullWidth / 4 } + fadeIn(animationSpec = tween(220)) },
-        exitTransition = { slideOutHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { fullWidth -> -fullWidth / 4 } + fadeOut(animationSpec = tween(220)) },
-        popEnterTransition = { slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { fullWidth -> -fullWidth / 4 } + fadeIn(animationSpec = tween(220)) },
-        popExitTransition = { slideOutHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { fullWidth -> fullWidth / 4 } + fadeOut(animationSpec = tween(220)) }
+        enterTransition = {
+            if (initialState.destination.route in MainTabRoutes && targetState.destination.route in MainTabRoutes) {
+                fadeIn(animationSpec = tween(180))
+            } else {
+                slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { fullWidth -> fullWidth / 4 } + fadeIn(animationSpec = tween(220))
+            }
+        },
+        exitTransition = {
+            if (initialState.destination.route in MainTabRoutes && targetState.destination.route in MainTabRoutes) {
+                fadeOut(animationSpec = tween(180))
+            } else {
+                slideOutHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { fullWidth -> -fullWidth / 4 } + fadeOut(animationSpec = tween(220))
+            }
+        },
+        popEnterTransition = {
+            if (initialState.destination.route in MainTabRoutes && targetState.destination.route in MainTabRoutes) {
+                fadeIn(animationSpec = tween(180))
+            } else {
+                slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { fullWidth -> -fullWidth / 4 } + fadeIn(animationSpec = tween(220))
+            }
+        },
+        popExitTransition = {
+            if (initialState.destination.route in MainTabRoutes && targetState.destination.route in MainTabRoutes) {
+                fadeOut(animationSpec = tween(180))
+            } else {
+                slideOutHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { fullWidth -> fullWidth / 4 } + fadeOut(animationSpec = tween(220))
+            }
+        }
     ) {
         // ───── Auth screens ─────
 
@@ -128,8 +163,8 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
         composable(Screen.Dashboard.route) {
 
             DashboardScreen(
-                onNavigateToRoster = { navController.navigate(BottomNavItem.Roster.route) },
-                onNavigateToTestLibrary = { navController.navigate(Screen.TestLibrary.route) },
+                onNavigateToRoster = { navController.navigateToTab(BottomNavItem.Roster.route) },
+                onNavigateToTestLibrary = { navController.navigateToTab(Screen.TestLibrary.route) },
                 onNavigateToCreateEvent = { navController.navigate(Screen.CreateEvent.createRoute()) },
                 onNavigateToRecommendations = { navController.navigate(Screen.Recommendations.route) },
                 onNavigateToQuickTest = { navController.navigate(Screen.QuickTest.createRoute()) },
@@ -137,8 +172,9 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                 onNavigateToLeaderboard = { eventId, groupId, mode ->
                     navController.navigate(Screen.Leaderboard.createRoute(eventId, groupId, mode))
                 },
-                onNavigateToReports = { navController.navigate(Screen.Report.route) },
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+                onNavigateToReports = { navController.navigateToTab(Screen.Report.route) },
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToHowToUse = { navController.navigate(Screen.HowToUse.route) }
             )
         }
 
@@ -240,9 +276,19 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
         // ───── Reports & Results layer ─────
 
         composable(Screen.Report.route) { entry ->
+            // Set by the testing grid's "View Event Report" exit. Passed through this entry's
+            // SavedStateHandle rather than a route argument, because "reports" is also the
+            // bottom-nav identity and is compared literally.
+            val openEventId by entry.savedStateHandle.getStateFlow<String?>(OPEN_EVENT_ID, null).collectAsState()
+            val openEventGroupId by entry.savedStateHandle.getStateFlow<String?>(OPEN_EVENT_GROUP_ID, null).collectAsState()
 
             ReportScreen(
                 showNavigationIcon = navController.rememberShowBack(entry),
+                openEventRequest = openEventId?.let { e -> openEventGroupId?.let { g -> e to g } },
+                onOpenEventRequestConsumed = {
+                    entry.savedStateHandle.remove<String>(OPEN_EVENT_ID)
+                    entry.savedStateHandle.remove<String>(OPEN_EVENT_GROUP_ID)
+                },
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToGroup = { groupId ->
                     navController.navigate(Screen.GroupOverview.createRoute(groupId))
@@ -356,6 +402,19 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
         ) {
             TestingGridScreen(
                 onNavigateBack = { navController.popBackStack() },
+                onFinishToEventReport = { eventId, groupId ->
+                    // Testing is over: drop the grid (and anything between it and Home, such as a
+                    // Reports entry it was opened from) so back from the report goes Home.
+                    navController.navigate(Screen.Report.route) {
+                        popUpTo(Screen.Dashboard.route)
+                        launchSingleTop = true
+                    }
+                    navController.currentBackStackEntry?.savedStateHandle?.apply {
+                        set(OPEN_EVENT_ID, eventId)
+                        set(OPEN_EVENT_GROUP_ID, groupId)
+                    }
+                },
+                onFinishToHome = { navController.popBackStack(Screen.Dashboard.route, inclusive = false) },
                 onNavigateToStopwatch = { eventId, testId, groupId, athleteId, timingMode ->
                     navController.navigate(Screen.Stopwatch.createRoute(eventId, testId, groupId, athleteId, timingMode))
                 },
@@ -401,6 +460,13 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
 
         composable(Screen.Settings.route) {
             SettingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToHowToUse = { navController.navigate(Screen.HowToUse.route) }
+            )
+        }
+
+        composable(Screen.HowToUse.route) {
+            HowToUseScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vamshi.field.domain.model.standards.TestPreset
 import com.vamshi.field.ui.components.AppTopBar
+import androidx.compose.ui.state.ToggleableState
 import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.components.testing.TestSelectionCard
 import com.vamshi.field.ui.theme.*
@@ -482,8 +483,14 @@ private fun CreateEventBody(
 
             uiState.categories.forEach { category ->
                 val isExpanded = category.id == uiState.expandedCategoryId
-                val categoryTests = uiState.allTests.filter { it.categoryId == category.id }
+                val categoryTests = uiState.testsByCategory[category.id].orEmpty()
                 val selectedCount = categoryTests.count { it.id in uiState.selectedTestIds }
+                val selectionState = when {
+                    categoryTests.isEmpty() -> null
+                    selectedCount == 0 -> ToggleableState.Off
+                    selectedCount == categoryTests.size -> ToggleableState.On
+                    else -> ToggleableState.Indeterminate
+                }
                 val visual = getCategoryVisual(category.name, category.radarAxis)
 
                 item(key = "category_${category.id}") {
@@ -509,7 +516,9 @@ private fun CreateEventBody(
                                 totalCount = categoryTests.size,
                                 isExpanded = isExpanded,
                                 onClick = { onAction(CreateEventAction.ToggleCategoryExpanded(category.id)) },
-                                isDocked = true
+                                isDocked = true,
+                                selectionState = selectionState,
+                                onToggleSelection = { onAction(CreateEventAction.ToggleCategorySelection(category.id)) }
                             )
 
                             if (isExpanded) {
