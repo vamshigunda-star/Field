@@ -19,6 +19,15 @@
 -keepclassmembers class * {
     @com.google.api.client.util.Key <fields>;
 }
+# ...but -keepclassmembers only protects classes R8 already thinks are instantiated. Response
+# types such as FileList are only ever created reflectively by the JSON parser, so R8 treated
+# FileList as never-instantiated, deleted its `files` field, and every files().list() call in
+# release returned an empty list: backups uploaded fine but restore said "No backups were
+# found". Keep every GenericJson model outright, including its no-arg constructor.
+-keep class * extends com.google.api.client.json.GenericJson {
+    <init>();
+    @com.google.api.client.util.Key <fields>;
+}
 -dontwarn com.google.api.client.**
 -dontwarn org.apache.http.**
 -dontwarn javax.naming.**

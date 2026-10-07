@@ -57,3 +57,6 @@ keystore.properties
 /room3-*.jar
 /room3-index.xml
 
+
+# Signed APKs from Android Studio's Generate Signed APK wizard
+/app/release/

@@ -1,7 +1,7 @@
 {
   "title": "Field: an offline-first fitness testing and performance tracking app for coaches",
   "upload_type": "software",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "<p>Field is an offline-first Android app for coaches, PE teachers and fitness professionals. It runs fitness testing events for athlete groups, records results on the spot (including a built-in stopwatch for timed tests), and classifies each result against age- and sex-bracketed percentile norms derived from published exercise-testing standards, so performance can be tracked over time without a network connection.</p><p>Results fall into three performance zones: Superior (at or above the 80th percentile), Healthy Fitness Zone (40th to 79th) and Needs Improvement (below the 40th). Norms are bracketed as Childhood 5–12, Adolescence 13–19, Adults 20–40, Adults 41–62 and Older Adults 63–115. The source standards' five classifications are consolidated into these three zones.</p><p>Built with Kotlin, Jetpack Compose, Material 3, Room and Hilt. Licensed under MIT.</p>",
   "creators": [
     {
