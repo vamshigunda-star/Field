@@ -1,5 +1,7 @@
 # Field
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23208441.svg)](https://doi.org/10.5281/zenodo.23208441)
+
 **Field** is an offline-first fitness testing and performance tracking app for coaches, PE teachers, and fitness professionals. It helps a coach run fitness testing events for their athlete groups, record results on the spot (including a built-in stopwatch for timed tests), and track performance against age/sex-based percentile norms over time.
 
 ## Features
@@ -91,7 +93,13 @@ The source standards use five classifications; Field consolidates them into thre
 
 ## How to cite
 
-Citation metadata is in [CITATION.cff](CITATION.cff) (GitHub's "Cite this repository" button reads it). Each release is archived on Zenodo with a DOI.
+Field is archived on Zenodo. To cite it:
+
+> Gunda, V. (2026). *Field: an offline-first fitness testing and performance tracking app for coaches* (Version 1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23208441
+
+That DOI always resolves to the latest version; version 1.0.0 specifically is
+[10.5281/zenodo.23208442](https://doi.org/10.5281/zenodo.23208442). Citation metadata is also in
+[CITATION.cff](CITATION.cff), which GitHub's "Cite this repository" button reads.
 
 ## License
 
