@@ -34,7 +34,7 @@ See [DEVELOPMENT_CONTEXT.md](DEVELOPMENT_CONTEXT.md) for the full architecture r
 
 - Android Studio (recent stable release)
 - JDK 17
-- Android SDK: minSdk 26, targetSdk 35, compileSdk 37
+- Android SDK: minSdk 26, targetSdk 36, compileSdk 37
 - **Python 3 on PATH.** The build regenerates the prepackaged database
   (`app/src/main/assets/database/alearning.db`, not committed) from the CSVs via
   `tools/build_prepackaged_db.py`; without Python the build fails at `preBuild`.
@@ -100,6 +100,10 @@ Field is archived on Zenodo. To cite it:
 That DOI always resolves to the latest version; version 1.0.0 specifically is
 [10.5281/zenodo.23208442](https://doi.org/10.5281/zenodo.23208442). Citation metadata is also in
 [CITATION.cff](CITATION.cff), which GitHub's "Cite this repository" button reads.
+
+## Privacy
+
+Field collects nothing: all data stays on the device, and the optional Drive backup goes only to the user's own Drive app-data folder. See the [privacy policy](https://vamshigunda-star.github.io/Field/privacy).
 
 ## License
 

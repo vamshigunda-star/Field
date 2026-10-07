@@ -35,7 +35,7 @@ android {
         // crypto provider only supports from API 26. On 24-25 sign-up throws
         // NoSuchAlgorithmException and the app is unusable without an account.
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
 
