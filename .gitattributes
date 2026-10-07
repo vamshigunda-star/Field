@@ -1,0 +1,6 @@
+# Kept in the repo for maintainers, but left out of GitHub release tarballs,
+# and therefore out of the Zenodo archive built from them.
+CLAUDE.md export-ignore
+AGENTS.md export-ignore
+/.idea export-ignore
+/specs export-ignore

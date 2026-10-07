@@ -1,0 +1,36 @@
+{
+  "title": "Field: an offline-first fitness testing and performance tracking app for coaches",
+  "upload_type": "software",
+  "version": "1.0.0",
+  "description": "<p>Field is an offline-first Android app for coaches, PE teachers and fitness professionals. It runs fitness testing events for athlete groups, records results on the spot (including a built-in stopwatch for timed tests), and classifies each result against age- and sex-bracketed percentile norms derived from published exercise-testing standards, so performance can be tracked over time without a network connection.</p><p>Results fall into three performance zones: Superior (at or above the 80th percentile), Healthy Fitness Zone (40th to 79th) and Needs Improvement (below the 40th). Norms are bracketed as Childhood 5–12, Adolescence 13–19, Adults 20–40, Adults 41–62 and Older Adults 63–115. The source standards' five classifications are consolidated into these three zones.</p><p>Built with Kotlin, Jetpack Compose, Material 3, Room and Hilt. Licensed under MIT.</p>",
+  "creators": [
+    {
+      "name": "Gunda, Vamshi",
+      "affiliation": "Azim Premji University"
+    }
+  ],
+  "license": "MIT",
+  "access_right": "open",
+  "keywords": [
+    "fitness testing",
+    "physical education",
+    "sports science",
+    "performance assessment",
+    "normative data",
+    "coaching",
+    "Android",
+    "offline-first"
+  ],
+  "references": [
+    "American College of Sports Medicine. (2017). ACSM's Guidelines for Exercise Testing and Prescription (10th ed.). Wolters Kluwer / Lippincott Williams & Wilkins.",
+    "Fukuda, D. H. (2019). Assessments for Sport and Athletic Performance. Human Kinetics.",
+    "Kaminsky, L. A. (Ed.). (2010). ACSM's Health-Related Physical Fitness Assessment Manual (3rd ed.). Lippincott Williams & Wilkins."
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/vamshigunda-star/Field",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}

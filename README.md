@@ -32,7 +32,7 @@ See [DEVELOPMENT_CONTEXT.md](DEVELOPMENT_CONTEXT.md) for the full architecture r
 
 - Android Studio (recent stable release)
 - JDK 17
-- Android SDK: minSdk 26, targetSdk 35, compileSdk 35
+- Android SDK: minSdk 26, targetSdk 35, compileSdk 37
 - **Python 3 on PATH.** The build regenerates the prepackaged database
   (`app/src/main/assets/database/alearning.db`, not committed) from the CSVs via
   `tools/build_prepackaged_db.py`; without Python the build fails at `preBuild`.
@@ -40,8 +40,8 @@ See [DEVELOPMENT_CONTEXT.md](DEVELOPMENT_CONTEXT.md) for the full architecture r
 ### Build
 
 ```bash
-git clone https://github.com/vamshigunda-star/Alearning.git
-cd Alearning
+git clone https://github.com/vamshigunda-star/Field.git
+cd Field
 ./gradlew assembleDebug          # Windows: gradlew assembleDebug (no ./)
 ```
 
@@ -78,6 +78,20 @@ On first launch, the app seeds its test catalog and norm reference data from CSV
 ## Project status
 
 This app was built as a focused, one-time contribution to sports education tooling. It isn't under active ongoing maintenance, but issues and pull requests are welcome from anyone who finds it useful.
+
+## Norm data sources
+
+The normative reference data in `app/src/main/assets/norms.csv` is drawn mostly from:
+
+- American College of Sports Medicine. (2017). *ACSM's Guidelines for Exercise Testing and Prescription* (10th ed.). Wolters Kluwer / Lippincott Williams & Wilkins.
+- Fukuda, D. H. (2019). *Assessments for Sport and Athletic Performance*. Human Kinetics.
+- Kaminsky, L. A. (Ed.). (2010). *ACSM's Health-Related Physical Fitness Assessment Manual* (3rd ed.). Lippincott Williams & Wilkins.
+
+The source standards use five classifications; Field consolidates them into three performance zones.
+
+## How to cite
+
+Citation metadata is in [CITATION.cff](CITATION.cff) (GitHub's "Cite this repository" button reads it). Each release is archived on Zenodo with a DOI.
 
 ## License
 

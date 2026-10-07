@@ -1,0 +1,54 @@
+cff-version: 1.2.0
+message: "If you use Field in research or teaching, please cite it using the metadata below."
+title: "Field: an offline-first fitness testing and performance tracking app for coaches"
+type: software
+authors:
+  - family-names: Gunda
+    given-names: Vamshi
+    affiliation: Azim Premji University
+version: 1.0.0
+date-released: 2026-10-07
+license: MIT
+repository-code: "https://github.com/vamshigunda-star/Field"
+abstract: >-
+  Field is an offline-first Android app for coaches, PE teachers and fitness
+  professionals. It runs fitness testing events for athlete groups, records
+  results on the spot (including a built-in stopwatch for timed tests), and
+  classifies each result against age- and sex-bracketed percentile norms
+  derived from published exercise-testing standards, so performance can be
+  tracked over time without a network connection.
+keywords:
+  - fitness testing
+  - physical education
+  - sports science
+  - performance assessment
+  - normative data
+  - coaching
+  - Android
+  - offline-first
+references:
+  - type: book
+    title: "ACSM's Guidelines for Exercise Testing and Prescription"
+    edition: "10th"
+    year: 2017
+    authors:
+      - name: American College of Sports Medicine
+    publisher:
+      name: Wolters Kluwer / Lippincott Williams & Wilkins
+  - type: book
+    title: "Assessments for Sport and Athletic Performance"
+    year: 2019
+    authors:
+      - family-names: Fukuda
+        given-names: David H.
+    publisher:
+      name: Human Kinetics
+  - type: book
+    title: "ACSM's Health-Related Physical Fitness Assessment Manual"
+    edition: "3rd"
+    year: 2010
+    authors:
+      - family-names: Kaminsky
+        given-names: Leonard A.
+    publisher:
+      name: Lippincott Williams & Wilkins
