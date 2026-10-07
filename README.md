@@ -17,6 +17,23 @@
 - **Fully offline** — all data lives in a local Room database; no network connection required for core functionality
 - **Google Drive backup** — optional sign-in to back up and restore data via Google Drive
 
+## Install
+
+Field isn't on the Play Store. Install it straight from GitHub:
+
+1. On your Android phone or tablet (Android 8.0 or newer), open the
+   [latest release](https://github.com/vamshigunda-star/Field/releases/latest) and tap
+   **Field-x.y.z.apk** to download it.
+2. Open the downloaded file. If Android says installs from this source aren't allowed, tap
+   **Settings**, turn on **Allow from this source**, and go back.
+3. Tap **Install**. If Google Play Protect warns about an unrecognised app, tap
+   **More details → Install anyway**. The warning appears because the app isn't from the Play
+   Store.
+
+**Updating:** install the newer APK the same way, over the old one. Your data is kept. Updates
+aren't automatic, so check the releases page now and then. Back up to Google Drive (Settings → Data Backup &
+Restore) before changing phones.
+
 ## Tech stack
 
 - **Language:** Kotlin
@@ -95,10 +112,10 @@ The source standards use five classifications; Field consolidates them into thre
 
 Field is archived on Zenodo. To cite it:
 
-> Gunda, V. (2026). *Field: an offline-first fitness testing and performance tracking app for coaches* (Version 1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23208441
+> Gunda, V. (2026). *Field: an offline-first fitness testing and performance tracking app for coaches* [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23208441
 
-That DOI always resolves to the latest version; version 1.0.0 specifically is
-[10.5281/zenodo.23208442](https://doi.org/10.5281/zenodo.23208442). Citation metadata is also in
+That DOI always resolves to the latest version; each release also gets its own version DOI on
+Zenodo (1.0.0 is [10.5281/zenodo.23208442](https://doi.org/10.5281/zenodo.23208442)). Citation metadata is also in
 [CITATION.cff](CITATION.cff), which GitHub's "Cite this repository" button reads.
 
 ## Privacy
