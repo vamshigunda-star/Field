@@ -96,7 +96,7 @@ On first launch, the app seeds its test catalog and norm reference data from CSV
 
 ## Project status
 
-This app was built as a focused, one-time contribution to sports education tooling. It isn't under active ongoing maintenance, but issues and pull requests are welcome from anyone who finds it useful.
+This app was built as a focused, one-time contribution to sports education tooling. It isn't under active ongoing maintenance, but issues and pull requests are welcome from anyone who finds it useful. For questions about the app, email [fieldapp.support@gmail.com](mailto:fieldapp.support@gmail.com).
 
 ## Norm data sources
 

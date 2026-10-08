@@ -13,6 +13,7 @@ percentile norms from published exercise-testing standards.
 - **Download the app:** [latest release](https://github.com/vamshigunda-star/Field/releases/latest)
 - **Cite:** [doi.org/10.5281/zenodo.23208441](https://doi.org/10.5281/zenodo.23208441)
 - **Privacy policy:** [privacy](privacy)
+- **Contact:** [fieldapp.support@gmail.com](mailto:fieldapp.support@gmail.com)
 
 ## Install the app
 

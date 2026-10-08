@@ -5,7 +5,7 @@ permalink: /privacy
 
 # Privacy Policy for Field
 
-_Last updated: 7 October 2026_
+_Last updated: 8 October 2026_
 
 Field is a free, open-source Android app for coaches and PE teachers to record fitness test
 results. It is built to work offline. This policy explains what data the app handles and where
@@ -75,5 +75,6 @@ updated" date.
 
 ## Contact
 
-Questions about this policy can be raised as an issue at
+Questions about this policy or your data: email
+[fieldapp.support@gmail.com](mailto:fieldapp.support@gmail.com), or open an issue at
 [github.com/vamshigunda-star/Field/issues](https://github.com/vamshigunda-star/Field/issues).
