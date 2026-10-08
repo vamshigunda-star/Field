@@ -22,8 +22,8 @@ that data goes.
 
 Field stores the following in a private database on your phone or tablet. Other apps cannot read it.
 
-- **Your coach profile:** name, username, an optional email address, and your password. The
-  password is stored only as a one-way hash.
+- **Your coach profile:** your name and an optional email address. Field has no passwords and
+  no online account; the profile exists only on your device.
 - **Athletes:** name, date of birth, sex, and optional email, medical-alert notes and general notes.
 - **Groups, testing events and test results.**
 
