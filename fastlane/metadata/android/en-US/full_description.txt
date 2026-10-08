@@ -1,0 +1,32 @@
+Field helps coaches, PE teachers and fitness professionals run fitness testing for their athletes, right where the testing happens. It works completely offline, so you can use it on a sports ground with no signal.
+
+<b>Run a testing event</b>
+• Pick a group and the tests you need, then record results athlete by athlete in a simple grid.
+• Time runs and sprints with the built-in stopwatch, one athlete at a time or a whole heat at once, with multiple trials.
+• Use the counter and keypad for reps, distances and measurements.
+
+<b>See what each result means</b>
+Every result is graded against age- and sex-specific norms drawn from published exercise-testing standards, including ACSM's Guidelines for Exercise Testing and Prescription. Results fall into three clear zones:
+• Green: Superior (80th percentile and above)
+• Yellow: Healthy (40th to 79th percentile)
+• Red: Needs Improvement (below the 40th percentile)
+Norms are bracketed for childhood, adolescence, adults and older adults.
+
+<b>Track progress over time</b>
+• Athlete profiles with history charts and a fitness radar across strength, endurance, speed, flexibility and more
+• Event reports, group trends and leaderboards
+• A list of athletes who need attention, so you know where to focus
+• Export reports to share with athletes, parents or colleagues
+
+<b>Built for coaches</b>
+• 83 fitness tests with instructions, most with a demonstration video
+• Create your own tests, with optional scoring bands
+• Organise athletes into groups, classes or squads
+• Starts with a small sample team so you can explore before adding your own athletes
+
+<b>Your data stays yours</b>
+• Everything is stored on your device. No account, no ads, no tracking.
+• Optional backup to your own Google Drive, restorable on a new phone.
+
+Field is free and open source (MIT licence), developed at Azim Premji University, Bengaluru, as a contribution to sports education.
+Source code: https://github.com/vamshigunda-star/Field
