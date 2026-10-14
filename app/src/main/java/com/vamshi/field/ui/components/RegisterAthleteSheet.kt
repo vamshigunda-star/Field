@@ -47,7 +47,6 @@ import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.ui.theme.SportOrange
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 import androidx.compose.ui.platform.LocalLocale
 
 @OptIn(ExperimentalMaterial3Api::class)

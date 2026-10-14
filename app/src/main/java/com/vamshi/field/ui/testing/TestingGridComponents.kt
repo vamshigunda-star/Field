@@ -43,9 +43,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
@@ -74,9 +72,7 @@ import com.vamshi.field.domain.model.standards.TimingMode
 import com.vamshi.field.domain.model.testing.TestResult
 import com.vamshi.field.ui.theme.*
 import com.vamshi.field.ui.components.testing.TestInputSwitcher
-import java.util.Locale
 import com.vamshi.field.ui.theme.performanceZoneColors
-import androidx.compose.ui.platform.LocalLocale
 import com.vamshi.field.ui.components.FieldProgressBar
 
 @Composable

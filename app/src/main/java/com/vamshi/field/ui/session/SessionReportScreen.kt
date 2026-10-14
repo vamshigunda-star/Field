@@ -88,7 +88,6 @@ import com.vamshi.field.util.CsvExporter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.compose.ui.platform.LocalLocale
 
 @Composable
 fun SessionReportScreen(

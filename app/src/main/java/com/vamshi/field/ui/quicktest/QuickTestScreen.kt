@@ -92,9 +92,7 @@ import com.vamshi.field.ui.components.testing.TestInputSwitcher
 import com.vamshi.field.ui.components.testing.TestSelectionCard
 import com.vamshi.field.ui.theme.*
 import androidx.compose.material3.OutlinedCard
-import java.util.Locale
 import com.vamshi.field.ui.theme.performanceZoneColors
-import androidx.compose.ui.platform.LocalLocale
 import com.vamshi.field.ui.components.FieldLoadingState
 import com.vamshi.field.ui.components.HeroNumber
 
