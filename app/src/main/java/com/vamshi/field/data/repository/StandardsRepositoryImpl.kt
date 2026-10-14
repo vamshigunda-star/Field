@@ -43,7 +43,7 @@ class StandardsRepositoryImpl @Inject constructor(
         age: Double,
         score: Double
     ): NormReference? {
-        return dao.findNormResult(testId, sex.name, age, score)?.toDomain()
+        return dao.findNormResult(testId, sex.name, wholeYears(age), score)?.toDomain()
     }
 
     override suspend fun getNormBandsForAthleteTest(
@@ -51,17 +51,25 @@ class StandardsRepositoryImpl @Inject constructor(
         sex: BiologicalSex,
         age: Double
     ): List<NormReference> {
-        val ageInt = age.toInt()
-        val key = Triple(testId, sex, ageInt)
+        val years = wholeYears(age)
+        val key = Triple(testId, sex, years.toInt())
         return normBandsCache.getOrPut(key) {
-            val direct = dao.getNormBandsForAthleteTest(testId, sex.name, age).map { it.toDomain() }
+            val direct = dao.getNormBandsForAthleteTest(testId, sex.name, years).map { it.toDomain() }
             if (direct.isNotEmpty()) {
                 direct
             } else {
-                dao.getNormBandsClosestToAge(testId, sex.name, age).map { it.toDomain() }
+                dao.getNormBandsClosestToAge(testId, sex.name, years).map { it.toDomain() }
             }
         }
     }
+
+    /**
+     * Norm brackets are whole years (5–12, 13–19, …) and adjacent rows leave a gap between
+     * them, so a fractional age like 12.6 matched no row in `:age BETWEEN ageMin AND ageMax`
+     * and fell through to the closest-age fallback, which graded it against the 13–19 norms.
+     * The grid and Quick Test record fractional ages, and reports re-grade from them.
+     */
+    private fun wholeYears(age: Double): Double = kotlin.math.floor(age)
 
 
     // --- SETUP / IMPORT ---

@@ -1,5 +1,8 @@
 package com.vamshi.field.ui.customtest
 
+import com.vamshi.field.domain.model.standards.parseScore
+import com.vamshi.field.domain.model.standards.StageScore
+import com.vamshi.field.domain.model.standards.InputParadigm
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -124,7 +127,7 @@ class CustomTestViewModel @Inject constructor(
                 updateDraft(null) { it.copy(description = action.value) }
 
             is CustomTestAction.OnMeasurementMethodChange ->
-                updateDraft(null) { it.copy(measurementMethod = action.method) }
+                _uiState.update { it.withMeasurementMethod(action.method) }
 
             is CustomTestAction.OnTrialsChange ->
                 updateDraft(CustomTestField.TRIALS) { it.copy(trialsPerAthlete = action.trials) }
@@ -134,7 +137,7 @@ class CustomTestViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         validMinText = text,
-                        draft = it.draft.copy(validMin = text.toDoubleOrNull()),
+                        draft = it.draft.copy(validMin = parseScore(text, it.draft.paradigm)),
                         errors = it.errors - CustomTestField.VALID_RANGE
                     )
                 }
@@ -145,7 +148,7 @@ class CustomTestViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         validMaxText = text,
-                        draft = it.draft.copy(validMax = text.toDoubleOrNull()),
+                        draft = it.draft.copy(validMax = parseScore(text, it.draft.paradigm)),
                         errors = it.errors - CustomTestField.VALID_RANGE
                     )
                 }
@@ -214,7 +217,7 @@ class CustomTestViewModel @Inject constructor(
         val text = action.value.filterNumeric()
         _uiState.update { state ->
             val scoring = state.draft.scoring ?: ScoringBands()
-            val parsed = text.toDoubleOrNull()
+            val parsed = parseScore(text, state.draft.paradigm)
 
             fun List<Double?>.withValue() =
                 toMutableList().also { it[action.index] = parsed }
@@ -292,9 +295,9 @@ class CustomTestViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     draft = draft,
-                    validMinText = draft.validMin?.trimZero().orEmpty(),
-                    validMaxText = draft.validMax?.trimZero().orEmpty(),
-                    cutPointText = draft.scoring.toCutPointText(),
+                    validMinText = draft.validMin?.toEditText(draft.paradigm).orEmpty(),
+                    validMaxText = draft.validMax?.toEditText(draft.paradigm).orEmpty(),
+                    cutPointText = draft.scoring.toCutPointText(draft.paradigm),
                     // Open the section if the coach previously set something in it, so the
                     // saved values aren't hidden behind a collapsed header on reopen.
                     isAdvancedExpanded = draft.validMin != null ||
@@ -308,18 +311,51 @@ class CustomTestViewModel @Inject constructor(
 }
 
 /** Seeds the editable text for every cut point so an edited test shows its saved numbers. */
-private fun ScoringBands?.toCutPointText(): Map<CutPointKey, String> {
+private fun ScoringBands?.toCutPointText(paradigm: InputParadigm): Map<CutPointKey, String> {
     if (this == null) return emptyMap()
     val out = mutableMapOf<CutPointKey, String>()
-    shared.forEachIndexed { i, v -> v?.let { out[CutPointKey(null, i)] = it.trimZero() } }
-    male.forEachIndexed { i, v -> v?.let { out[CutPointKey(BiologicalSex.MALE, i)] = it.trimZero() } }
-    female.forEachIndexed { i, v -> v?.let { out[CutPointKey(BiologicalSex.FEMALE, i)] = it.trimZero() } }
+    shared.forEachIndexed { i, v -> v?.let { out[CutPointKey(null, i)] = it.toEditText(paradigm) } }
+    male.forEachIndexed { i, v -> v?.let { out[CutPointKey(BiologicalSex.MALE, i)] = it.toEditText(paradigm) } }
+    female.forEachIndexed { i, v -> v?.let { out[CutPointKey(BiologicalSex.FEMALE, i)] = it.toEditText(paradigm) } }
     return out
 }
 
-/** Keeps only characters that can form a decimal number, so the parse is predictable. */
-private fun String.filterNumeric(): String = filter { it.isDigit() || it == '.' }
+private val CustomTestDraft.paradigm: InputParadigm
+    get() = measurementMethod.inputParadigm
 
-/** 8.0 -> "8", 8.5 -> "8.5" — avoids showing a trailing ".0" in the edit form. */
-private fun Double.trimZero(): String =
-    if (this % 1.0 == 0.0) toLong().toString() else toString()
+/**
+ * Switching to or from Levels changes what the typed text means ("8.10" is 8.1 as a number
+ * but level 8 shuttle 10 as a stage), so every numeric field is re-read under the new method
+ * rather than keeping values parsed under the old one.
+ */
+private fun CustomTestUiState.withMeasurementMethod(method: MeasurementMethod): CustomTestUiState {
+    val paradigm = method.inputParadigm
+    fun List<Double?>.reparse(sex: BiologicalSex?) =
+        mapIndexed { i, old -> cutPointText[CutPointKey(sex, i)]?.let { parseScore(it, paradigm) } ?: old }
+    val scoring = draft.scoring?.let {
+        it.copy(shared = it.shared.reparse(null), male = it.male.reparse(BiologicalSex.MALE), female = it.female.reparse(BiologicalSex.FEMALE))
+    }
+    return copy(
+        draft = draft.copy(
+            measurementMethod = method,
+            validMin = parseScore(validMinText, paradigm),
+            validMax = parseScore(validMaxText, paradigm),
+            scoring = scoring
+        )
+    )
+}
+
+/**
+ * Keeps only characters that can form a number, so the parse is predictable. A leading minus
+ * survives: reach tests (sit-and-reach, back scratch) record a gap as a negative score, and
+ * stripping it made those standards impossible to author.
+ */
+private fun String.filterNumeric(): String =
+    filterIndexed { i, c -> c.isDigit() || c == '.' || (c == '-' && i == 0) }
+
+/** 8.0 -> "8", 8.5 -> "8.5", and a stage as "8.10" — no trailing ".0" in the edit form. */
+private fun Double.toEditText(paradigm: InputParadigm): String = when {
+    paradigm == InputParadigm.MULTI_STAGE -> StageScore.format(this)
+    this % 1.0 == 0.0 -> toLong().toString()
+    else -> toString()
+}

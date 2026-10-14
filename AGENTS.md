@@ -1,56 +1,28 @@
 # AGENTS.md
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+Guidance for Codex and other coding agents working in this repository.
 
----
+**Read `CLAUDE.md` first, then `DEVELOPMENT_CONTEXT.md`.** They are the only two places project
+facts live (DB version, seed keys, thresholds, data rules). This file used to carry its own copy
+and drifted — it said Room v15 and seed key v29 long after both had moved on — so it now only
+points there. Despite its name, `CLAUDE.md` applies to every agent.
 
-## Central Source of Truth
-**CRITICAL**: The definitive architecture reference for Field is `DEVELOPMENT_CONTEXT.md`. Always read it before making structural changes. 
+## The rules most often broken
+- Clean Architecture: `ui/ → domain/ ← data/`. `domain/` has no Android or Room imports.
+  ViewModels expose one `StateFlow<UiState>`, take a sealed `onAction`, and never navigate.
+- Zone colours come only from `performanceZoneColors(...)`; thresholds only from
+  `domain/model/reports/PerformanceThresholds.kt` (≥80 / 40–79 / <40 / grey = no norm).
+- Scores: `formatScore` / `parseScore` (`domain/model/standards/ScoreFormat.kt`), never `%.1f`,
+  `toString()` or `toDouble()`. Beep/Yo-Yo store `level + shuttle/100`.
+- Age: `Individual.currentAge` (whole years). Birth dates before 1970 are negative millis.
+- Any change to `assets/*.csv` bumps `CATALOG_VERSION` in **both** `SeedDataManager` and
+  `tools/build_prepackaged_db.py`, plus `KEY_SEEDED_VERSION`.
+- Seeding never deletes user data or `source = 'USER'` catalog rows.
 
-## App Overview
-**Field** is an offline-first fitness testing and performance tracking app for coaches and fitness professionals.
-**Primary user:** A single coach managing multiple athlete groups.
-**Platform:** Android (Kotlin, Jetpack Compose, Material 3).
-**Data:** Fully offline. Room database (Current Version: 15).
-
----
-
-## Build & Test Commands
-
+## Build & test
 ```bash
-./gradlew assembleDebug          # Build debug APK
-./gradlew test                   # Unit tests
-./gradlew connectedAndroidTest   # Instrumented tests
-./gradlew lint                   # Run lint checks
+./gradlew assembleDebug          # Windows: gradlew assembleDebug
+./gradlew testDebugUnitTest
+./gradlew connectedAndroidTest
+./gradlew lint
 ```
-On Windows, use `gradlew` (without `./`).
-
----
-
-## Architecture Strictness (Clean Architecture)
-```
-Presentation (ui/) → Domain (domain/) ← Data (data/)
-```
-- **`domain/`** — Zero Android or Room imports. Pure Kotlin.
-- **`data/`** — Room entities, DAOs, repository implementations.
-- **`ui/`** — Jetpack Compose, ViewModels (Hilt injected).
-  - *Strict Rule*: ViewModels NEVER import from `data/`. They depend solely on use cases from `domain/`.
-  - *Strict Rule*: ViewModels do not navigate. They expose a single `StateFlow<UiState>` and accept intents via `onAction`.
-
----
-
-## Database & Seeding
-- **Version:** Room database is currently at **Version 15**.
-- **Seeding:** The DB ships prepackaged (`createFromAsset("database/alearning.db")`, built by `tools/build_prepackaged_db.py` from the CSVs in `assets/`). `SeedDataManager` then tops up from those CSVs unless the prepackaged catalog is already present.
-- **Seed Flag:** Guarded by a versioned SharedPreferences key (`KEY_SEEDED_VERSION` in `SeedDataManager`, currently `data_seeded_version_v29`).
-- **Reseeding is safe:** bumping the seed key re-imports the catalog by upserting `test_categories`/`fitness_tests` and wholesale-replacing `norm_references` and the recommendation tables. It must NEVER delete user-generated data (`testing_events`, `test_results`, `event_test_cross_ref`, athletes, groups).
-
----
-
-## Presentation / UI Component Rules
-- Use adaptive layouts (`ListDetailPaneScaffold`) for dynamic screen sizing (Tablets vs Mobile).
-- Performance color zones are strictly defined:
-  - Green / Superior (≥ 80th percentile)
-  - Yellow / Healthy-Average (40-79th percentile)
-  - Red / Needs Improvement (< 40th percentile)
-- Lists inside Compose MUST use `key = { it.id }` to avoid `O(N)` recomposition lag.
-- Complex state derivations (like O(N) list find operations) must be hoisted to the ViewModel/UseCase and never computed in the Composable render phase.
+Release builds are minified; verify Drive backup/restore on a release APK.

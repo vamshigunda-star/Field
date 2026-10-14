@@ -1,5 +1,7 @@
 package com.vamshi.field.ui.roster
 
+import com.vamshi.field.ui.util.countOf
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -303,7 +305,7 @@ fun ModernAthleteCard(
                     }
                 }
                 Text(
-                    "Age ${((System.currentTimeMillis() - athlete.dateOfBirth) / 31_557_600_000L).toInt()} • ${athlete.sex.name.lowercase().replaceFirstChar { it.uppercase() }}",
+                    "Age ${athlete.currentAge} • ${athlete.sex.name.lowercase().replaceFirstChar { it.uppercase() }}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -425,7 +427,7 @@ fun ModernGroupCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        "${members.size} athletes", 
+                        countOf(members.size, "athlete"),
                         style = MaterialTheme.typography.bodySmall, 
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -524,7 +526,7 @@ fun MemberRow(member: Individual, onRemove: () -> Unit) {
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(member.fullName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-            Text("Age ${((System.currentTimeMillis() - member.dateOfBirth) / 31_557_600_000L).toInt()}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Age ${member.currentAge}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IconButton(onClick = onRemove, modifier = Modifier.size(24.dp)) {
             Icon(Icons.Default.Close, contentDescription = "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
@@ -715,9 +717,12 @@ fun AddGroupSheet(onDismiss: () -> Unit, onConfirm: (String, String?, String?) -
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.outline) }
     ) {
+        // The sheet already insets for the keyboard; once it does, the form is taller than
+        // what's left, so it must scroll or the submit button is unreachable.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)

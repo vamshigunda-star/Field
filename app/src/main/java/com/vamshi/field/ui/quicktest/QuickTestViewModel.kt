@@ -1,5 +1,6 @@
 package com.vamshi.field.ui.quicktest
 
+import com.vamshi.field.domain.model.standards.InputParadigm
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -35,7 +36,8 @@ data class RecordedTestResult(
     val isHigherBetter: Boolean,
     val rawScore: Double,
     val percentile: Int?,
-    val classification: String?
+    val classification: String?,
+    val inputParadigm: InputParadigm = InputParadigm.NUMERIC
 )
 
 data class QuickTestUiState(
@@ -271,8 +273,7 @@ class QuickTestViewModel @Inject constructor(
                 val recorded: RecordedTestResult = if (state.selectedAthlete != null) {
                     val athlete = state.selectedAthlete
                     val eventId = ensureEventExists()
-                    val ageMillis = System.currentTimeMillis() - athlete.dateOfBirth
-                    val ageYears = (ageMillis / (365.25 * 24 * 60 * 60 * 1000)).toFloat()
+                    val ageYears = athlete.currentAge.toFloat()
 
                     val result = recordResult(
                         eventId = eventId,
@@ -288,6 +289,7 @@ class QuickTestViewModel @Inject constructor(
                         testName = test.name,
                         unit = test.unit,
                         isHigherBetter = test.isHigherBetter,
+                        inputParadigm = test.inputParadigm,
                         rawScore = rawScore,
                         percentile = result.percentile,
                         classification = result.classification
@@ -300,6 +302,7 @@ class QuickTestViewModel @Inject constructor(
                         testName = test.name,
                         unit = test.unit,
                         isHigherBetter = test.isHigherBetter,
+                        inputParadigm = test.inputParadigm,
                         rawScore = rawScore,
                         percentile = pr?.percentile,
                         classification = pr?.classification

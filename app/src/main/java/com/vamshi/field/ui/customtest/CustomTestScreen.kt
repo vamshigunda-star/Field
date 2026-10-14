@@ -1,5 +1,6 @@
 package com.vamshi.field.ui.customtest
 
+import com.vamshi.field.domain.model.standards.formatScore
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
@@ -467,7 +468,11 @@ private fun AdvancedSection(
                     }
                     val rangeError = uiState.errors[CustomTestField.VALID_RANGE]
                     Text(
-                        rangeError ?: "Scores outside this range are rejected during testing.",
+                        rangeError ?: if (uiState.draft.measurementMethod == MeasurementMethod.LEVELS) {
+                            "Write levels as level.shuttle — 8.10 is level 8, shuttle 10. Scores outside this range are rejected during testing."
+                        } else {
+                            "Scores outside this range are rejected during testing."
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = if (rangeError != null) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurfaceVariant
@@ -688,7 +693,7 @@ private fun BandLadder(
                     levels.lastIndex -> Text(
                         text = buildString {
                             append(if (higher) "over " else "under ")
-                            append(cutPoints.lastOrNull()?.display() ?: "—")
+                            append(cutPoints.lastOrNull()?.let { formatScore(it, uiState.draft.measurementMethod.inputParadigm) } ?: "—")
                             if (unit.isNotBlank()) append(" $unit")
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -753,9 +758,6 @@ private fun BandLevel.zoneColor(): Color {
         BandLevel.SUPERIOR -> if (isDark) PerformanceGreenTextDark else PerformanceGreenText
     }
 }
-
-private fun Double.display(): String =
-    if (this % 1.0 == 0.0) toLong().toString() else toString()
 
 private fun advancedSummary(uiState: CustomTestUiState): String {
     val draft = uiState.draft

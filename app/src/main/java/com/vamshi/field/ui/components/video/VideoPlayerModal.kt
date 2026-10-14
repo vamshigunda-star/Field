@@ -16,7 +16,10 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -157,134 +160,139 @@ fun VideoPlayerModal(
             }
         }
 
-        Box(
+        Column(
             modifier = (if (isFullscreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
-                .background(Color.Black),
-            contentAlignment = Alignment.Center,
+                .background(Color.Black)
         ) {
-            if (isValidId) {
-                AndroidView(
-                    modifier = if (isFullscreen) {
-                        Modifier.fillMaxSize()
-                    } else {
-                        Modifier.fillMaxWidth().aspectRatio(16f / 9f)
-                    },
-                    factory = { context ->
-                        FrameLayout(context).apply {
-                            val webView = WebView(context).apply {
-                                layoutParams = ViewGroup.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                )
-                                settings.javaScriptEnabled = true
-                                settings.domStorageEnabled = true
-                                settings.mediaPlaybackRequiresUserGesture = false
-                                addJavascriptInterface(
-                                    YouTubePlayerBridge(
-                                        onReady = {
-                                            if (loadState != VideoLoadState.ERROR) {
-                                                loadState = VideoLoadState.READY
-                                            }
-                                        },
-                                        onError = { loadState = VideoLoadState.ERROR },
-                                    ),
-                                    "FieldNative"
-                                )
-                                webChromeClient = object : WebChromeClient() {
-                                    override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                                        if (view == null) {
-                                            callback?.onCustomViewHidden()
-                                            return
-                                        }
-                                        // Only one custom view at a time per WebView contract
-                                        fullscreenCallback?.onCustomViewHidden()
-                                        fullscreenView = view
-                                        fullscreenCallback = callback
-                                        addView(
-                                            view,
-                                            ViewGroup.LayoutParams(
-                                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                            )
-                                        )
-                                    }
-
-                                    override fun onHideCustomView() {
-                                        fullscreenView?.let { removeView(it) }
-                                        fullscreenView = null
-                                        fullscreenCallback = null
-                                    }
-                                }
-                                webViewClient = object : WebViewClient() {
-                                    // The player lives in iframes; any main-frame navigation is
-                                    // an escape hatch (YouTube logo, "Watch on YouTube") — hand
-                                    // it to the system instead of hijacking the modal.
-                                    override fun shouldOverrideUrlLoading(
-                                        view: WebView?,
-                                        request: WebResourceRequest?
-                                    ): Boolean {
-                                        val url = request?.url ?: return true
-                                        if (request.isForMainFrame) {
-                                            try {
-                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url.toString())))
-                                            } catch (_: Exception) {
-                                                // No browser/YouTube app — swallow, stay in modal
-                                            }
-                                            return true
-                                        }
-                                        return false
-                                    }
-
-                                    override fun onReceivedError(
-                                        view: WebView?,
-                                        request: WebResourceRequest?,
-                                        error: WebResourceError?
-                                    ) {
-                                        if (request?.isForMainFrame == true) {
-                                            loadState = VideoLoadState.ERROR
-                                        }
-                                    }
-                                }
-                                val origin = "https://${context.packageName}"
-                                loadDataWithBaseURL(
-                                    origin,
-                                    playerHtml(youtubeId, origin),
-                                    "text/html",
-                                    "utf-8",
-                                    null
-                                )
-                            }
-                            webViewRef = webView
-                            addView(webView)
-                        }
-                    }
-                )
-            }
-
-            if (loadState == VideoLoadState.LOADING) {
-                CircularProgressIndicator(color = Color.White)
-            }
-
-            if (loadState == VideoLoadState.ERROR) {
-                Text(
-                    text = "Video unavailable. Check your connection and try again.",
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(24.dp)
-                )
-            }
-
+            // Close sits in its own strip above the player. Overlaid on the video it landed on
+            // YouTube's own top-right controls (share, watch later), so a tap was ambiguous.
             if (!isFullscreen) {
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Close ${videoTitle ?: "video"}",
-                        tint = Color.White
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Close ${videoTitle ?: "video"}",
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
+            Box(
+                modifier = if (isFullscreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isValidId) {
+                    AndroidView(
+                        modifier = if (isFullscreen) {
+                            Modifier.fillMaxSize()
+                        } else {
+                            Modifier.fillMaxWidth().aspectRatio(16f / 9f)
+                        },
+                        factory = { context ->
+                            FrameLayout(context).apply {
+                                val webView = WebView(context).apply {
+                                    layoutParams = ViewGroup.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                    )
+                                    settings.javaScriptEnabled = true
+                                    settings.domStorageEnabled = true
+                                    settings.mediaPlaybackRequiresUserGesture = false
+                                    addJavascriptInterface(
+                                        YouTubePlayerBridge(
+                                            onReady = {
+                                                if (loadState != VideoLoadState.ERROR) {
+                                                    loadState = VideoLoadState.READY
+                                                }
+                                            },
+                                            onError = { loadState = VideoLoadState.ERROR },
+                                        ),
+                                        "FieldNative"
+                                    )
+                                    webChromeClient = object : WebChromeClient() {
+                                        override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                                            if (view == null) {
+                                                callback?.onCustomViewHidden()
+                                                return
+                                            }
+                                            // Only one custom view at a time per WebView contract
+                                            fullscreenCallback?.onCustomViewHidden()
+                                            fullscreenView = view
+                                            fullscreenCallback = callback
+                                            addView(
+                                                view,
+                                                ViewGroup.LayoutParams(
+                                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                                )
+                                            )
+                                        }
+
+                                        override fun onHideCustomView() {
+                                            fullscreenView?.let { removeView(it) }
+                                            fullscreenView = null
+                                            fullscreenCallback = null
+                                        }
+                                    }
+                                    webViewClient = object : WebViewClient() {
+                                        // The player lives in iframes; any main-frame navigation is
+                                        // an escape hatch (YouTube logo, "Watch on YouTube") — hand
+                                        // it to the system instead of hijacking the modal.
+                                        override fun shouldOverrideUrlLoading(
+                                            view: WebView?,
+                                            request: WebResourceRequest?
+                                        ): Boolean {
+                                            val url = request?.url ?: return true
+                                            if (request.isForMainFrame) {
+                                                try {
+                                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url.toString())))
+                                                } catch (_: Exception) {
+                                                    // No browser/YouTube app — swallow, stay in modal
+                                                }
+                                                return true
+                                            }
+                                            return false
+                                        }
+
+                                        override fun onReceivedError(
+                                            view: WebView?,
+                                            request: WebResourceRequest?,
+                                            error: WebResourceError?
+                                        ) {
+                                            if (request?.isForMainFrame == true) {
+                                                loadState = VideoLoadState.ERROR
+                                            }
+                                        }
+                                    }
+                                    val origin = "https://${context.packageName}"
+                                    loadDataWithBaseURL(
+                                        origin,
+                                        playerHtml(youtubeId, origin),
+                                        "text/html",
+                                        "utf-8",
+                                        null
+                                    )
+                                }
+                                webViewRef = webView
+                                addView(webView)
+                            }
+                        }
+                    )
+                }
+
+                if (loadState == VideoLoadState.LOADING) {
+                    CircularProgressIndicator(color = Color.White)
+                }
+
+                if (loadState == VideoLoadState.ERROR) {
+                    Text(
+                        text = "Video unavailable. Check your connection and try again.",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(24.dp)
                     )
                 }
             }

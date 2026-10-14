@@ -286,7 +286,8 @@ class ReportsRepositoryImpl @Inject constructor(
                     classification = classifyPercentile(curPct),
                     classificationLabel = r.classification,
                     deltaPercentile = delta,
-                    flagged = groupFlagsByAthlete.containsKey(r.individualId)
+                    flagged = groupFlagsByAthlete.containsKey(r.individualId),
+                    inputParadigm = test.inputParadigm
                 )
             }
             val sorted = if (test.isHigherBetter)
@@ -308,7 +309,8 @@ class ReportsRepositoryImpl @Inject constructor(
                     classificationLabel = null,
                     deltaPercentile = null,
                     flagged = groupFlagsByAthlete.containsKey(ind.id),
-                    absent = true
+                    absent = true,
+                    inputParadigm = test.inputParadigm
                 )
             }
             absentByTest[test.id] = absent
@@ -686,7 +688,8 @@ class ReportsRepositoryImpl @Inject constructor(
                 classification = classifyPercentile(r.percentile),
                 classificationLabel = r.classification,
                 deltaPercentile = null,
-                flagged = false
+                flagged = false,
+                inputParadigm = test.inputParadigm
             )
         }
         val sorted = if (test.isHigherBetter)

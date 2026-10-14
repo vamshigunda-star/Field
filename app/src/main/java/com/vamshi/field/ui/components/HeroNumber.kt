@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import kotlin.math.roundToInt
+import com.vamshi.field.domain.model.reports.ordinal
 import com.vamshi.field.ui.theme.FieldMotion
 
 /**
@@ -26,6 +27,8 @@ fun HeroNumber(
     color: Color,
     modifier: Modifier = Modifier,
     suffix: String = "",
+    // Percentiles: the suffix follows the number as it animates (71st, not 71th).
+    ordinal: Boolean = false,
     fontWeight: FontWeight? = null
 ) {
     val animated = remember { Animatable(value.toFloat()) }
@@ -34,7 +37,7 @@ fun HeroNumber(
         animated.animateTo(value.toFloat(), spec)
     }
     Text(
-        text = "${animated.value.roundToInt()}$suffix",
+        text = animated.value.roundToInt().let { if (ordinal) ordinal(it) else "$it" } + suffix,
         style = style.copy(fontFeatureSettings = "tnum"),
         color = color,
         fontWeight = fontWeight,

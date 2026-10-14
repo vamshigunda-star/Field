@@ -1,5 +1,6 @@
 package com.vamshi.field.ui.report.components
 
+import com.vamshi.field.domain.model.standards.formatScore
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -117,7 +118,7 @@ fun AthleteLeaderRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    val scoreText = if (row.rawScore != null) "${formatScore(row.rawScore)} ${row.unit}" else "Absent"
+                    val scoreText = if (row.rawScore != null) "${formatScore(row.rawScore, row.inputParadigm)} ${row.unit}" else "Absent"
                     Text(
                         text = scoreText,
                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp),
@@ -164,6 +165,3 @@ fun AthleteLeaderRow(
         }
     }
 }
-
-private fun formatScore(s: Double): String =
-    if (s % 1.0 == 0.0) s.toInt().toString() else String.format("%.1f", s)

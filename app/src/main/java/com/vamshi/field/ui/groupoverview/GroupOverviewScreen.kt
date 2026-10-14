@@ -1,5 +1,6 @@
 package com.vamshi.field.ui.groupoverview
 
+import com.vamshi.field.ui.util.countOf
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -202,7 +203,7 @@ private fun GroupHealthSnapshot(memberCount: Int, distribution: Distribution) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text("Group health", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                Text("$memberCount athletes", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(countOf(memberCount, "athlete"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             DistributionBar(distribution = distribution)
             val isDark = isSystemInDarkTheme()

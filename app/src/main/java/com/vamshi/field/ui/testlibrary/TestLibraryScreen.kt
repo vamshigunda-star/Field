@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -20,6 +21,7 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
+import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
@@ -52,6 +54,7 @@ fun TestLibraryScreen(
     showNavigationIcon: Boolean,
     onNavigateBack: () -> Unit,
     onNavigateToEditTest: (testId: String) -> Unit = {},
+    onNavigateToCreateTest: () -> Unit = {},
     viewModel: TestLibraryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -63,19 +66,26 @@ fun TestLibraryScreen(
             when (action) {
                 is TestLibraryAction.OnNavigateBack -> onNavigateBack()
                 is TestLibraryAction.OnEditTest -> onNavigateToEditTest(action.testId)
+                is TestLibraryAction.OnCreateTest -> onNavigateToCreateTest()
                 else -> viewModel.onAction(action)
             }
         }
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun TestLibraryContent(
     uiState: TestLibraryUiState,
     showNavigationIcon: Boolean = true,
     onAction: (TestLibraryAction) -> Unit
 ) {
+    // Hoisted out of the body so the top bar can see it: on a phone the detail pane replaces
+    // the list, and without this the bar offered no way back when entered from the bottom nav.
+    val navigator = rememberListDetailPaneScaffoldNavigator<Any>()
+    val scope = rememberCoroutineScope()
+    val canPaneBack = navigator.canNavigateBack()
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -83,13 +93,30 @@ fun TestLibraryContent(
             AppTopBar(
                 title = "Tests Library",
                 navigationIcon = {
-                    if (showNavigationIcon) {
-                        IconButton(onClick = { onAction(TestLibraryAction.OnNavigateBack) }) {
+                    if (showNavigationIcon || canPaneBack) {
+                        IconButton(onClick = {
+                            if (canPaneBack) {
+                                scope.launch { navigator.navigateBack() }
+                            } else {
+                                onAction(TestLibraryAction.OnNavigateBack)
+                            }
+                        }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            // The library is the only entry to creating a custom test since the dashboard card
+            // was removed. Hidden over a single-pane detail so it never covers the test sheet.
+            if (!canPaneBack && !uiState.isLoading) {
+                ExtendedFloatingActionButton(
+                    onClick = { onAction(TestLibraryAction.OnCreateTest) },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text("New Test") }
+                )
+            }
         }
     ) { padding ->
         when {
@@ -109,7 +136,12 @@ fun TestLibraryContent(
                 }
             }
             else -> {
-                TestLibraryBody(uiState = uiState, onAction = onAction, padding = padding)
+                TestLibraryBody(
+                    uiState = uiState,
+                    onAction = onAction,
+                    padding = padding,
+                    navigator = navigator
+                )
             }
         }
     }
@@ -212,9 +244,9 @@ private fun ErrorState(
 private fun TestLibraryBody(
     uiState: TestLibraryUiState,
     onAction: (TestLibraryAction) -> Unit,
-    padding: PaddingValues
+    padding: PaddingValues,
+    navigator: ThreePaneScaffoldNavigator<Any>
 ) {
-    val navigator = rememberListDetailPaneScaffoldNavigator<Any>()
     val scope = rememberCoroutineScope()
     var activeVideoModal by remember { mutableStateOf<Pair<String, String>?>(null) }
 
@@ -229,7 +261,8 @@ private fun TestLibraryBody(
             AnimatedPane {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    // Bottom room so the last card can scroll clear of the New Test FAB.
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     uiState.categories.forEach { category ->

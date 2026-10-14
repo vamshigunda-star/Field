@@ -40,7 +40,7 @@ class SeedDataManager @Inject constructor(
         // v30: norms re-encoded so "Needs Improvement" carries a percentile below the Healthy
         // threshold (was 40, which classified as Healthy), top bracket extended to 115, and
         // duplicate legacy age bands removed from wall-sit and shoulder-flexibility.
-        private const val KEY_SEEDED_VERSION = "data_seeded_version_v31"
+        private const val KEY_SEEDED_VERSION = "data_seeded_version_v32"
 
         // The catalog generation this build expects. Must match the value that
         // tools/build_prepackaged_db.py stamps into `catalog_metadata`, and must be bumped in
@@ -48,7 +48,7 @@ class SeedDataManager @Inject constructor(
         // direction only: a stamp that does not match simply falls through to the CSV import,
         // which is today's behaviour. A stamp that matches a catalog it should not would keep
         // a stale catalog, so bump the script whenever you bump this.
-        private const val CATALOG_VERSION = "v31"
+        private const val CATALOG_VERSION = "v32"
         private const val KEY_CATALOG_VERSION = "catalog_version"
 
         // One-shot, and deliberately NOT versioned like [KEY_SEEDED_VERSION]. The demo roster

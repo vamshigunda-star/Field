@@ -1,5 +1,6 @@
 package com.vamshi.field.ui.leaderboard
 
+import com.vamshi.field.domain.model.standards.formatScore
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -265,7 +266,7 @@ private fun LeaderboardEntryRow(entry: LeaderboardEntry) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    val scoreStr = if (entry.rawScore % 1.0 == 0.0) entry.rawScore.toInt().toString() else String.format(java.util.Locale.US, "%.1f", entry.rawScore)
+                    val scoreStr = formatScore(entry.rawScore, entry.inputParadigm)
                     Text(
                         text = "$scoreStr ${entry.unit}",
                         style = MaterialTheme.typography.bodyMedium,
@@ -279,15 +280,21 @@ private fun LeaderboardEntryRow(entry: LeaderboardEntry) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outlineVariant
                         )
+                        // Zone-coloured like every other classification surface; it was a flat
+                        // blue, so "Needs Improvement" never read as red here.
+                        val zone = performanceZoneColors(entry.percentile)
                         Surface(
                             shape = RoundedCornerShape(5.dp),
-                            color = if (isDark) ElectricBlue.copy(alpha = 0.15f) else ElectricBlue.copy(alpha = 0.08f)
+                            color = zone.background
                         ) {
                             Text(
                                 text = entry.classification,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = ElectricBlue,
+                                color = zone.text,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.5.dp)
                             )
                         }

@@ -1,5 +1,7 @@
 package com.vamshi.field.ui.athlete
 
+import com.vamshi.field.domain.model.standards.formatScore
+import com.vamshi.field.domain.model.standards.InputParadigm
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -109,7 +111,7 @@ fun AthleteTestDetailScreen(
             onDismissRequest = { viewModel.onAction(AthleteTestDetailAction.OnDismissDelete) },
             title = { Text("Delete Test Result?") },
             text = { 
-                val scoreStr = if (attempt.rawScore % 1.0 == 0.0) attempt.rawScore.toInt().toString() else String.format(LocalLocale.current.platformLocale, "%.1f", attempt.rawScore)
+                val scoreStr = formatScore(attempt.rawScore, uiState.data?.test?.inputParadigm)
                 Text("This will permanently remove the score of $scoreStr recorded on ${df.format(Date(attempt.date))}. This action cannot be undone.")
             },
             confirmButton = {
@@ -170,6 +172,7 @@ fun AthleteTestDetailContent(
                 PeerSheet(
                     rows = data.peerLeaderboard.orEmpty(),
                     highlightId = data.athlete.id,
+                    inputParadigm = data.test.inputParadigm,
                     title = "${data.test.name} · peers"
                 )
             }
@@ -292,6 +295,7 @@ private fun DetailBody(
                             bands = data.bandsByDate,
                             isHigherBetter = data.test.isHigherBetter,
                             unit = data.test.unit,
+                            inputParadigm = data.test.inputParadigm,
                             selectedRange = uiState.selectedRange,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -348,7 +352,7 @@ private fun DetailBody(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = latest?.let { formatScore(it.rawScore) } ?: "—",
+                                text = latest?.let { formatScore(it.rawScore, data.test.inputParadigm) } ?: "—",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = colors.fg
@@ -465,6 +469,7 @@ private fun DetailBody(
                                     AttemptRowView(
                                         row = row,
                                         unit = data.test.unit,
+                                        inputParadigm = data.test.inputParadigm,
                                         onDelete = { onAction(AthleteTestDetailAction.OnRequestDelete(row)) }
                                     )
                                 }
@@ -478,7 +483,7 @@ private fun DetailBody(
 }
 
 @Composable
-private fun AttemptRowView(row: AttemptRow, unit: String, onDelete: () -> Unit) {
+private fun AttemptRowView(row: AttemptRow, unit: String, inputParadigm: InputParadigm, onDelete: () -> Unit) {
     val df = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
     val isDark = isSystemInDarkTheme()
 
@@ -527,7 +532,7 @@ private fun AttemptRowView(row: AttemptRow, unit: String, onDelete: () -> Unit) 
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Text(
-                        text = formatScore(row.rawScore),
+                        text = formatScore(row.rawScore, inputParadigm),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -558,7 +563,7 @@ private fun AttemptRowView(row: AttemptRow, unit: String, onDelete: () -> Unit) 
 }
 
 @Composable
-private fun PeerSheet(rows: List<LeaderboardRow>, highlightId: String, title: String) {
+private fun PeerSheet(rows: List<LeaderboardRow>, highlightId: String, inputParadigm: InputParadigm, title: String) {
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
@@ -576,7 +581,7 @@ private fun PeerSheet(rows: List<LeaderboardRow>, highlightId: String, title: St
             ) {
                 Text("${r.rank}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp))
                 Text(r.athleteName, modifier = Modifier.weight(1f), fontWeight = if (highlight) FontWeight.Bold else FontWeight.Normal)
-                Text(r.rawScore?.let { formatScore(it) } ?: "—", style = MaterialTheme.typography.bodyMedium)
+                Text(r.rawScore?.let { formatScore(it, inputParadigm) } ?: "—", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.width(8.dp))
                 val peerLabel = r.classificationLabel?.takeIf { it.isNotBlank() }
                     ?: zoneLabel(r.classification)
@@ -586,6 +591,3 @@ private fun PeerSheet(rows: List<LeaderboardRow>, highlightId: String, title: St
         Spacer(Modifier.height(8.dp))
     }
 }
-
-private fun formatScore(s: Double): String =
-    if (s % 1.0 == 0.0) s.toInt().toString() else String.format(Locale.getDefault(), "%.1f", s)

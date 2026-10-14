@@ -1,5 +1,6 @@
 package com.vamshi.field.ui.athlete
 
+import com.vamshi.field.domain.model.standards.formatScore
 import android.app.Activity
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -495,9 +496,7 @@ fun TestBreakdownItemRow(
     val zone = performanceZoneColors(tile.classification)
     val percentile = tile.latestResult?.percentile
     val delta = tile.deltaPercentile?.takeIf { it != 0 }
-    val scoreText = tile.latestResult?.rawScore?.let { raw ->
-        if (raw % 1.0 == 0.0) raw.toInt().toString() else String.format(java.util.Locale.US, "%.1f", raw)
-    }
+    val scoreText = tile.latestResult?.rawScore?.let { formatScore(it, tile.test.inputParadigm) }
     // One sentence for TalkBack instead of five fragments read separately.
     val description = buildString {
         append(tile.test.name)

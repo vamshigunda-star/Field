@@ -1,5 +1,6 @@
 package com.vamshi.field.domain.usecase.testing
 
+import com.vamshi.field.domain.model.standards.InputParadigm
 import com.vamshi.field.domain.model.testing.TestResult
 import com.vamshi.field.domain.repository.PeopleRepository
 import com.vamshi.field.domain.repository.StandardsRepository
@@ -17,7 +18,8 @@ data class LeaderboardEntry(
     val unit: String,
     val percentile: Int?,
     val classification: String?,
-    val isImproved: Boolean?         // null if no previous result exists
+    val isImproved: Boolean?,        // null if no previous result exists
+    val inputParadigm: InputParadigm = InputParadigm.NUMERIC
 )
 
 data class GroupLeaderboard(
@@ -94,7 +96,8 @@ class GetGroupLeaderboardUseCase @Inject constructor(
                 unit = test.unit,
                 percentile = result.percentile,
                 classification = result.classification,
-                isImproved = isImproved
+                isImproved = isImproved,
+                inputParadigm = test.inputParadigm
             )
         }
 

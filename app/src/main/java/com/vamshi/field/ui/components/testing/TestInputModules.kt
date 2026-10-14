@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vamshi.field.domain.model.standards.InputParadigm
+import com.vamshi.field.domain.model.standards.StageScore
 
 /**
  * The Switcher that chooses the right module based on test paradigm
@@ -25,13 +26,15 @@ fun TestInputSwitcher(
     paradigm: InputParadigm,
     currentValue: String,
     onValueChange: (String) -> Unit,
-    onSubmit: () -> Unit
+    onSubmit: () -> Unit,
+    // Reach tests (back scratch, toe touch, trunk flexion) record a gap as a negative score.
+    allowNegative: Boolean = false
 ) {
     when (paradigm) {
-        InputParadigm.NUMERIC -> NumericInputModule(currentValue, onValueChange, onSubmit)
+        InputParadigm.NUMERIC -> NumericInputModule(currentValue, onValueChange, onSubmit, allowNegative)
         InputParadigm.INCREMENTAL -> IncrementalInputModule(currentValue, onValueChange, onSubmit)
         InputParadigm.MULTI_STAGE -> StageInputModule(currentValue, onValueChange, onSubmit)
-        else -> NumericInputModule(currentValue, onValueChange, onSubmit)
+        else -> NumericInputModule(currentValue, onValueChange, onSubmit, allowNegative)
     }
 }
 
@@ -39,13 +42,14 @@ fun TestInputSwitcher(
 private fun NumericInputModule(
     value: String,
     onValueChange: (String) -> Unit,
-    onSubmit: () -> Unit
+    onSubmit: () -> Unit,
+    allowNegative: Boolean
 ) {
     val keys = listOf(
         listOf("7", "8", "9"),
         listOf("4", "5", "6"),
         listOf("1", "2", "3"),
-        listOf(".", "0", "BACKSPACE")
+        if (allowNegative) listOf("±", ".", "0", "BACKSPACE") else listOf(".", "0", "BACKSPACE")
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -59,6 +63,7 @@ private fun NumericInputModule(
                             when (key) {
                                 "BACKSPACE" -> if (value.isNotEmpty()) onValueChange(value.dropLast(1))
                                 "." -> if (!value.contains(".")) onValueChange(value + ".")
+                                "±" -> onValueChange(if (value.startsWith("-")) value.drop(1) else "-$value")
                                 else -> onValueChange(value + key)
                             }
                         },
@@ -170,8 +175,16 @@ private fun StageInputModule(
     onValueChange: (String) -> Unit,
     onSubmit: () -> Unit
 ) {
-    var level by remember { mutableIntStateOf(value.split(".").firstOrNull()?.toInt() ?: 1) }
-    var shuttle by remember { mutableIntStateOf(value.split(".").getOrNull(1)?.toInt() ?: 1) }
+    // An unrecorded cell arrives as "", and "".toInt() threw — opening the Beep or Yo-Yo
+    // entry crashed the app.
+    var level by remember { mutableIntStateOf(value.split(".").firstOrNull()?.toIntOrNull() ?: 1) }
+    var shuttle by remember { mutableIntStateOf(value.split(".").getOrNull(1)?.toIntOrNull() ?: 1) }
+
+    // SAVE is enabled from the start, so publish the 1.1 default; otherwise saving an untouched
+    // picker submits "" and silently records nothing.
+    LaunchedEffect(Unit) {
+        if (value.isEmpty()) onValueChange("$level.$shuttle")
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -186,7 +199,8 @@ private fun StageInputModule(
             PickerColumn(
                 label = "SHUTTLE",
                 currentValue = shuttle,
-                onIncrement = { shuttle++; onValueChange("$level.$shuttle") },
+                // Two digits of shuttle fit the stored encoding (see StageScore).
+                onIncrement = { if (shuttle < StageScore.MAX_SHUTTLE) shuttle++; onValueChange("$level.$shuttle") },
                 onDecrement = { if (shuttle > 1) shuttle--; onValueChange("$level.$shuttle") },
                 modifier = Modifier.weight(1f)
             )

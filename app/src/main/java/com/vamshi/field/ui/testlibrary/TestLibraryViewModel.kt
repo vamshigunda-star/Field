@@ -43,6 +43,8 @@ sealed interface TestLibraryAction {
     data class OnToggleCategoryExpanded(val categoryId: String) : TestLibraryAction
     /** Nav-only: handled by the screen, ignored by the ViewModel. */
     data class OnEditTest(val testId: String) : TestLibraryAction
+    /** Nav-only: opens the Custom Test Builder in create mode. */
+    data object OnCreateTest : TestLibraryAction
     data class OnRequestDeleteTest(val testId: String) : TestLibraryAction
     data object OnConfirmDeleteTest : TestLibraryAction
     data object OnDismissDeleteDialog : TestLibraryAction
@@ -92,6 +94,7 @@ class TestLibraryViewModel @Inject constructor(
             TestLibraryAction.OnDismissSnackbar -> _uiState.update { it.copy(snackbarMessage = null) }
             is TestLibraryAction.OnDismissError -> _uiState.update { it.copy(errorMessage = null) }
             is TestLibraryAction.OnEditTest -> Unit // navigation — the screen's job
+            TestLibraryAction.OnCreateTest -> Unit
             is TestLibraryAction.OnNavigateBack -> Unit
         }
     }

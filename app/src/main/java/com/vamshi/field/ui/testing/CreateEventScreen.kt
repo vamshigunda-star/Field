@@ -1,5 +1,6 @@
 package com.vamshi.field.ui.testing
 
+import com.vamshi.field.ui.util.countOf
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -313,7 +314,7 @@ private fun CreateEventBody(
                 ) {
                     val groupText = selectedGroup?.let {
                         val count = uiState.groupAthleteCounts[it.id] ?: 0
-                        "${it.name} • $count athletes"
+                        "${it.name} • ${countOf(count, "athlete")}"
                     } ?: ""
                     
                     OutlinedTextField(

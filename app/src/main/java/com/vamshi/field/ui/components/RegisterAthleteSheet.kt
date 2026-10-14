@@ -1,5 +1,7 @@
 package com.vamshi.field.ui.components
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,7 +62,7 @@ fun RegisterAthleteSheet(
     var email by remember { mutableStateOf("") }
     var medicalAlert by remember { mutableStateOf("") }
     
-    val datePickerState = rememberDatePickerState()
+    val datePickerState = rememberDatePickerState(selectableDates = PastOrTodayDates)
     var showDatePicker by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
@@ -67,9 +70,12 @@ fun RegisterAthleteSheet(
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)) }
     ) {
+        // The sheet already insets for the keyboard; once it does, the form is taller than
+        // what's left, so it must scroll or the submit button is unreachable.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -184,4 +190,14 @@ fun RegisterAthleteSheet(
             DatePicker(state = datePickerState)
         }
     }
+}
+
+/** A birth date can't be in the future; the use case rejects one too. */
+@OptIn(ExperimentalMaterial3Api::class)
+private object PastOrTodayDates : SelectableDates {
+    override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+        utcTimeMillis <= System.currentTimeMillis()
+
+    override fun isSelectableYear(year: Int): Boolean =
+        year <= java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
 }

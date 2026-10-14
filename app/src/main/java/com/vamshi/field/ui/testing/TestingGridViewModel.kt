@@ -244,8 +244,7 @@ class TestingGridViewModel @Inject constructor(
                 // Get full athlete data to calculate age
                 val fullAthlete = peopleRepository.getIndividualById(athlete.id)
                     ?: throw IllegalStateException("Athlete not found — score not saved")
-                val ageMillis = System.currentTimeMillis() - fullAthlete.dateOfBirth
-                val ageYears = (ageMillis / (365.25 * 24 * 60 * 60 * 1000)).toFloat()
+                val ageYears = fullAthlete.currentAge.toFloat()
 
                 recordTestResult(
                     eventId = eventId,

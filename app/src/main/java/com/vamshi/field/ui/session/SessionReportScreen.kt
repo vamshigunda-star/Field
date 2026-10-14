@@ -1,5 +1,9 @@
 package com.vamshi.field.ui.session
 
+import com.vamshi.field.domain.model.standards.InputParadigm
+import com.vamshi.field.domain.model.reports.PerformanceThresholds
+import com.vamshi.field.domain.model.standards.formatScore
+import com.vamshi.field.ui.util.countOf
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -287,7 +291,15 @@ fun SessionReportBody(
             val validScores = activeRows.mapNotNull { it.rawScore }
             val maxVal = if (validScores.isNotEmpty()) validScores.maxOrNull() ?: 0.0 else 0.0
             val minVal = if (validScores.isNotEmpty()) validScores.minOrNull() ?: 0.0 else 0.0
-            val avgVal = if (validScores.isNotEmpty()) validScores.average() else 0.0
+            val paradigm = activeRows.firstOrNull()?.inputParadigm ?: InputParadigm.NUMERIC
+            // The mean of two stage scores is not a stage (8.10 and 9.05 would "average" to
+            // level 8 shuttle 58), so stage tests show the median, which is always a real result.
+            val isStage = paradigm == InputParadigm.MULTI_STAGE
+            val avgVal = when {
+                validScores.isEmpty() -> 0.0
+                isStage -> validScores.sorted()[validScores.size / 2]
+                else -> validScores.average()
+            }
             val unit = activeRows.firstOrNull()?.unit ?: ""
 
             item {
@@ -317,9 +329,9 @@ fun SessionReportBody(
                                     .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                StatSummaryItem("Max", maxVal, unit, modifier = Modifier.weight(1f))
-                                StatSummaryItem("Avg", avgVal, unit, modifier = Modifier.weight(1f))
-                                StatSummaryItem("Min", minVal, unit, modifier = Modifier.weight(1f))
+                                StatSummaryItem("Max", maxVal, unit, paradigm, modifier = Modifier.weight(1f))
+                                StatSummaryItem(if (isStage) "Median" else "Avg", avgVal, unit, paradigm, modifier = Modifier.weight(1f))
+                                StatSummaryItem("Min", minVal, unit, paradigm, modifier = Modifier.weight(1f))
                             }
                         }
                     }
@@ -391,7 +403,7 @@ fun SessionReportBody(
                         Column(modifier = Modifier.fillMaxWidth()) {
                             CollapsibleSectionHeader(
                                 title = "Absent",
-                                badgeText = "${absent.size} athletes",
+                                badgeText = countOf(absent.size, "athlete"),
                                 isExpanded = isAbsentExpanded,
                                 onToggle = { isAbsentExpanded = !isAbsentExpanded },
                                 icon = Icons.Default.PersonOff,
@@ -635,11 +647,11 @@ fun CoachInsightSheet(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
                             Spacer(Modifier.width(8.dp))
-                            Text("Remediation Required (<40%ile)", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                            Text("Remediation Required (<${PerformanceThresholds.HEALTHY_MIN}%ile)", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                         }
                         Spacer(Modifier.height(8.dp))
                         val names = redZoneAthletes.joinToString(", ") { row ->
-                            val valStr = if ((row.rawScore != null) && (row.rawScore % 1.0 == 0.0)) row.rawScore.toInt().toString() else String.format(Locale.getDefault(), "%.1f", row.rawScore)
+                            val valStr = row.rawScore?.let { formatScore(it, row.inputParadigm) } ?: "—"
                             "${row.athleteName} ($valStr ${row.unit})"
                         }
                         Text("Immediate focus needed for: $names.", color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
@@ -777,10 +789,11 @@ fun StatSummaryItem(
     label: String,
     value: Double,
     unit: String,
+    inputParadigm: InputParadigm,
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
-    val valueStr = if ((value % 1.0) == 0.0) value.toInt().toString() else String.format(LocalLocale.current.platformLocale, "%.1f", value)
+    val valueStr = formatScore(value, inputParadigm)
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),

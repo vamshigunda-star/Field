@@ -201,6 +201,9 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEditTest = { testId ->
                     navController.navigate(Screen.CustomTest.createRoute(testId))
+                },
+                onNavigateToCreateTest = {
+                    navController.navigate(Screen.CustomTest.createRoute())
                 }
             )
         }

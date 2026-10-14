@@ -32,11 +32,8 @@ enum class RosterTab {
  */
 typealias AthleteAgeRange = AgeBracket
 
-private fun ageOf(individual: Individual): Int =
-    ((System.currentTimeMillis() - individual.dateOfBirth) / 31_557_600_000L).toInt()
-
 private fun matchesAgeRange(individual: Individual, range: AthleteAgeRange): Boolean =
-    ageOf(individual) in range
+    individual.currentAge in range
 
 data class RosterUiState(
     val currentTab: RosterTab = RosterTab.ATHLETES,

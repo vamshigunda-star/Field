@@ -1,335 +1,312 @@
 # Field — Development Context
 
-This document serves as the unified source of truth and architectural reference for the **Field** application. Field is an offline-first fitness testing and performance tracking Android application designed for coaches, PE teachers, and fitness professionals.
+The architecture reference for **Field**, an offline-first Android app for coaches and PE
+teachers to run fitness tests, record scores against published norms, and track athletes over
+time. One coach per device; no server, no login password.
+
+`CLAUDE.md` holds the short rules every change must follow. This file explains the system those
+rules protect. When the two disagree, the code is right and both docs need fixing.
+
+Last verified against the code: **2026-10-14** (Room v17, catalog `v32`, app 1.0.1, pre-release
+on Play).
 
 ---
 
-## 1. Architectural Blueprint (Clean Architecture)
+## 1. Stack
 
-Field is built adhering to Clean Architecture principles, structuring code into three distinct packages with strict dependency directions:
-
-```
-Presentation Layer (ui/) ──> Domain Layer (domain/) <── Data Layer (data/)
-```
-
-### Dependency Rules:
-1. **Domain Layer (`domain/`)**: Independent of any framework, database, or UI library. Contains pure Kotlin models, repository interfaces, and use cases. Absolutely no imports from Android or Room.
-2. **Data Layer (`data/`)**: Implements repository interfaces defined in the domain layer. Handles persistence via Room DB, handles data mapping between entity and domain models (using `toDomain()` and `toEntity()`), and performs CSV parsing.
-3. **Presentation Layer (`ui/`)**: Built using Jetpack Compose, Material 3, and Kotlin Coroutines/Flows. Views are bound to ViewModels, which expose a single `StateFlow<UiState>` and receive screen actions as a sealed interface. ViewModels depend exclusively on use cases (or repositories in rare cases).
-
----
-
-## 2. Presentation / UI Layer
-
-### ViewModels & StateFlow Contract
-- ViewModels inherit from Android `ViewModel` and are annotated with `@HiltViewModel`.
-- A single `StateFlow<ScreenUiState>` is exposed. This state must include `isLoading: Boolean` and `errorMessage: String?`.
-- UI interactions are dispatched to ViewModels as a single sealed interface (`ScreenAction`) via a unified `onAction(action)` method.
-- ViewModels read route arguments using `SavedStateHandle` rather than receiving navigation callbacks.
-
-### Screen Inventory and Route Definitions
-All routes are defined as objects in [Screen.kt](file:///c:/Users/APF/AndroidStudioProjects/Alearning/app/src/main/java/com/vamshi/field/ui/navigation/Screen.kt):
-
-| Screen | Nav Route | ViewModel | Primary Responsibility |
-|---|---|---|---|
-| **Onboarding** | `"onboarding"` | `OnboardingViewModel` | First-launch account creation: Coach Name (+ optional Email for Drive backup). No password. Generates a username automatically. |
-| **RestoreBackup** | `"restore_backup"` | `RestoreBackupViewModel` | Pre-auth Google Drive restore for a reinstalling coach; re-establishes account + session. |
-| **Dashboard** | `"dashboard"` | `DashboardViewModel` | Home hub: displays statistics, recent events, and quick actions. |
-| **Roster** | `"roster"` | `RosterViewModel` | Group creation, athlete registration, and roster management. |
-| **Athletes** | `"athletes"` | (Shared/Roster UI) | Read-only listing of all athletes with navigation to dashboards. |
-| **TestLibrary** | `"test_library"` | `TestLibraryViewModel` | Categorized list of fitness tests, units, and descriptions. |
-| **CreateEvent** | `"create_event"` | `CreateEventViewModel` | Setup event details, associate tests, and select target athlete group. |
-| **TestingGrid** | `"testing_grid/{eventId}/{groupId}"` | `TestingGridViewModel` | Grid of athletes × tests. Facilitates live staging and submission. |
-| **Stopwatch** | `"stopwatch/{eventId}/{fitnessTestId}/{groupId}"` | `StopwatchViewModel` | Live capture stopwatch (individual/group modes, trials support). |
-| **Leaderboard** | `"leaderboard/{eventId}/{groupId}/{mode}"` | `LeaderboardViewModel` | Rank entries for testing events (event-based or all-time). |
-| **GroupOverview** | `"group/{groupId}"` | `GroupOverviewViewModel` | Detailed group metrics, sessions history, and analytics. |
-| **SessionReport** | `"group/{groupId}/session/{sessionId}"` | `SessionReportViewModel` | Historical event performance report (flags, distributions, resume). |
-| **AthleteDashboard** | `"athlete/{athleteId}"` | `AthleteDashboardViewModel` | Individual longitudinal profile, test summaries, and Sparklines. |
-| **AthleteTestDetail** | `"athlete/{athleteId}/test/{testId}"` | `AthleteTestDetailViewModel` | Historical charts, progress indicators, and test-specific attempts. |
-| **Analytics** | `"analytics"` | `AnalyticsViewModel` | Group trends, insights, and remediation listings (below the Healthy threshold). |
-
-### Composable Design System & UI Rules
-- **State Hoisting**: Screen composables accept a read-only `UiState` and a callback lambda `(ScreenAction) -> Unit`.
-- **Predefined Performance Color Zones**:
-  - **Green (Superior)**: Percentile $\ge 80$
-  - **Yellow (Healthy / Average)**: Percentile $40$ to $79$
-  - **Red (Needs Improvement)**: Percentile $< 40$
-  - **Grey (No Reference)**: Null or no matching norm percentile found. Grey is the absence of data, not a category.
-
-  These numbers live in exactly one place: `domain/model/reports/PerformanceThresholds.kt`.
-  UI code must not re-derive them — use `ui/theme/PerformanceZoneColors.kt`, which is the
-  Composable-facing mapping, because Composables cannot inject `ClassifyPercentileUseCase`.
-
-### Age Brackets
-Defined once in `domain/model/people/AgeBracket.kt`, and used by both norm lookup and the
-roster filter:
-
-| Bracket | Ages |
+| Area | Choice |
 |---|---|
-| Childhood | 5–12 |
-| Adolescence | 13–19 |
-| Adults | 20–40 |
-| Adults | 41–62 |
-| Older Adults | 63–115 |
+| Language / UI | Kotlin, Jetpack Compose, Material 3 (BOM 2026.09.00 → material3 1.4, adaptive 1.3) |
+| Build | AGP 9.1 (supplies Kotlin itself — never apply `org.jetbrains.kotlin.android`), Gradle 9.7, KSP |
+| DI | Hilt |
+| Persistence | Room 3 (`androidx.room3`), schema exported to `app/schemas/`, explicit migrations only |
+| Backup | Google Drive app-data folder, JSON via Gson (`domain/model/backup/`) |
+| SDK | minSdk 26, targetSdk 36, compileSdk 37 |
 
-Adulthood stays split at 40/41 because the published normative tables grade adults by age —
-collapsing it would judge a 60-year-old against 20-year-old cutoffs.
+`com.google.android.material` (XML) is **not** dead weight: the activity theme parent
+`Theme.Material3.DayNight.NoActionBar` comes from it. Gson is **not** redundant with
+kotlinx-serialization: Drive backups and `CustomPresetsStore` depend on it.
 
-Norm coverage per test is therefore 2 sexes × 5 brackets × 3 classifications = **30 rows**.
-- **Medical Warnings**: Displayed with prominent red text/backgrounds accompanied by warning icons.
-
----
-
-## 3. Domain Layer
-
-Contains the pure business logic. It defines the models, repositories, and use cases.
-
-### Core Models
-- **`Individual`**: Represents an athlete (ID, name, date of birth, biological sex, medical alert flags, active status).
-- **`Group`**: Athlete groups/squads/classes (ID, name, category, cycle, location).
-- **`FitnessTest`**: Test metrics (ID, name, unit, isHigherBetter flag, timing modes, validation ranges).
-- **`NormReference`**: Percentile norms indexed by test, sex, age ranges, and score intervals.
-- **`TestingEvent`**: Event metadata (ID, name, date, location, notes, associated tests).
-- **`TestResult`**: Finalized test score records including age snapshots and percentile calculations.
-
-### Functional Use Cases
-Use cases are divided into namespaces corresponding to core areas:
-- **`auth`**: `OnboardingUseCase`, `ResumeSessionUseCase`, `GenerateUsernameUseCase`, `CompleteRestoreUseCase`, `ObserveCurrentUserUseCase`, `ValidateNameUseCase`, `ValidateUsernameUseCase`
-- **`people`**: `RegisterAthleteUseCase`, `CreateGroupUseCase`, `ManageRosterUseCase`
-- **`standards`**: `CalculatePercentileUseCase`, `GetTestLibraryUseCase`, `ImportStandardsUseCase`
-- **`testing`**: 
-  - *Setup & Entry*: `CreateEventUseCase`, `GetTestingGridDataUseCase`
-  - *Staging & Staged Data*: `StagePendingEntryUseCase`, `ObservePendingEntriesUseCase`, `ClearPendingEntryUseCase`, `DiscardPendingEntriesUseCase`, `SubmitPendingEntriesUseCase`
-  - *Stopwatch Timing*: `StopwatchSessionUseCase`
-  - *Reports & Leaderboards*: `GetAthleteProfileUseCase`, `GetAthleteRadarDataUseCase`, `GetGroupLeaderboardUseCase`, `GetGroupProgressUseCase`, `GetIndividualProgressUseCase`, `GetRemediationListUseCase`, `RecordTestResultUseCase`
-- **`reports`**: `ClassifyPercentileUseCase`, `CalculateAthleteSessionAvgUseCase`, `CalculateGroupDistributionUseCase`, `GetAthleteFlagsUseCase`
+The build runs `tools/build_prepackaged_db.py` (Python must be on PATH) to regenerate
+`assets/database/alearning.db` from the CSVs on every `preBuild`.
 
 ---
 
-## 4. Data / Repositories Layer
+## 2. Architecture
 
-Handles data persistence, mappings, and external data parsing.
-
-### Local Room Database (`AppDatabase` - Version 12)
-An offline-first Room SQLite implementation containing the following tables:
-- `individuals`: Athlete profile records.
-- `groups`: Group records.
-- `group_members`: Junction table for many-to-many relationship between individuals and groups.
-- `test_categories`: Fitness test category metadata (e.g. Muscular Strength).
-- `fitness_tests`: Definitions of fitness tests.
-- `norm_references`: Core table for age/sex/score-based percentile mapping.
-- `testing_events`: Testing event sessions.
-- `event_test_cross_ref`: Many-to-many event-test relationships.
-- `test_results`: Finalized result scores with percentile snapshots.
-- `users`: Registered coaches (IDs, display name, generated username, optional email). The salt/hash columns are vestigial — see §5.3.
-- `pending_test_entries`: Staged, in-flight grid scores that survive app process death during live testing sessions.
-
-### Seeding Mechanism
-On first launch, [SeedDataManager](file:///c:/Users/APF/AndroidStudioProjects/Alearning/app/src/main/java/com/vamshi/field/data/seed/SeedDataManager.kt) parses CSV data from assets (`test_categories.csv`, `tests.csv`, `norms.csv`, `recommendation_categories.csv`, `recommendation_tests.csv`) and seeds the SQLite tables using `ImportStandardsUseCase` and `ImportRecommendationsUseCase`.
-- Guarded by a versioned SharedPreferences key (`KEY_DATA_SEEDED` in `SeedDataManager`, currently `data_seeded_csv_v14`). Bump the version suffix to ship catalog updates to existing installs.
-- Reseeding is non-destructive for user data: catalog tests/categories are **upserted** in place (user results hold foreign keys to them), while `norm_references` and the recommendation tables are replaced wholesale (nothing references them). Coach-created events, results, athletes, and groups are never touched. Catalog rows removed from newer CSVs remain in the DB, since existing results may reference them.
-- Demo athletes/groups/events are only seeded when the `individuals` table is empty (i.e., a truly fresh install).
-
----
-
-## 5. Key Data Flow Diagrams
-
-### 5.1 Seeding Flow (First Launch)
-```mermaid
-sequenceDiagram
-    participant App as App Startup
-    participant SDM as SeedDataManager
-    participant Prefs as SharedPreferences
-    participant CSV as CSV Files (assets/)
-    participant UC as ImportStandardsUseCase
-    participant DB as AppDatabase (Room)
-
-    App->>SDM: seedIfNeeded()
-    SDM->>Prefs: Check versioned seed flag (KEY_DATA_SEEDED)
-    alt Flag is true
-        Prefs-->>SDM: Already Seeded
-        SDM-->>App: Skip Seeding
-    else Flag is false
-        SDM->>CSV: Open and parse CSV rows (Categories, Tests, Norms)
-        CSV-->>SDM: Return parsed maps
-        SDM->>SDM: Map rows to Room Entity instances
-        SDM->>UC: invoke(categories, tests, norms)
-        UC->>DB: Upsert catalog rows, replace norms
-        DB-->>UC: Success
-        UC-->>SDM: Success
-        SDM->>Prefs: Set versioned seed flag = true
-        SDM-->>App: Seeding Complete
-    end
+```
+Presentation (ui/) ──> Domain (domain/) <── Data (data/)
 ```
 
-### 5.2 Score Entry Flow in Live Grid (Staging to Final Submission)
-```mermaid
-sequenceDiagram
-    participant Screen as TestingGridScreen (Compose)
-    participant VM as TestingGridViewModel
-    participant StageUC as StagePendingEntryUseCase
-    participant SubmitUC as SubmitPendingEntriesUseCase
-    participant CalcUC as CalculatePercentileUseCase
-    participant DB as AppDatabase (Room)
+- **`domain/`** — pure Kotlin: models, repository interfaces, use cases. No Android, no Room.
+  `java.util` is fine. Formatting helpers that both layers need (score text, ordinals) live here.
+- **`data/`** — Room entities/DAOs, repository implementations, entity↔domain mappers, CSV
+  seeding, Drive backup.
+- **`ui/`** — Compose screens and Hilt ViewModels.
+- **`util/`** — Android-side helpers outside the layers (`CsvExporter`).
 
-    Note over Screen,VM: Live Score Entry Dialog
-    Screen->>VM: onAction(OnSaveScore(value))
-    VM->>StageUC: invoke(eventId, athleteId, testId, rawScore)
-    StageUC->>DB: Insert staged entry into pending_test_entries
-    DB-->>StageUC: Success (survives process death)
-    StageUC-->>VM: Flow re-emits pending updates to grid UI
+### ViewModel contract
+- One `StateFlow<XxxUiState>`; state holds domain models and primitives, with
+  `isLoading` and `errorMessage`.
+- One `onAction(XxxAction)` taking a sealed interface. Screens receive `uiState` + `onAction`,
+  never the ViewModel.
+- Mutate with `_uiState.update { it.copy(...) }`. Dialog/sheet visibility is UiState.
+- ViewModels never navigate. Nav-only actions (e.g. `TestLibraryAction.OnCreateTest`) are
+  intercepted by the screen's `onAction` wrapper and are a no-op in the ViewModel's `when`.
+- Route arguments arrive through `SavedStateHandle`.
 
-    Note over Screen,VM: Coach taps "Submit All"
-    Screen->>VM: onAction(OnSubmitAll)
-    VM->>SubmitUC: invoke(eventId)
-    SubmitUC->>DB: Query all rows in pending_test_entries for eventId
-    DB-->>SubmitUC: List<PendingTestEntryEntity>
-    loop For each pending entry
-        SubmitUC->>CalcUC: invoke(testId, rawScore, age, sex)
-        CalcUC->>DB: Query norm_references (SQL match)
-        DB-->>CalcUC: PercentileResult
-        SubmitUC->>DB: Insert finalized TestResultEntity
-        SubmitUC->>DB: Delete processed PendingTestEntryEntity
-    end
-    DB-->>SubmitUC: Database Transact Success
-    SubmitUC-->>VM: Success
-    VM-->>Screen: Re-query grid; display finalized color zones
-```
-
-### 5.3 Auth Gate Flow (Initial Destination Resolution)
-```mermaid
-sequenceDiagram
-    participant Main as MainActivity
-    participant Nav as ALearningNavGraph
-    participant VM as AuthGateViewModel
-    participant UC as ResumeSessionUseCase
-
-    Main->>Nav: Composition starts
-    Nav->>VM: Collect state Flow
-    VM->>UC: Session exists? Else any account? (re-establish session on most recent)
-    UC-->>VM: true / false
-    alt Determining...
-        VM-->>Nav: State = Loading
-        Nav->>Main: Display fullscreen CircularProgressIndicator
-    else A coach account exists on this device
-        VM-->>Nav: State = Authenticated
-        Nav->>Nav: Set startDestination = Screen.Dashboard.route
-    else No account (or timeout / error)
-        VM-->>Nav: State = NoAccount
-        Nav->>Nav: Set startDestination = Screen.Onboarding.route
-    end
-```
-
-Field has **no password, lock screen or sign-out by design** — a forgotten password must never
-lock a coach out of their athletes' data, so the device's own screen lock is the security
-boundary. The `users.passwordHash`/`passwordSalt` columns (and the matching `BackupUser` keys) are
-vestigial: empty for new accounts, never read, kept only to avoid a schema bump. Drop them in the
-next schema change made for its own reasons.
-
-### 5.4 Stopwatch Session Lifecycle
-```mermaid
-sequenceDiagram
-    participant Screen as StopwatchScreen
-    participant VM as StopwatchViewModel
-    participant UC as StopwatchSessionUseCase
-    participant DB as AppDatabase (Room)
-
-    Screen->>VM: loadSession()
-    VM->>UC: invoke(eventId, testId, groupId)
-    UC->>DB: Fetch athletes & completed trial counts
-    DB-->>UC: Return lists
-    UC-->>VM: Return StopwatchSession details (heats, timingMode)
-    VM-->>Screen: Display stopwatch controls (Individual or Group mode)
-    
-    Note over Screen,VM: Tapping Start/Stop
-    Screen->>VM: onAction(OnStartStop)
-    VM->>VM: Start System.nanoTime() ticker job
-    VM-->>Screen: Emits ticking ms to UI
-    
-    Screen->>VM: onAction(OnFinishTap)
-    VM->>VM: Store score in local state map (pendingResults)
-    
-    Note over Screen,VM: Tapping Save/Submit
-    Screen->>VM: onAction(OnSubmitPending)
-    VM->>DB: Write scores using RecordTestResultUseCase
-    DB-->>VM: Success
-    VM->>VM: Clear local pendingState & update completed count
-    VM-->>Screen: Show completed status; navigate back
-```
+**Known debt:** the rule is "ViewModels depend on use cases only", but ten ViewModels
+(Dashboard, Roster, QuickTest, Leaderboard, SessionReport, GroupOverview, AthleteDashboard,
+AthleteTestDetail, ReportsHub, Settings) inject `domain.repository` interfaces directly. That is
+inside the domain boundary, so it is tolerated; new code should add a use case instead.
 
 ---
 
-## 6. Gap Analysis & Technical Debt
+## 3. Screens and navigation
 
-1. **Misplaced UI Components Package (`reports/components`)**:
-   - *Issue*: Custom charts and chips (`NormBandLineChart`, `MiniSparkline`, `AthleteRow`, etc.) are located in `com.vamshi.field.reports.components` in the root source directory.
-   - *Impact*: Violates Clean Architecture package boundaries. UI components should reside within the `ui/` package under a common reports folder.
-2. **Direct Repository Access from Presentation Layer**:
-   - *Issue*: `TestingGridViewModel` and `StopwatchViewModel` make direct queries to `TestingRepository.getEventById()` and `deleteResultById()` instead of invoking Domain Use Cases.
-   - *Impact*: Weakens decoupling. ViewModels should depend exclusively on use cases to keep core query/deletion business rules central.
-3. **Database Schema Export & Migration Validation**:
-   - *Issue*: Schema exporting is disabled in the database configuration: `@Database(..., exportSchema = false)`.
-   - *Impact*: Inability to run automated compile-time Room schema verification tests. Changes to Room schemas (such as the addition of tables from version 3 through 8) are tested only during manual app runtime.
-4. **Outdated Documentation**:
-   - *Issue*: `CLAUDE.md` documents database schema version as 7 and the seeding SharedPreferences flag as `data_seeded_v6`. The actual codebase has progressed to database version 8 and flag `data_seeded_csv_v9`.
-   - *Impact*: Causes developer confusion and context drift.
+Routes are in `ui/navigation/Screen.kt`, wired in `ui/navigation/NavGraph.kt`. Bottom nav:
+**Home · Roster · Tests · Reports**.
 
----
+| Screen | Route | Purpose |
+|---|---|---|
+| Onboarding | `onboarding` | Coach name + optional email. No password (see §8). |
+| RestoreBackup | `restore_backup` | Pre-onboarding Drive restore for a reinstalling coach. |
+| Dashboard | `dashboard` | Home: stats, getting-started card, start group event / individual test. |
+| Roster | `roster` | Groups and athletes; list-detail with the athlete dashboard on tablets. |
+| TestLibrary | `test_library` | Catalog by category, test detail, video, **New Test** FAB. |
+| CustomTest | `custom_test?testId=` | Custom Test Builder. No id = create, id = edit a USER test. |
+| Recommendations | `recommendations` | Suggested test batteries by setting (school level etc.). |
+| CreateEvent | `create_event?recommendationId=` | Name an event, pick a group and tests. |
+| TestingGrid | `testing_grid/{eventId}/{groupId}` | Athletes × tests grid; tap a cell to score. |
+| Stopwatch | `stopwatch/{eventId}/{fitnessTestId}/{groupId}?athleteId=&timingMode=` | Timed tests, individual or heats. |
+| QuickTest | `quick_test?athleteId=&testIds=&eventId=&mode=` | "Individual Test": one athlete, several tests. |
+| Report | `reports` | Reports hub (Athlete Profile and Event Report tabs). |
+| GroupOverview | `group/{groupId}` | Group health, sessions, trends. |
+| SessionReport | `group/{groupId}/session/{sessionId}` | One event: leaderboard per test, absentees, flags, CSV export. |
+| AthleteDashboard | `athlete/{athleteId}?contextSessionId=` | Athlete profile, radar, test tiles. |
+| AthleteTestDetail | `athlete/{athleteId}/test/{testId}?contextSessionId=` | One test's history, norm-band chart, attempts. |
+| Leaderboard | `leaderboard/{eventId}/{groupId}/{mode}` | Ranked results for an event or all-time. |
+| Settings / HowToUse | `settings`, `how_to_use` | Backup/restore, guides. |
 
-## 7. Specialized Antigravity Skills Configuration
+Reports drill-down: Reports hub → Group → Session → Athlete → Athlete×Test.
+**Shared-body trap:** `SessionReportBody` and `AthleteBody` render both inside the hub's tabs and in
+their standalone screens. UI added to one entry point usually needs adding to the other.
 
-To support autonomous implementation of upcoming sports fitness features, the following specialized custom skills must be provisioned within the Antigravity workspace:
-
-### 1. Room Migration Validator
-- **Role**: Automate database schema exports and migration assertions.
-- **Commands**:
-  - Run database migration tests: `./gradlew :app:testDebugUnitTest --tests "com.vamshi.field.data.migration.*"`
-- **Workflow**:
-  - Set `exportSchema = true` in `AppDatabase.kt`.
-  - Configure `room.schemaLocation` in `app/build.gradle.kts` to point to a local directory inside the project.
-  - Create a migration test class (`MigrationTest.kt`) using Room's `MigrationTestHelper` to verify structural transitions (like 7 $\rightarrow$ 8) without data corruption.
-
-### 2. Compose Performance Auditor
-- **Role**: Detect recomposition bottlenecks and enforce performance color-zone rules.
-- **Commands**:
-  - Compile-time compose metrics: `./gradlew assembleRelease -PcomposeCompilerMetrics=true`
-- **Workflow**:
-  - Parse generated compiler reports to detect unstable classes in view states.
-  - Scan Composable lists (`LazyColumn`, `LazyRow`) to ensure standard `key` parameter usage is present.
-  - Validate that custom screen views obtain colours from `performanceZoneColors(...)` rather than re-deriving thresholds ($\ge 80$ Green, $40\text{-}79$ Yellow, $<40$ Red).
-
-### 3. Clean Architecture Conformance Checker
-- **Role**: Assert strict package dependencies using a static import analysis script.
-- **Commands**:
-  - Run package verification tool: `python scripts/check_architecture.py`
-- **Workflow**:
-  - Run regex scans on Kotlin files import headers.
-  - Assert that files under `com/vamshi/field/domain` never import packages from `data/` or `ui/`.
-  - Assert that files under `com/vamshi/field/ui` never import `data/local`, `data/repository`, or `data/mapper` components directly.
+Adaptive layouts use `NavigableListDetailPaneScaffold`. On a phone the detail pane replaces the
+list, so any top bar outside the scaffold must offer Back when
+`navigator.canNavigateBack()` (see `TestLibraryScreen`, `RosterScreen`). adaptive 1.3 auto-focuses
+the destination pane; a list pane that starts with a text field needs
+`shouldAutoFocusCurrentDestination = false`.
 
 ---
 
-## 8. Future Roadmap
+## 4. Domain model
 
-### Phase 1: Architectural Simplification (Tech Debt Cleanup)
-- Move all classes inside `com.vamshi.field.reports.components` package to `com.vamshi.field.ui.reports.components`.
-- Refactor all import statements in `AthleteDashboardScreen`, `AthleteTestDetailScreen`, `GroupOverviewScreen`, and `SessionReportScreen`.
-- Verify compilation using `gradlew assembleDebug`.
+| Model | Notes |
+|---|---|
+| `Individual` | Athlete. `dateOfBirth` is epoch millis — **negative before 1970**. `currentAge` is the one age calculation (whole years). |
+| `Group` | Squad/class; many-to-many with athletes. |
+| `FitnessTest` | `unit`, `isHigherBetter`, `inputParadigm`, `timingMode`, `validMin/validMax`, `interpretationStrategy`, `source` (SEED/USER), `youtubeId`. |
+| `NormReference` | Test × sex × age range × score range → percentile + classification. |
+| `TestingEvent` | A session; tests attached via `event_test_cross_ref`. |
+| `TestResult` | `rawScore`, `ageAtTime`, stored `percentile`/`classification` snapshot, `captureMethod`. |
 
-### Phase 2: Complete Use Case Boundaries
-- Create `GetEventUseCase` and `DeleteResultUseCase` within `domain/usecase/testing/`.
-- Replace direct `TestingRepository` bindings inside `TestingGridViewModel` and `StopwatchViewModel` with these use cases.
+`InputParadigm` decides how a score is captured and printed:
+`NUMERIC` keypad · `INCREMENTAL` +/- counter · `CHRONO` stopwatch · `MULTI_STAGE` level/shuttle
+picker · `SCALE`. Custom tests choose a `MeasurementMethod` (Keypad / Counter / Stopwatch / Levels)
+that maps onto paradigm + timing mode (`domain/model/standards/CustomTestDraft.kt`).
 
-### Phase 3: DB Schema Safeguards
-- Update `exportSchema = true` in `AppDatabase`.
-- Set up schema storage location in `app/build.gradle.kts`:
-  ```kotlin
-  ksp {
-      arg("room.schemaLocation", "$projectDir/schemas")
-  }
-  ```
-- Write Room migration test assertions to verify transitions v3 $\rightarrow$ v8.
+Use-case packages: `auth`, `backup`, `people`, `reports`, `standards`, `testing`
+(`domain/usecase/*`). Score recording always goes through `RecordTestResultUseCase`, which range-
+checks against `validMin/validMax` and calls `CalculatePercentileUseCase` for `NORM_LOOKUP` tests.
 
-### Phase 4: Composable Optimizations
-- Audit scrollable lists in `RosterScreen`, `AthletesScreen`, and `LeaderboardScreen` to verify item keys.
-- Ensure all UiStates project immutable, `@Stable` domain models to maximize Compose runtime performance.
+---
+
+## 5. Data rules that look like trivia but are load-bearing
+
+### 5.1 Performance zones
+Superior ≥ 80 · Healthy 40–79 · Needs Improvement < 40 · Grey = no norm matched (absence of data,
+not a fourth category). Numbers live only in `domain/model/reports/PerformanceThresholds.kt`.
+Composables get colours from `performanceZoneColors(percentile)` in
+`ui/theme/PerformanceZoneColors.kt`. An inline percentile threshold or a hard-coded colour for a
+classification anywhere under `ui/` is a defect — four screens once used four different cut-offs.
+
+### 5.2 Age
+- Age is **whole completed years**: `Individual.currentAge`. Do not re-derive it from millis.
+- `StandardsRepositoryImpl` floors any age before querying norms. Norm brackets are integers with
+  gaps between rows (5–12, 13–19…), so a fractional 12.6 matched no row and fell through to a
+  closest-age fallback that graded the child against 13–19 norms. Reports re-grade from the stored
+  `ageAtTime`, so the floor must stay at the lookup boundary, not only at capture.
+- Brackets (`domain/model/people/AgeBracket.kt`): Childhood 5–12, Adolescence 13–19,
+  Adults 20–40, Adults 41–62, Older Adults 63–115.
+- Date of birth: future dates are rejected (use case + date picker). Do **not** reject
+  `dateOfBirth <= 0` — that is every birth date before 1970.
+
+### 5.3 Multi-stage scores (Beep, Yo-Yo, custom "Levels" tests)
+Stored as one Double: `level + shuttle / 100`. Level 8 shuttle 1 = `8.01`, level 8 shuttle 10 =
+`8.10`. It still sorts, ranks and range-checks as a number. Coaches read and type `level.shuttle`
+text (`"8.10"`).
+
+- `domain/model/standards/ScoreFormat.kt` owns this: `StageScore`, `formatScore(raw, paradigm)`,
+  `parseScore(text, paradigm)`, `scoreInputText(raw, paradigm)`.
+- **Never print a `rawScore` with `%.1f` or `toString()`.** Use `formatScore` with the test's
+  paradigm; a stage score printed as a decimal reads 8.1 for shuttle 10. Display models that carry
+  a raw score also carry `inputParadigm` (`LeaderboardRow`, `LeaderboardEntry`,
+  `RecordedTestResult`) for this reason.
+- **Never parse score text with `toDouble()`.** Use `parseScore`; `"8.10".toDouble()` is shuttle 1.
+- Averages of stage scores are meaningless (8.10 and 9.05 "average" to level 8 shuttle 58); the
+  session summary shows the median for stage tests.
+- CSV export writes `Level 8, Shuttle 10` because spreadsheets turn `8.10` into 8.1.
+- `norms.csv` and `tests.csv` use the same encoding for Beep/Yo-Yo bounds (e.g. Beep max 21.16).
+- Shuttles are capped at 99 (two digits of the encoding).
+
+### 5.4 Negative scores
+Reach tests (Toe Touch, Shoulder Flexibility, Back Scratch, Trunk Flexion) record a gap as a
+negative number. The keypad shows `±` when the test's `validMin < 0`; the Custom Test Builder keeps
+a leading minus.
+
+### 5.5 Formatting helpers
+- Ordinals: `ordinal(n)` in `domain/model/reports/Ordinal.kt` (71st, 92nd, 11th). Never append
+  `"th"`. `HeroNumber(ordinal = true)` keeps the suffix right while the number animates.
+- Plurals: `countOf(n, "athlete")` in `ui/util/Plurals.kt`.
+- Locale-aware number formatting in Compose: `LocalLocale.current.platformLocale` (lint
+  `NonObservableLocale`).
+
+---
+
+## 6. Database (Room v17)
+
+Tables: `individuals`, `groups`, `group_members`, `test_categories`, `fitness_tests`,
+`norm_references`, `testing_events`, `event_test_cross_ref`, `test_results`, `users`,
+`recommendation_categories`, `recommendation_tests`, `catalog_metadata`.
+
+- Schemas are exported to `app/schemas/com.vamshi.field.data.AppDatabase/<n>.json` and must be
+  committed — `MigrationTest` (androidTest) needs the before and after JSON.
+- Migrations are explicit. `fallbackToDestructiveMigration()` was removed on purpose; never re-add.
+- `test_results.testId` is a RESTRICT foreign key: a catalog test with results can't be deleted,
+  only archived (`isDeleted = 1`). `getTestById` must not filter archived tests — reports name them.
+- `pending_test_entries` was dead scaffolding, dropped in v16. Don't resurrect it.
+
+### Seeding and the catalog
+The catalog source of truth is the CSVs in `app/src/main/assets/`: `test_categories.csv`,
+`tests.csv`, `norms.csv`, `recommendation_categories.csv`, `recommendation_tests.csv`.
+
+1. `build_prepackaged_db.py` builds `assets/database/alearning.db` from them (Room loads it with
+   `createFromAsset`) and stamps `catalog_metadata.catalog_version`.
+2. On launch `SeedDataManager` skips CSV import when that stamp equals its `CATALOG_VERSION`
+   (fast fresh install); otherwise, or when the `KEY_SEEDED_VERSION` pref is unset, it re-imports.
+3. Re-import upserts categories/tests and replaces norms and recommendations **scoped to
+   `source = 'SEED'`**. It never touches events, results, athletes, groups, or USER tests/norms.
+
+**Whenever a CSV changes:** bump `CATALOG_VERSION` in both `SeedDataManager` and the script, and
+`KEY_SEEDED_VERSION` (currently `v32` / `data_seeded_version_v32`). **Whenever the schema changes:**
+build once to export the JSON, copy its `identityHash` into `ROOM_IDENTITY_HASH` in the script, and
+regenerate — Room refuses an asset whose hash disagrees.
+
+### Norm data contract
+Each `norms.csv` row's percentile must classify to its own label: Needs Improvement 20, Healthy
+Fitness Zone 60, Superior 90. Coverage per test: 2 sexes × 5 brackets × 3 classes = 30 rows.
+`SeedNormsConsistencyTest` enforces it. Known gap: 11 adult-only tests keep the source decade
+bands and have no under-20 norms — a data decision, not a bug.
+
+Custom-test norms: two coach cut points → three bands (20/60/90). "Same standard for all athletes"
+writes MALE + FEMALE + UNSPECIFIED rows. Bands are contiguous; `findNormResult` orders by
+percentile DESC to break boundary ties.
+
+An empty or grey report almost always means **no norm matched** for that test/sex/age — check the
+`CalculatePercentile` log tag before debugging UI.
+
+---
+
+## 7. Key flows
+
+### Score entry (grid and Individual Test)
+```
+Cell tap → ScoreEntryDialog / QuickScoreEntryDialog
+  → TestInputSwitcher (keypad | counter | stage picker), text in scoreText
+  → parseScore(scoreText, paradigm) → range check → onSave(Double)
+  → ViewModel → RecordTestResultUseCase(rawScore, ageAtTime = currentAge, sex)
+      → validMin/validMax check → CalculatePercentileUseCase (whole-year age)
+      → insert TestResult with percentile/classification snapshot
+```
+Timed tests (`timingMode != MANUAL_ENTRY`) route to the Stopwatch instead. Stopwatch results are
+held in the ViewModel (`sessionResults`) and the Room Flow is only backfill — don't make post-write
+UI depend on a Flow re-emitting; it can lag or miss an invalidation.
+
+Stored percentiles are a snapshot at recording time. Changing norms does not regrade history.
+
+### Auth gate
+`AuthGateViewModel` → `ResumeSessionUseCase`: an existing coach on the device → Dashboard, none →
+Onboarding (5 s timeout falls back to Onboarding). Field has **no password, lock screen or
+sign-out by design** — a forgotten password must never lock a coach out of athlete data; the
+device lock is the boundary. `users.passwordHash/passwordSalt` are vestigial, kept to avoid a
+schema bump and for backup compatibility.
+
+### Backup / restore
+`BackupDataUseCase` / `RestoreDataUseCase` serialise to JSON (Gson) in the Drive app-data folder.
+- Gson bypasses Kotlin constructor defaults: a new payload field missing from an older backup comes
+  back `null` through a non-null type. New fields must be nullable and read with `.orEmpty()`.
+- `BackupJsonContractTest` pins key names. Backup DTOs and `CustomPresetsStore.StoredPreset` need
+  R8 keep rules in `app/proguard-rules.pro`. Release builds are minified; debug is not — verify
+  backup/restore on a release APK.
+- Backups carry USER catalog rows and restore them before results (the RESTRICT FK would otherwise
+  abort the restore).
+
+### Video
+`TestVideoPreview` → `VideoPlayerModal` (WebView IFrame player). The `https://<packageName>` origin
+passed to `loadDataWithBaseURL` and the player is load-bearing; YouTube rejects a missing or
+spoofed origin. Dead video IDs still serve a grey thumbnail — verify `youtube_id`s with the oEmbed
+endpoint, not the thumbnail.
+
+---
+
+## 8. Design system
+
+- Every screen uses `ui/components/AppTopBar.kt`. Trailing actions use `AppTopBarActionButton`.
+- Colour tokens only (`surface`, `onSurface`, `onSurfaceVariant`, `primary`, `outline`,
+  `SportOrange`…). `ui/theme/Color.kt` is generated from `design.md` by `generateColorsFromDesign`.
+- Filter chips: `ui/components/AppFilterChip.kt`. M3 default SegmentedButton/FilterChip colours
+  render lavender in this theme — give them explicit colours.
+- Motion: `ui/theme/Motion.kt` (`FieldMotion`). material3 1.4's Expressive motion APIs are internal.
+- `ModalBottomSheet` already insets for the keyboard (its default `contentWindowInsets` includes the
+  IME). Make sheet content scrollable; adding `imePadding()` on top double-pads.
+- Compose draws children in order and hit-tests the last-placed child first, so an `IconButton`
+  placed after an `AndroidView` in a `Box` does receive taps.
+- Lazy lists use stable keys (`key = { it.id }`); O(N) derivations belong in the ViewModel.
+- English only, by decision.
+
+---
+
+## 9. Testing and verification
+
+```
+gradlew assembleDebug            # also regenerates the prepackaged DB
+gradlew testDebugUnitTest        # JVM unit tests (~160)
+gradlew connectedAndroidTest     # instrumented, incl. MigrationTest
+gradlew lint
+```
+
+- Domain rules have unit tests beside them (`app/src/test/.../domain/...`). Fakes:
+  `FakePeopleRepository`, `FakeTestingRepository`, `FakeStandardsRepository`.
+- A build failure in `mergeDebugJavaResource … zip-cache` is stale incremental state, not code:
+  delete `app/build/intermediates/incremental/debug-mergeJavaRes`.
+- First launch takes ~6 s in debug; that is not a hang.
+- Drive the real app for anything involving score entry, sheets, or navigation — several defects
+  in this file were invisible to unit tests.
+
+---
+
+## 10. Reviewing audit reports
+
+Automated audits of this repo have repeatedly reported things that are not defects. Verify each
+claim against the code before acting:
+
+- "Remove `com.google.android.material` / Gson" — both are used (§1).
+- "Add `imePadding()` to bottom sheets" — double-pads (§8); the fix is scrolling.
+- "WebView intercepts the overlaid close button" — Compose hit-test order says otherwise (§8).
+- "Room DB vN" — read `AppDatabase.kt`; audits often quote a stale version.
+- Repo-root clutter (`room3-*.jar`, `.bak-*/`, scratch files) is untracked local state, not part of
+  the build. Ask before deleting; it is unrecoverable.
+
+Conversely, audits have found real crashes (the stage picker parsing `""`), so read them — just
+don't apply their fixes blind.

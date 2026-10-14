@@ -4,7 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ---
 
 ## Central Source of Truth
-**CRITICAL**: The definitive architecture reference for Field is `DEVELOPMENT_CONTEXT.md`. Always read it before making structural changes. 
+**CRITICAL**: The architecture reference for Field is `DEVELOPMENT_CONTEXT.md` — screens, data
+flows, the database, and the data rules below explained in full. Read it before structural changes.
+`AGENTS.md` (Codex) and `GEMINI.md` (Gemini) point back here; keep facts in this file and
+`DEVELOPMENT_CONTEXT.md` only, so they can't drift apart again.
 
 ## App Overview
 **Field** is an offline-first fitness testing and performance tracking app for coaches and fitness professionals.
@@ -47,7 +50,7 @@ Presentation (ui/) → Domain (domain/) ← Data (data/)
 - **Version:** Room database is currently at **Version 17**.
 - **Seeding:** The DB ships prepackaged (`createFromAsset("database/alearning.db")`, built by `tools/build_prepackaged_db.py` from the CSVs in `assets/`). `SeedDataManager` then tops up from those CSVs unless the prepackaged catalog is already current.
 - **Catalog stamp:** the build script writes its catalog generation into `catalog_metadata`
-  (`catalog_version` → e.g. `v31`), and `SeedDataManager` skips the CSV import outright when that
+  (`catalog_version` → e.g. `v32`), and `SeedDataManager` skips the CSV import outright when that
   stamp matches `SeedDataManager.CATALOG_VERSION`. This is what makes a fresh install fast: the
   asset and the CSVs are generated from the same source at build time, so importing them again
   rewrites ~2.4k identical norm rows. Skipping it cut first launch from 13.6s to 6.2s.
@@ -59,7 +62,7 @@ Presentation (ui/) → Domain (domain/) ← Data (data/)
   Room refuses to open an asset whose identity hash disagrees with the compiled schema, so any
   schema change means: build once to export the new JSON, copy its `identityHash` into the script,
   then regenerate.
-- **Seed Flag:** Guarded by a versioned SharedPreferences key (`KEY_SEEDED_VERSION` in `SeedDataManager`, currently `data_seeded_version_v31`).
+- **Seed Flag:** Guarded by a versioned SharedPreferences key (`KEY_SEEDED_VERSION` in `SeedDataManager`, currently `data_seeded_version_v32`).
 - **Reseeding is safe:** bumping the seed key re-imports the catalog by upserting `test_categories`/`fitness_tests` and wholesale-replacing `norm_references` and the recommendation tables. It must NEVER delete user-generated data (`testing_events`, `test_results`, `event_test_cross_ref`, athletes, groups).
 
 ---
@@ -76,6 +79,25 @@ Presentation (ui/) → Domain (domain/) ← Data (data/)
     and every screen that worked around that grew its own thresholds — the grid sat at 60/30,
     the radar at 75/40 and the trend bands at 70/35 while the reports used 80/40, so one athlete
     could read Yellow on one screen and Red on the next.
+- Lists inside Compose MUST use `key = { it.id }` to avoid `O(N)` recomposition lag.
+- Complex state derivations (like O(N) list find operations) must be hoisted to the ViewModel/UseCase and never computed in the Composable render phase.
+
+---
+
+## Score, Age & Date Rules
+Each of these was a shipped bug. Details in `DEVELOPMENT_CONTEXT.md` §5.
+- **Never print a `rawScore` with `%.1f`/`toString()` or parse score text with `toDouble()`.** Use
+  `formatScore(raw, paradigm)` / `parseScore(text, paradigm)` from
+  `domain/model/standards/ScoreFormat.kt`. Multi-stage tests (Beep, Yo-Yo, custom "Levels") store
+  `level + shuttle/100` (8.10 = level 8 shuttle 10; 8.01 = shuttle 1) and show `"8.10"`. The old
+  `"8.10".toDouble()` made shuttle 10 equal shuttle 1. `norms.csv`/`tests.csv` use the same encoding.
+- **Age is whole years:** `Individual.currentAge`. Never re-derive it from millis. Norm lookup floors
+  age in `StandardsRepositoryImpl` — fractional ages fell between integer brackets and were graded
+  against the next bracket's norms.
+- **`dateOfBirth` is negative before 1970.** Reject future dates, never `<= 0`.
+- **Scores can be negative** (reach tests). Don't strip `-` from score input.
+- Ordinals via `ordinal(n)` (`domain/model/reports/Ordinal.kt`), counts via `countOf(n, "athlete")`
+  (`ui/util/Plurals.kt`). No hard-coded `"th"` or `"$n athletes"`.
 
 ---
 
@@ -121,5 +143,3 @@ the source standards' decade bands (20–29, 30–39, …) rather than Field's b
 childhood or adolescence rows at all. Those tests return no norm for an athlete under 20.
 Rebracketing them means discarding validated age-grading, so it is a data decision, not a
 code change — `SeedNormsConsistencyTest` prints the current list rather than failing on it.
-- Lists inside Compose MUST use `key = { it.id }` to avoid `O(N)` recomposition lag.
-- Complex state derivations (like O(N) list find operations) must be hoisted to the ViewModel/UseCase and never computed in the Composable render phase.

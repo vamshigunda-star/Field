@@ -475,7 +475,7 @@ class StopwatchViewModel @Inject constructor(
             viewModelScope.launch {
                 try {
                     val athlete = athletes.find { it.id == athleteId } ?: return@launch
-                    val age = ((System.currentTimeMillis() - athlete.dateOfBirth) / 31_557_600_000L).toFloat()
+                    val age = athlete.currentAge.toFloat()
                     testingRepository.deleteResultById(resultId)
                     recordResult(eventId, athleteId, fitnessTestId, newTimeMs / 1000.0, age, athlete.sex, CaptureMethod.STOPWATCH)
                 } catch (e: Exception) {
@@ -593,7 +593,7 @@ class StopwatchViewModel @Inject constructor(
             try {
                 for ((athleteId, rawScore) in state.pendingResults) {
                     val athlete = athletes.find { it.id == athleteId } ?: continue
-                    val age = ((System.currentTimeMillis() - athlete.dateOfBirth) / 31_557_600_000L).toFloat()
+                    val age = athlete.currentAge.toFloat()
                     val saved = recordResult(eventId, athleteId, fitnessTestId, rawScore, age, athlete.sex, CaptureMethod.STOPWATCH)
                     sessionResults.getOrPut(athleteId) { mutableListOf() }.add(saved)
                     completionState[athleteId] = (completionState[athleteId] ?: 0) + 1

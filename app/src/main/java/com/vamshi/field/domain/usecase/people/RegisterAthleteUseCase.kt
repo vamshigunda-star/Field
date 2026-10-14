@@ -19,7 +19,12 @@ class RegisterAthleteUseCase @Inject constructor(
     ): Result<Individual> {
         if (firstName.isBlank()) return Result.failure(IllegalArgumentException("First name is required"))
         if (lastName.isBlank()) return Result.failure(IllegalArgumentException("Last name is required"))
-        if (dateOfBirth <= 0) return Result.failure(IllegalArgumentException("Valid date of birth is required"))
+        // Epoch millis are negative before 1970, so a `<= 0` check here used to turn away
+        // most of the Older Adults bracket. A future date is the real invalid case: it gives a
+        // negative age that matches no bracket, so the athlete could never be graded.
+        if (dateOfBirth > System.currentTimeMillis()) {
+            return Result.failure(IllegalArgumentException("Date of birth can't be in the future"))
+        }
 
         val student = Individual(
             id = UUID.randomUUID().toString(),

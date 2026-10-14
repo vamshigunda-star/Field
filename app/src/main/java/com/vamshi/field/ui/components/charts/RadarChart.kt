@@ -85,6 +85,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import com.vamshi.field.domain.model.reports.Classification
 import com.vamshi.field.domain.model.reports.PerformanceThresholds
+import com.vamshi.field.domain.model.reports.ordinal
 import com.vamshi.field.ui.components.HeroNumber
 import androidx.compose.material3.LocalTextStyle
 
@@ -264,7 +265,7 @@ fun RadarChart(
                         Spacer(modifier = Modifier.width(6.dp))
                         HeroNumber(
                             value = average,
-                            suffix = "th",
+                            ordinal = true,
                             style = LocalTextStyle.current.copy(fontSize = 15.sp),
                             color = primaryColor,
                             fontWeight = FontWeight.ExtraBold
@@ -665,7 +666,7 @@ fun RadarChart(
                     if (selScore != null) {
                         val visual = getCategoryVisual(selScore.label, selScore.axis)
                         val classification = getScoreClassification(selScore.normalizedScore, selScore.testCount)
-                        val scorePct = if (selScore.testCount > 0) "${(selScore.normalizedScore * 100).roundToInt()}th Percentile" else "Not Tested"
+                        val scorePct = if (selScore.testCount > 0) "${ordinal((selScore.normalizedScore * 100).roundToInt())} Percentile" else "Not Tested"
 
                         Surface(
                             modifier = Modifier

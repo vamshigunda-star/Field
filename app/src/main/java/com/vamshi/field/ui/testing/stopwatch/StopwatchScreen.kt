@@ -2,6 +2,7 @@
 
 package com.vamshi.field.ui.testing.stopwatch
 
+import com.vamshi.field.ui.util.countOf
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -317,7 +318,7 @@ private fun ModeTabButton(
 
 private fun buildSessionContextLine(uiState: StopwatchUiState): String {
     val athleteCount = if (uiState.mode == TimingMode.INDIVIDUAL) uiState.allAthletes.size else uiState.heatAthletes.size
-    val base = "$athleteCount Athletes • ${uiState.trialsPerAthlete} Trials"
+    val base = "${countOf(athleteCount, "Athlete")} • ${countOf(uiState.trialsPerAthlete, "Trial")}"
     return if (!uiState.groupName.isNullOrBlank()) "${uiState.groupName} • $base" else base
 }
 

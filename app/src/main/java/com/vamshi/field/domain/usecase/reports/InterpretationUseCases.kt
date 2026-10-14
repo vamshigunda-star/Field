@@ -3,6 +3,7 @@ package com.vamshi.field.domain.usecase.reports
 import com.vamshi.field.domain.model.reports.Classification
 import com.vamshi.field.domain.model.reports.Distribution
 import com.vamshi.field.domain.model.reports.PerformanceThresholds
+import com.vamshi.field.domain.model.reports.ordinal
 import com.vamshi.field.domain.model.reports.AthleteFlag
 import com.vamshi.field.domain.model.reports.FlagType
 import com.vamshi.field.domain.model.testing.TestResult
@@ -85,7 +86,7 @@ class GetAthleteFlagsUseCase @Inject constructor(
                     groupId = groupId,
                     groupName = groupName,
                     type = FlagType.BELOW_HEALTHY,
-                    message = "Session avg ${avg}th — below Healthy zone"
+                    message = "Session avg ${ordinal(avg)} — below Healthy zone"
                 )
             }
 

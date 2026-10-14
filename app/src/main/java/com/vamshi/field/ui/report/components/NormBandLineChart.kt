@@ -1,5 +1,7 @@
 package com.vamshi.field.ui.report.components
 
+import com.vamshi.field.domain.model.standards.formatScore
+import com.vamshi.field.domain.model.standards.InputParadigm
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -77,6 +79,7 @@ fun NormBandLineChart(
     modifier: Modifier = Modifier,
     isHigherBetter: Boolean = true,
     unit: String = "",
+    inputParadigm: InputParadigm = InputParadigm.NUMERIC,
     lineColor: Color = MaterialTheme.colorScheme.primary,
     selectedRange: ChartRangeFilter = ChartRangeFilter.ALL,
     superiorColor: Color = performanceZoneColors(Classification.SUPERIOR).text,
@@ -290,7 +293,7 @@ fun NormBandLineChart(
                     strokeWidth = 1.5.dp.toPx(),
                     pathEffect = dashEffect
                 )
-                val badgeText = "Superior (${if (avgSuperior % 1.0 == 0.0) avgSuperior.toInt().toString() else String.format(Locale.US, "%.1f", avgSuperior)})"
+                val badgeText = "Superior (${formatScore(avgSuperior, inputParadigm)})"
                 val measuredBadge = textMeasurer.measure(badgeText, benchmarkBadgeStyle.copy(color = superiorColor))
                 val pillWidth = measuredBadge.size.width + 10.dp.toPx()
                 val pillHeight = measuredBadge.size.height + 4.dp.toPx()
@@ -315,7 +318,7 @@ fun NormBandLineChart(
                     strokeWidth = 1.5.dp.toPx(),
                     pathEffect = dashEffect
                 )
-                val badgeText = "Healthy (${if (avgHealthy % 1.0 == 0.0) avgHealthy.toInt().toString() else String.format(Locale.US, "%.1f", avgHealthy)})"
+                val badgeText = "Healthy (${formatScore(avgHealthy, inputParadigm)})"
                 val measuredBadge = textMeasurer.measure(badgeText, benchmarkBadgeStyle.copy(color = healthyColor))
                 val pillWidth = measuredBadge.size.width + 10.dp.toPx()
                 val pillHeight = measuredBadge.size.height + 4.dp.toPx()
@@ -461,7 +464,7 @@ fun NormBandLineChart(
                     drawCircle(color = Color.White, radius = 2.5.dp.toPx(), center = Offset(scrubX, scrubY))
 
                     // Floating Tooltip Badge
-                    val scoreStr = if (activePt.rawScore % 1.0 == 0.0) activePt.rawScore.toInt().toString() else String.format(Locale.US, "%.1f", activePt.rawScore)
+                    val scoreStr = formatScore(activePt.rawScore, inputParadigm)
                     val dateFormatted = fullDateFormatter.format(Date(activePt.date))
                     val pctStr = activePt.percentile?.let { " · p$it" } ?: ""
                     val tooltipText = "$dateFormatted · $scoreStr $unit$pctStr"

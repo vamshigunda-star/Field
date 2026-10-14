@@ -1,5 +1,8 @@
 package com.vamshi.field.ui.quicktest
 
+import com.vamshi.field.domain.model.standards.scoreInputText
+import com.vamshi.field.domain.model.standards.parseScore
+import com.vamshi.field.domain.model.standards.formatScore
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.activity.compose.BackHandler
@@ -782,7 +785,7 @@ fun QuickTestScoreCell(savedResult: RecordedTestResult?) {
             contentAlignment = Alignment.Center
         ) {
             if (savedResult != null) {
-                val scoreText = String.format(LocalLocale.current.platformLocale, "%.1f", savedResult.rawScore)
+                val scoreText = formatScore(savedResult.rawScore, savedResult.inputParadigm)
                 // Colour carries the zone; screen readers get the zone name (see TestingGridComponents).
                 Column(
                     modifier = Modifier.semantics { contentDescription = "$scoreText, ${zone.label}" },
@@ -825,11 +828,13 @@ fun QuickScoreEntryDialog(
     validMin: Double? = null,
     validMax: Double? = null
 ) {
-    var scoreText by remember(currentResult) { mutableStateOf(currentResult?.rawScore?.toString() ?: "") }
+    var scoreText by remember(currentResult) {
+        mutableStateOf(currentResult?.let { scoreInputText(it.rawScore, inputParadigm) } ?: "")
+    }
     val scrollState = rememberScrollState()
 
     val isInRange = if (scoreText.isEmpty()) false else {
-        val score = scoreText.toDoubleOrNull()
+        val score = parseScore(scoreText, inputParadigm)
         if (score != null) {
             val validMinCheck = validMin?.let { score >= it } ?: true
             val validMaxCheck = validMax?.let { score <= it } ?: true
@@ -862,9 +867,9 @@ fun QuickScoreEntryDialog(
                     Text(
                         text = buildString {
                             append("Valid range: ")
-                            if (validMin != null) append("≥ $validMin")
+                            if (validMin != null) append("≥ ${formatScore(validMin, inputParadigm)}")
                             if (validMin != null && validMax != null) append(" and ")
-                            if (validMax != null) append("≤ $validMax")
+                            if (validMax != null) append("≤ ${formatScore(validMax, inputParadigm)}")
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
@@ -876,9 +881,10 @@ fun QuickScoreEntryDialog(
                     onValueChange = { scoreText = it },
                     onSubmit = {
                         if (isInRange) {
-                            scoreText.toDoubleOrNull()?.let { onSave(it) }
+                            parseScore(scoreText, inputParadigm)?.let { onSave(it) }
                         }
-                    }
+                    },
+                    allowNegative = (validMin ?: 0.0) < 0.0
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1058,7 +1064,7 @@ private fun ResultCard(result: RecordedTestResult) {
                 Text(result.testName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    "${result.rawScore} ${result.unit}",
+                    "${formatScore(result.rawScore, result.inputParadigm)} ${result.unit}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

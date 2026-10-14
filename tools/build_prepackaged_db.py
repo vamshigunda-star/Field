@@ -15,7 +15,7 @@ DB_PATH = os.path.join(DB_DIR, "alearning.db")
 # this database is already current and skip re-importing the CSVs at startup. Must match
 # SeedDataManager.CATALOG_VERSION -- bump both together whenever the CSVs change, or the app
 # will fall back to parsing the CSVs on every first launch (correct data, ~5.5s slower).
-CATALOG_VERSION = "v31"
+CATALOG_VERSION = "v32"
 
 # Must match app/schemas/com.vamshi.field.data.AppDatabase/<ROOM_SCHEMA_VERSION>.json. Room
 # refuses to open a prepackaged database whose identity hash disagrees with the compiled

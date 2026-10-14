@@ -1,5 +1,9 @@
 package com.vamshi.field.ui.testing
 
+import com.vamshi.field.domain.model.standards.InputParadigm
+import com.vamshi.field.domain.model.standards.scoreInputText
+import com.vamshi.field.domain.model.standards.parseScore
+import com.vamshi.field.domain.model.standards.formatScore
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import android.util.Log
@@ -447,6 +451,7 @@ fun AthleteRow(
             Box(modifier = Modifier.width(130.dp)) {
                 ScoreCell(
                     savedResult = savedResult,
+                    inputParadigm = test.inputParadigm,
                     onClick = { onCellClick(test) },
                     onLongPress = { onCellLongPress(test) },
                     isFailed = isFailed
@@ -460,6 +465,7 @@ fun AthleteRow(
 @Composable
 fun ScoreCell(
     savedResult: TestResult?,
+    inputParadigm: InputParadigm,
     onClick: () -> Unit,
     onLongPress: () -> Unit,
     isFailed: Boolean = false
@@ -511,7 +517,7 @@ fun ScoreCell(
                         tint = textColor.copy(alpha = 0.45f),
                         modifier = Modifier.size(11.dp).align(Alignment.TopEnd)
                     )
-                    val scoreText = String.format(LocalLocale.current.platformLocale, "%.1f", savedResult.rawScore)
+                    val scoreText = formatScore(savedResult.rawScore, inputParadigm)
                     // Colour alone carries the zone here — the percentile number meant nothing to a
                     // coach mid-testing (it is still stored and feeds the radar). The zone name is
                     // given to screen readers so the colour isn't the only signal.
@@ -562,11 +568,13 @@ fun ScoreEntryDialog(
     validMax: Double? = null
 ) {
     // Saveable so half-typed digits survive rotation and the coach switching apps.
-    var scoreText by rememberSaveable(athleteName, currentResult?.id) { mutableStateOf(currentResult?.rawScore?.toString() ?: "") }
+    var scoreText by rememberSaveable(athleteName, currentResult?.id) {
+        mutableStateOf(currentResult?.let { scoreInputText(it.rawScore, inputParadigm) } ?: "")
+    }
     val scrollState = rememberScrollState()
 
     val isInRange = if (scoreText.isEmpty()) false else {
-        val score = scoreText.toDoubleOrNull()
+        val score = parseScore(scoreText, inputParadigm)
         if (score != null) {
             val validMinCheck = validMin?.let { score >= it } ?: true
             val validMaxCheck = validMax?.let { score <= it } ?: true
@@ -588,20 +596,20 @@ fun ScoreEntryDialog(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(athleteName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("$testName � $unit", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$testName • $unit", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                     Surface(modifier = Modifier.fillMaxWidth().height(72.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text(scoreText.ifEmpty { "�" }, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                            Text(scoreText.ifEmpty { "—" }, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                         }
                     }
                     if (!isInRange && scoreText.isNotEmpty()) {
                         Text(
                             text = buildString {
                                 append("Valid range: ")
-                                if (validMin != null) append("= $validMin")
+                                if (validMin != null) append("≥ ${formatScore(validMin, inputParadigm)}")
                                 if (validMin != null && validMax != null) append(" and ")
-                                if (validMax != null) append("= $validMax")
+                                if (validMax != null) append("≤ ${formatScore(validMax, inputParadigm)}")
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.error
@@ -613,9 +621,10 @@ fun ScoreEntryDialog(
                     onValueChange = { scoreText = it },
                     onSubmit = {
                         if (isInRange) {
-                            scoreText.toDoubleOrNull()?.let { onSave(it) }
+                            parseScore(scoreText, inputParadigm)?.let { onSave(it) }
                         }
-                    }
+                    },
+                    allowNegative = (validMin ?: 0.0) < 0.0
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),

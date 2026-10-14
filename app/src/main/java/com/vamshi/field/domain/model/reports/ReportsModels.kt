@@ -1,5 +1,6 @@
 package com.vamshi.field.domain.model.reports
 
+import com.vamshi.field.domain.model.standards.InputParadigm
 import com.vamshi.field.domain.model.people.Group
 import com.vamshi.field.domain.model.people.Individual
 import com.vamshi.field.domain.model.standards.FitnessTest
@@ -63,7 +64,9 @@ data class LeaderboardRow(
     val classificationLabel: String?,
     val deltaPercentile: Int?,    // null if no previous
     val flagged: Boolean,
-    val absent: Boolean = false
+    val absent: Boolean = false,
+    // Needed to print rawScore: stage tests read "8.10", not "8.1" (see StageScore).
+    val inputParadigm: InputParadigm = InputParadigm.NUMERIC
 )
 
 data class SessionReportData(

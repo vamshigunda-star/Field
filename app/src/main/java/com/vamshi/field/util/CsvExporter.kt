@@ -14,6 +14,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.vamshi.field.domain.model.people.Individual
 import com.vamshi.field.domain.model.standards.FitnessTest
+import com.vamshi.field.domain.model.standards.InputParadigm
+import com.vamshi.field.domain.model.standards.StageScore
 import com.vamshi.field.domain.model.testing.TestResult
 import java.io.File
 import java.io.IOException
@@ -26,6 +28,10 @@ object CsvExporter {
     private fun escapeCsv(value: String): String =
         "\"" + value.replace("\"", "\"\"") + "\""
 
+    // A spreadsheet reads "8.10" as 8.1, the same as shuttle 1, so stage scores go out as words.
+    private fun csvScore(raw: Double, test: FitnessTest?): String =
+        if (test?.inputParadigm == InputParadigm.MULTI_STAGE) escapeCsv(StageScore.longLabel(raw)) else raw.toString()
+
     fun exportAthleteResults(context: Context, athlete: Individual, results: List<TestResult>, tests: Map<String, FitnessTest>) {
         val safeLast = athlete.lastName.replace(Regex("[^a-zA-Z0-9_-]"), "")
         val safeFirst = athlete.firstName.replace(Regex("[^a-zA-Z0-9_-]"), "")
@@ -37,7 +43,7 @@ object CsvExporter {
         val content = results.sortedByDescending { it.createdAt }.joinToString("\n") { result ->
             val test = tests[result.testId]
             val date = df.format(Date(result.createdAt))
-            val score = result.rawScore
+            val score = csvScore(result.rawScore, test)
             val unit = test?.unit ?: ""
             val percentile = result.percentile ?: ""
             val classification = result.classification ?: ""
@@ -59,7 +65,7 @@ object CsvExporter {
         val content = results.sortedBy { it.first.lastName }.joinToString("\n") { (athlete, result) ->
             val test = tests[result.testId]
             val date = df.format(Date(result.createdAt))
-            val score = result.rawScore
+            val score = csvScore(result.rawScore, test)
             val unit = test?.unit ?: ""
             val percentile = result.percentile ?: ""
             val classification = result.classification ?: ""
