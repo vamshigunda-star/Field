@@ -36,8 +36,8 @@ android {
         // NoSuchAlgorithmException and the app is unusable without an account.
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "com.vamshi.field.HiltTestRunner"
     }
@@ -64,6 +64,8 @@ android {
             releaseSigning?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
+            // Play warns "native code, no debug symbols" without this; uploads them for crash reports.
+            ndk { debugSymbolLevel = "FULL" }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -136,7 +138,6 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.sqlite.bundled)
     implementation(libs.androidx.sqlite.framework)
     implementation(libs.hilt.android)
     implementation(libs.gson)

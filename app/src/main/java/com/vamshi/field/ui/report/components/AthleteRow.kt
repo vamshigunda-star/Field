@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vamshi.field.domain.model.reports.LeaderboardRow
 import com.vamshi.field.ui.theme.ElectricBlue
+import com.vamshi.field.ui.theme.performanceZoneColors
 
 @Composable
 fun AthleteLeaderRow(
@@ -134,16 +135,17 @@ fun AthleteLeaderRow(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outlineVariant
                         )
+                        val zone = performanceZoneColors(row.classification, isDark)
                         Surface(
                             shape = RoundedCornerShape(5.dp),
-                            color = if (isDark) ElectricBlue.copy(alpha = 0.15f) else ElectricBlue.copy(alpha = 0.08f)
+                            color = zone.background
                         ) {
                             Text(
                                 text = classificationText,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontSize = 10.5.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = ElectricBlue,
+                                color = zone.text,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.5.dp)
                             )
                         }

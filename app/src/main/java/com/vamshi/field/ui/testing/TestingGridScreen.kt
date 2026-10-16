@@ -147,17 +147,15 @@ private fun TestingGridContent(
         }
     }
 
-    val sessionTimeStr = remember(sessionSeconds) {
-        "%d:%02d".format(sessionSeconds / 60, sessionSeconds % 60)
-    }
-
     Scaffold(
         topBar = {
             AppTopBar(
                 title = {
                     Column {
                         Text(uiState.event?.name ?: "Live Testing", style = MaterialTheme.typography.titleLarge)
-                        Text(sessionTimeStr, style = MaterialTheme.typography.labelSmall, color = AppTopBarSubtitleColor)
+                        // Read the ticking state here, not in the function body, so only the
+                        // title recomposes each second rather than the whole screen.
+                        Text("%d:%02d".format(sessionSeconds / 60, sessionSeconds % 60), style = MaterialTheme.typography.labelSmall, color = AppTopBarSubtitleColor)
                     }
                 },
                 navigationIcon = {

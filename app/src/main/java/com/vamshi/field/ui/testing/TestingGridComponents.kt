@@ -251,7 +251,7 @@ fun LiveEntryPhase(
         // Progress Banner Header
         val testedAthletesForCurrentTest = remember(gridData.students, gridData.results, selectedTest.id) {
             gridData.students.count { athlete ->
-                gridData.results.any { it.individualId == athlete.id && it.testId == selectedTest.id }
+                (athlete.id to selectedTest.id) in gridData.resultByAthleteAndTest
             }
         }
         
@@ -301,9 +301,8 @@ fun LiveEntryPhase(
             contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(gridData.students.size) { index ->
-                val athlete = gridData.students[index]
-                val savedResult = gridData.results.find { it.individualId == athlete.id && it.testId == selectedTest.id }
+            items(gridData.students, key = { it.id }) { athlete ->
+                val savedResult = gridData.resultByAthleteAndTest[athlete.id to selectedTest.id]
                 val isFailed = (uiState.failedAction as? FailedGridAction.Save)?.let {
                     it.athlete.id == athlete.id && it.test.id == selectedTest.id
                 } == true

@@ -13,7 +13,18 @@ data class TestingGridData(
     val students: List<Individual>,
     val tests: List<FitnessTest>,
     val results: List<TestResult>
-)
+) {
+    /**
+     * First result per (athlete id, test id). The grid reads one per row, and scanning
+     * [results] for each row made every recomposition O(rows x results).
+     */
+    val resultByAthleteAndTest: Map<Pair<String, String>, TestResult> = buildMap {
+        for (result in results) {
+            val key = result.individualId to result.testId
+            if (key !in this) put(key, result)
+        }
+    }
+}
 
 class GetTestingGridDataUseCase @Inject constructor(
     private val peopleRepository: PeopleRepository,

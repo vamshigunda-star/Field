@@ -214,6 +214,10 @@ improvement_factor = {
     "test_t": -0.2
 }
 
+# INCREMENTAL tests count whole reps; noise must not produce "48.4 reps". Keep in sync with
+# SeedDataManager's demo roster.
+WHOLE_COUNT_TESTS = {"test_push_up"}
+
 one_year_ms = 31536000000
 ms_per_event = one_year_ms // 10
 
@@ -237,6 +241,8 @@ for i in range(10):
             factor = improvement_factor[t_id]
             noise = (random.random() - 0.5) * abs(factor)
             final_score = round(base_score + (factor * i) + noise, 2)
+            if t_id in WHOLE_COUNT_TESTS:
+                final_score = float(round(final_score))
             pct_base = 30 + (i * 5)
             pct = min(99, max(1, pct_base + random.randint(0, 10)))
             # Same labels norms.csv uses, so demo rows read like real results.

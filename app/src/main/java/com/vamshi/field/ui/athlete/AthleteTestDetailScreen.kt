@@ -77,6 +77,7 @@ import androidx.compose.ui.draw.rotate
 import com.vamshi.field.ui.theme.ElectricBlue
 import java.text.SimpleDateFormat
 import java.util.Date
+import com.vamshi.field.ui.util.countOf
 import java.util.Locale
 
 @Composable
@@ -233,7 +234,7 @@ private fun DetailBody(
                                     color = if (isDark) ElectricBlue.copy(alpha = 0.20f) else ElectricBlue.copy(alpha = 0.12f)
                                 ) {
                                     Text(
-                                        text = "${data.attempts.size} attempts",
+                                        text = countOf(data.attempts.size, "attempt"),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = ElectricBlue,

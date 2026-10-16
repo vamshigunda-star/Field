@@ -165,7 +165,15 @@ class QuickTestViewModel @Inject constructor(
                         it.lastName.contains(query, ignoreCase = true) 
                     }
                 }
-                _uiState.update { it.copy(athleteSearchQuery = query, matchingAthletes = matching, selectedAthlete = null) }
+                // Typing clears the selection, so a non-blank query is a guest until a registered
+                // athlete is picked. Setting this only on proceed hid the age/sex form, and guest
+                // scores were graded as UNSPECIFIED sex -- which no norm row matches.
+                _uiState.update { it.copy(
+                    athleteSearchQuery = query,
+                    matchingAthletes = matching,
+                    selectedAthlete = null,
+                    isGuest = !it.requireRegisteredAthlete && query.isNotBlank()
+                ) }
             }
             is QuickTestAction.OnSelectAthlete -> {
                 _uiState.update { it.copy(

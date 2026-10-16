@@ -358,6 +358,10 @@ class SeedDataManager @Inject constructor(
                         "test_t" to -0.2
                     )
 
+                    // INCREMENTAL tests count whole reps; noise must not produce "48.4 reps".
+                    // Keep in sync with build_prepackaged_db.py's demo roster.
+                    val wholeCountTests = setOf("test_push_up")
+
                     val currentTime = System.currentTimeMillis()
                     val oneYearMs = 31536000000L
                     val msPerEvent = oneYearMs / 10
@@ -387,7 +391,8 @@ class SeedDataManager @Inject constructor(
                                 val factor = improvementFactor[testId] ?: 0.0
 
                                 val noise = (Math.random() - 0.5) * Math.abs(factor)
-                                val finalScore = baseScore + (factor * i) + noise
+                                val rawFinal = baseScore + (factor * i) + noise
+                                val finalScore = if (testId in wholeCountTests) Math.round(rawFinal).toDouble() else rawFinal
 
                                 val isHigherBetter = factor > 0
                                 val pctBase = if (isHigherBetter) 30 + (i * 5) else 30 + (i * 5)

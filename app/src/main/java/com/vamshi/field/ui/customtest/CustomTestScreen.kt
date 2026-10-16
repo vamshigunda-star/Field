@@ -545,7 +545,7 @@ private fun ScoringSection(
         ScoringChoice(
             selected = scoring != null,
             title = "Add performance bands",
-            subtitle = "Three numbers turn scores into the same zones the built-in tests use.",
+            subtitle = "Two numbers turn scores into the same zones the built-in tests use.",
             onClick = { onAction(CustomTestAction.OnScoringEnabledChange(true)) }
         )
 
