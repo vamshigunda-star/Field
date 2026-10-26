@@ -47,6 +47,24 @@ object StageScore {
     private fun hundredths(raw: Double): Int = (raw * 100).roundToInt()
 }
 
+/**
+ * Highest level and shuttle on a published stage test's score sheet, so the picker can't
+ * offer Beep shuttle 40. [StageScore.MAX_SHUTTLE] is only the limit of the encoding.
+ *
+ * One cap per test, not per level: every Beep norm cut point sits on a level boundary, so a
+ * wrong shuttle within a level can't change the band, and every Yo-Yo level has 8 shuttles.
+ * Must agree with each test's validMax in tests.csv (21.16 and 24.08).
+ */
+data class StageLimits(val maxLevel: Int, val maxShuttle: Int) {
+    companion object {
+        fun forTest(testId: String): StageLimits? = when (testId) {
+            "test_beep" -> StageLimits(maxLevel = 21, maxShuttle = 16)
+            "test_yo_yo" -> StageLimits(maxLevel = 24, maxShuttle = 8)
+            else -> null
+        }
+    }
+}
+
 /** Display text for a score: "8.10" for stage tests, else "12" or "12.5". */
 fun formatScore(raw: Double, paradigm: InputParadigm?): String = when {
     paradigm == InputParadigm.MULTI_STAGE -> StageScore.format(raw)

@@ -270,6 +270,7 @@ private fun TestingGridContent(
             inputParadigm = cell.test.inputParadigm,
             validMin = cell.test.validMin,
             validMax = cell.test.validMax,
+            stageLimits = com.vamshi.field.domain.model.standards.StageLimits.forTest(cell.test.id),
             currentResult = cell.currentResult,
             onDismiss = { onAction(TestingGridAction.OnDismissEditing) },
             onSave = { score -> onAction(TestingGridAction.OnSaveScore(score)) },

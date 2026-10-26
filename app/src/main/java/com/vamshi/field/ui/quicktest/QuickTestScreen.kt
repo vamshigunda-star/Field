@@ -743,6 +743,7 @@ private fun EnterScoresStep(
             currentResult = savedResult,
             validMin = test.validMin,
             validMax = test.validMax,
+            stageLimits = com.vamshi.field.domain.model.standards.StageLimits.forTest(test.id),
             onDismiss = { editingTest = null },
             onSave = { score -> 
                 onAction(QuickTestAction.OnSaveScore(test.id, score))
@@ -824,7 +825,8 @@ fun QuickScoreEntryDialog(
     onSave: (Double) -> Unit,
     onDeleteSaved: () -> Unit,
     validMin: Double? = null,
-    validMax: Double? = null
+    validMax: Double? = null,
+    stageLimits: com.vamshi.field.domain.model.standards.StageLimits? = null
 ) {
     var scoreText by remember(currentResult) {
         mutableStateOf(currentResult?.let { scoreInputText(it.rawScore, inputParadigm) } ?: "")
@@ -882,7 +884,8 @@ fun QuickScoreEntryDialog(
                             parseScore(scoreText, inputParadigm)?.let { onSave(it) }
                         }
                     },
-                    allowNegative = (validMin ?: 0.0) < 0.0
+                    allowNegative = (validMin ?: 0.0) < 0.0,
+                    stageLimits = stageLimits
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),

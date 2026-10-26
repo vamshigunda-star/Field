@@ -48,4 +48,14 @@ class StageScoreTest {
         assertEquals(8.10, parseScore("8.10", InputParadigm.NUMERIC)!!, 1e-9)
         assertEquals(raw, parseScore("8.10", InputParadigm.MULTI_STAGE)!!, 1e-9)
     }
+
+    @Test
+    fun `picker caps match each test's validMax in tests csv`() {
+        // A Yo-Yo cap above 8 would let 15.20 encode past 16.08 and lift the athlete a band.
+        val beep = StageLimits.forTest("test_beep")!!
+        val yoYo = StageLimits.forTest("test_yo_yo")!!
+        assertEquals(21.16, StageScore.encode(beep.maxLevel, beep.maxShuttle), 1e-9)
+        assertEquals(24.08, StageScore.encode(yoYo.maxLevel, yoYo.maxShuttle), 1e-9)
+        assertNull(StageLimits.forTest("custom-levels-test"))
+    }
 }

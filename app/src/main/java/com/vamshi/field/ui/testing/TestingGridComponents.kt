@@ -560,7 +560,8 @@ fun ScoreEntryDialog(
     onSave: (Double) -> Unit,
     onDeleteSaved: () -> Unit,
     validMin: Double? = null,
-    validMax: Double? = null
+    validMax: Double? = null,
+    stageLimits: com.vamshi.field.domain.model.standards.StageLimits? = null
 ) {
     // Saveable so half-typed digits survive rotation and the coach switching apps.
     var scoreText by rememberSaveable(athleteName, currentResult?.id) {
@@ -619,7 +620,8 @@ fun ScoreEntryDialog(
                             parseScore(scoreText, inputParadigm)?.let { onSave(it) }
                         }
                     },
-                    allowNegative = (validMin ?: 0.0) < 0.0
+                    allowNegative = (validMin ?: 0.0) < 0.0,
+                    stageLimits = stageLimits
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),

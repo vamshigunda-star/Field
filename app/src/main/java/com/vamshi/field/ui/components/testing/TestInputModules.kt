@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vamshi.field.domain.model.standards.InputParadigm
+import com.vamshi.field.domain.model.standards.StageLimits
 import com.vamshi.field.domain.model.standards.StageScore
 
 /**
@@ -28,12 +29,14 @@ fun TestInputSwitcher(
     onValueChange: (String) -> Unit,
     onSubmit: () -> Unit,
     // Reach tests (back scratch, toe touch, trunk flexion) record a gap as a negative score.
-    allowNegative: Boolean = false
+    allowNegative: Boolean = false,
+    // Beep and Yo-Yo cap the stage picker; custom Levels tests pass null.
+    stageLimits: StageLimits? = null
 ) {
     when (paradigm) {
         InputParadigm.NUMERIC -> NumericInputModule(currentValue, onValueChange, onSubmit, allowNegative)
         InputParadigm.INCREMENTAL -> IncrementalInputModule(currentValue, onValueChange, onSubmit)
-        InputParadigm.MULTI_STAGE -> StageInputModule(currentValue, onValueChange, onSubmit)
+        InputParadigm.MULTI_STAGE -> StageInputModule(currentValue, onValueChange, onSubmit, stageLimits)
         else -> NumericInputModule(currentValue, onValueChange, onSubmit, allowNegative)
     }
 }
@@ -173,8 +176,13 @@ private fun IncrementalInputModule(
 private fun StageInputModule(
     value: String,
     onValueChange: (String) -> Unit,
-    onSubmit: () -> Unit
+    onSubmit: () -> Unit,
+    limits: StageLimits?
 ) {
+    val maxLevel = limits?.maxLevel ?: Int.MAX_VALUE
+    // Two digits of shuttle fit the stored encoding (see StageScore); a known test caps lower.
+    val maxShuttle = limits?.maxShuttle ?: StageScore.MAX_SHUTTLE
+
     // An unrecorded cell arrives as "", and "".toInt() threw — opening the Beep or Yo-Yo
     // entry crashed the app.
     var level by remember { mutableIntStateOf(value.split(".").firstOrNull()?.toIntOrNull() ?: 1) }
@@ -191,7 +199,7 @@ private fun StageInputModule(
             PickerColumn(
                 label = "LEVEL",
                 currentValue = level,
-                onIncrement = { level++; onValueChange("$level.$shuttle") },
+                onIncrement = { if (level < maxLevel) level++; onValueChange("$level.$shuttle") },
                 onDecrement = { if (level > 1) level--; onValueChange("$level.$shuttle") },
                 modifier = Modifier.weight(1f)
             )
@@ -199,8 +207,7 @@ private fun StageInputModule(
             PickerColumn(
                 label = "SHUTTLE",
                 currentValue = shuttle,
-                // Two digits of shuttle fit the stored encoding (see StageScore).
-                onIncrement = { if (shuttle < StageScore.MAX_SHUTTLE) shuttle++; onValueChange("$level.$shuttle") },
+                onIncrement = { if (shuttle < maxShuttle) shuttle++; onValueChange("$level.$shuttle") },
                 onDecrement = { if (shuttle > 1) shuttle--; onValueChange("$level.$shuttle") },
                 modifier = Modifier.weight(1f)
             )
