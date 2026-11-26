@@ -118,9 +118,9 @@ data class AttemptRow(
 data class NormBandsForAge(
     val date: Long,
     val ageYears: Float,
-    val superiorMin: Double?,    // raw at p70
-    val healthyMin: Double?,     // raw at p35
-    val needsMax: Double?        // raw at p35 - 1 (informational)
+    val superiorMin: Double?,    // weakest raw score still graded Superior
+    val healthyMin: Double?,     // weakest raw score still graded Healthy
+    val needsMax: Double?        // strongest raw score still graded Needs Improvement (informational)
 )
 
 data class AthleteTestDetailData(

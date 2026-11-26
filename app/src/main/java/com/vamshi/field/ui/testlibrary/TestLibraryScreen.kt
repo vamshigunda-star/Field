@@ -86,9 +86,20 @@ fun TestLibraryContent(
     val scope = rememberCoroutineScope()
     val canPaneBack = navigator.canNavigateBack()
 
+    // Shown through the Scaffold's host so it sits above the FAB and times out. It used to be a
+    // bare Snackbar after the Scaffold, which drew over the top bar and stayed until OK.
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(uiState.snackbarMessage) {
+        uiState.snackbarMessage?.let { message ->
+            snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Short, withDismissAction = true)
+            onAction(TestLibraryAction.OnDismissSnackbar)
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             AppTopBar(
                 title = "Tests Library",
@@ -148,19 +159,6 @@ fun TestLibraryContent(
 
     uiState.deleteDialog?.let { dialog ->
         DeleteTestDialog(dialog = dialog, onAction = onAction)
-    }
-
-    if (uiState.snackbarMessage != null) {
-        Snackbar(
-            modifier = Modifier.padding(16.dp),
-            action = {
-                TextButton(onClick = { onAction(TestLibraryAction.OnDismissSnackbar) }) {
-                    Text("OK")
-                }
-            }
-        ) {
-            Text(uiState.snackbarMessage)
-        }
     }
 }
 

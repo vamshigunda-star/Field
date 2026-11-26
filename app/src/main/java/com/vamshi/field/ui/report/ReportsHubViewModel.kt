@@ -9,7 +9,6 @@ import com.vamshi.field.domain.model.reports.SessionReportData
 import com.vamshi.field.domain.repository.ReportsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -255,16 +254,14 @@ class ReportsHubViewModel @Inject constructor(
         }
 
         athleteJob = viewModelScope.launch {
-            // Launch radar computation concurrently in parallel with dashboard flow
-            val radarDeferred = async {
-                try { getAthleteRadarData(id) } catch (_: Exception) { null }
-            }
-
             reports.observeAthleteDashboard(id, null)
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoadingAthlete = false) } }
                 .collect { data ->
                     if (data != null) {
-                        val radar = radarDeferred.await()
+                        // Recomputed on every emission. It used to be a single Deferred started
+                        // before collect, so a re-emission after a result was added or deleted
+                        // got the radar from when the tab first opened.
+                        val radar = try { getAthleteRadarData(id) } catch (_: Exception) { null }
                         val initialTestId = data.tiles.firstOrNull()?.test?.id
                         _uiState.update { state ->
                             val validTestId = if (state.selectedAthleteTestId != null && data.tiles.any { it.test.id == state.selectedAthleteTestId }) {

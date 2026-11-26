@@ -3,7 +3,9 @@ package com.vamshi.field.ui.settings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vamshi.field.domain.model.auth.AuthResult
 import com.vamshi.field.domain.repository.BackupRepository
+import com.vamshi.field.domain.usecase.auth.CompleteRestoreUseCase
 import com.vamshi.field.domain.usecase.backup.BackupDataUseCase
 import com.vamshi.field.domain.usecase.backup.ListAvailableBackupsUseCase
 import com.vamshi.field.domain.usecase.backup.RestoreDataUseCase
@@ -24,6 +26,7 @@ class SettingsViewModel @Inject constructor(
     private val backupDataUseCase: BackupDataUseCase,
     private val listAvailableBackupsUseCase: ListAvailableBackupsUseCase,
     private val restoreDataUseCase: RestoreDataUseCase,
+    private val completeRestoreUseCase: CompleteRestoreUseCase,
     private val backupRepository: BackupRepository,
     private val driveBackupHelper: DriveBackupHelper
 ) : ViewModel() {
@@ -150,8 +153,16 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 restoreDataUseCase(backupId)
+                // The restore replaced the users table. A backup from another device or install
+                // carries a different coach id, so re-point the session at the restored account,
+                // as the onboarding restore screen does — otherwise the session names a deleted
+                // user and the Dashboard greets "Coach".
+                val message = when (completeRestoreUseCase()) {
+                    is AuthResult.Success -> "Restore successful"
+                    is AuthResult.Failure -> "The backup didn't contain a valid account. Please try again."
+                }
                 val timestamp = backupRepository.getLastBackupTimestamp()
-                _uiState.update { it.copy(lastBackupTimestamp = timestamp, errorMessage = "Restore successful") }
+                _uiState.update { it.copy(lastBackupTimestamp = timestamp, errorMessage = message) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = e.message ?: "Failed to restore") }
             }

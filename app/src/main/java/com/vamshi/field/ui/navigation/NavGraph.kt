@@ -188,6 +188,9 @@ fun ALearningNavGraph(navController: NavHostController, modifier: Modifier = Mod
                 },
                 onNavigateToTest = { aId, tId, cId ->
                     navController.navigate(Screen.AthleteTestDetail.createRoute(aId, tId, cId))
+                },
+                onStartQuickTest = { aId, testIds ->
+                    navController.navigate(Screen.QuickTest.createRoute(aId, testIds))
                 }
             )
         }

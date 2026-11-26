@@ -52,18 +52,24 @@ class GetAthleteRadarDataUseCase @Inject constructor(
      * Score = average percentile of the athlete's latest result per test in
      * that category. Tests with a null percentile (no matching norm) are
      * skipped so they don't drag the average toward zero.
+     *
+     * Categories and tests are read fresh on every call. They used to be memoised for the
+     * life of the ViewModel, so a custom test created afterwards was missing from the map and
+     * its results were dropped from the radar.
      */
-    private var cachedCategories: List<com.vamshi.field.domain.model.standards.TestCategory>? = null
-    private var cachedTestMap: Map<String, FitnessTest>? = null
-
     suspend operator fun invoke(individualId: String): AthleteRadarData = withContext(Dispatchers.IO) {
         val latestResults = testingRepository
             .getLatestResultPerTestForIndividual(individualId)
 
-        val categories = cachedCategories ?: standardsRepository.getAllCategories().first()
-            .sortedBy { it.sortOrder }.also { cachedCategories = it }
-        val testMap = cachedTestMap ?: standardsRepository.getAllTests().first()
-            .associateBy { it.id }.also { cachedTestMap = it }
+        val categories = standardsRepository.getAllCategories().first().sortedBy { it.sortOrder }
+        // getAllTests() hides archived tests; their results still belong on the radar, so
+        // resolve any id it misses through getTestById, which doesn't filter archived rows.
+        val testMap: Map<String, FitnessTest> = standardsRepository.getAllTests().first()
+            .associateBy { it.id }
+            .let { live ->
+                val missing = latestResults.map { it.testId }.distinct().filterNot { it in live }
+                live + missing.mapNotNull { id -> standardsRepository.getTestById(id)?.let { id to it } }
+            }
         val categoryMap = categories.associateBy { it.id }
         
         val testsByCategory = mutableMapOf<String, MutableList<Int>>()

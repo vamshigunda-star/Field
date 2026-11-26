@@ -52,7 +52,13 @@ fun RosterDialogs(
         val athlete = uiState.allAthletes.find { it.id == id }
         ConfirmationDialog(
             title = "Delete Athlete",
-            message = "Are you sure you want to delete ${athlete?.fullName}? This action cannot be undone.",
+            // Deleting cascades to the athlete's results, so say so: they also vanish from
+            // past event reports and leaderboards, not just from the roster.
+            message = when (val count = uiState.deleteAthleteResultCount) {
+                null, 0 -> "Are you sure you want to delete ${athlete?.fullName}? This action cannot be undone."
+                else -> "Delete ${athlete?.fullName}? Their ${com.vamshi.field.ui.util.countOf(count, "recorded result")} " +
+                    "will also be removed from past event reports and leaderboards. This can't be undone."
+            },
             confirmText = "Delete",
             isDestructive = true,
             onConfirm = { onAction(RosterAction.OnConfirmDeleteAthlete(id)) },

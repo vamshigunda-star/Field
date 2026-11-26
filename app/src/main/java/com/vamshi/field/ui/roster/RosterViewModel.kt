@@ -6,6 +6,7 @@ import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.domain.model.people.Group
 import com.vamshi.field.domain.model.people.Individual
 import com.vamshi.field.domain.repository.PeopleRepository
+import com.vamshi.field.domain.usecase.people.CountAthleteResultsUseCase
 import com.vamshi.field.domain.usecase.people.CreateGroupUseCase
 import com.vamshi.field.domain.usecase.people.DeleteGroupUseCase
 import com.vamshi.field.domain.usecase.people.ManageRosterUseCase
@@ -53,6 +54,8 @@ data class RosterUiState(
     val showAddToGroupDialog: Boolean = false,
     val showManageMembersDialog: String? = null, // Group ID
     val showDeleteAthleteConfirmation: String? = null,
+    /** Results that deleting [showDeleteAthleteConfirmation] would also erase; null if unknown. */
+    val deleteAthleteResultCount: Int? = null,
     val showRemoveMemberConfirmation: Pair<String, String>? = null,
     val showDeleteGroupConfirmation: Group? = null,
     val userMessage: String? = null,
@@ -125,44 +128,61 @@ class RosterViewModel @Inject constructor(
     private val registerAthlete: RegisterAthleteUseCase,
     private val createGroup: CreateGroupUseCase,
     private val deleteGroupUseCase: DeleteGroupUseCase,
-    private val manageRoster: ManageRosterUseCase
+    private val manageRoster: ManageRosterUseCase,
+    private val countAthleteResults: CountAthleteResultsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RosterUiState())
     val uiState: StateFlow<RosterUiState> = _uiState.asStateFlow()
 
-    private var groupMembersJob: Job? = null
+    // One live collector per group and per athlete. Each is a Room Flow and re-emits on its
+    // own, so a list emission only has to start collectors for new ids and stop the ones for
+    // removed ids. Launching for every id on every emission stacked a fresh set of permanent
+    // collectors on each roster edit.
+    private val groupMemberJobs = mutableMapOf<String, Job>()
+    private val athleteGroupJobs = mutableMapOf<String, Job>()
 
     init {
         viewModelScope.launch {
             peopleRepository.getAllGroups()
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoading = false) } }
                 .collect { groups ->
+                    val ids = groups.mapTo(mutableSetOf()) { it.id }
                     _uiState.update { current ->
                         val selected = current.selectedGroup ?: groups.firstOrNull()
-                        current.copy(groups = groups, selectedGroup = selected, isLoading = false)
+                        current.copy(
+                            groups = groups,
+                            selectedGroup = selected,
+                            groupMembers = current.groupMembers.filterKeys { it in ids },
+                            isLoading = false
+                        )
                     }
-                    // Load members for all groups to show stacks and expanded lists
-                    groups.forEach { group ->
-                        loadGroupMembers(group.id)
-                    }
+                    syncJobs(groupMemberJobs, ids, ::loadGroupMembers)
                 }
         }
         viewModelScope.launch {
             peopleRepository.getAllIndividuals()
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message) } }
                 .collect { athletes ->
-                    _uiState.update { it.copy(allAthletes = athletes) }
-                    // Load groups for each athlete to show tags
-                    athletes.forEach { athlete ->
-                        loadAthleteGroups(athlete.id)
+                    val ids = athletes.mapTo(mutableSetOf()) { it.id }
+                    _uiState.update {
+                        it.copy(
+                            allAthletes = athletes,
+                            athleteGroups = it.athleteGroups.filterKeys { id -> id in ids }
+                        )
                     }
+                    syncJobs(athleteGroupJobs, ids, ::loadAthleteGroups)
                 }
         }
     }
 
-    private fun loadGroupMembers(groupId: String) {
-        viewModelScope.launch {
+    private fun syncJobs(jobs: MutableMap<String, Job>, ids: Set<String>, start: (String) -> Job) {
+        (jobs.keys - ids).forEach { jobs.remove(it)?.cancel() }
+        (ids - jobs.keys).forEach { jobs[it] = start(it) }
+    }
+
+    private fun loadGroupMembers(groupId: String): Job {
+        return viewModelScope.launch {
             manageRoster.getStudentsInGroup(groupId)
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message) } }
                 .collect { members ->
@@ -175,8 +195,8 @@ class RosterViewModel @Inject constructor(
         }
     }
 
-    private fun loadAthleteGroups(athleteId: String) {
-        viewModelScope.launch {
+    private fun loadAthleteGroups(athleteId: String): Job {
+        return viewModelScope.launch {
             peopleRepository.getGroupsForIndividual(athleteId)
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message) } }
                 .collect { groups ->
@@ -205,9 +225,11 @@ class RosterViewModel @Inject constructor(
             is RosterAction.OnAgeRangeFilterSelected -> _uiState.update { it.copy(selectedAgeRange = action.range) }
             is RosterAction.OnToggleAthleteSelection -> toggleAthleteSelection(action.id)
             is RosterAction.OnToggleGroupExpansion -> toggleGroupExpansion(action.id)
-            is RosterAction.OnDeleteAthlete -> _uiState.update { it.copy(showDeleteAthleteConfirmation = action.id) }
+            is RosterAction.OnDeleteAthlete -> requestDeleteAthlete(action.id)
             is RosterAction.OnConfirmDeleteAthlete -> deleteAthlete(action.id)
-            is RosterAction.OnDismissDeleteConfirmation -> _uiState.update { it.copy(showDeleteAthleteConfirmation = null) }
+            is RosterAction.OnDismissDeleteConfirmation -> _uiState.update {
+                it.copy(showDeleteAthleteConfirmation = null, deleteAthleteResultCount = null)
+            }
             
             is RosterAction.OnShowAddGroupDialog -> _uiState.update { it.copy(showAddGroupDialog = true) }
             is RosterAction.OnDismissAddGroupDialog -> _uiState.update { it.copy(showAddGroupDialog = false) }
@@ -303,6 +325,14 @@ class RosterViewModel @Inject constructor(
         }
     }
 
+    private fun requestDeleteAthlete(id: String) {
+        viewModelScope.launch {
+            // Counted before the dialog opens so its copy can say what else goes with the athlete.
+            val count = runCatching { countAthleteResults(id) }.getOrNull()
+            _uiState.update { it.copy(showDeleteAthleteConfirmation = id, deleteAthleteResultCount = count) }
+        }
+    }
+
     private fun deleteAthlete(id: String) {
         // Note: Repository needs a deleteIndividual method if we want to fully remove them.
         // IndividualEntity has isActive and isDeleted flags.
@@ -311,7 +341,7 @@ class RosterViewModel @Inject constructor(
             if (athlete != null) {
                 peopleRepository.deleteIndividual(athlete)
             }
-            _uiState.update { it.copy(showDeleteAthleteConfirmation = null) }
+            _uiState.update { it.copy(showDeleteAthleteConfirmation = null, deleteAthleteResultCount = null) }
         }
     }
 

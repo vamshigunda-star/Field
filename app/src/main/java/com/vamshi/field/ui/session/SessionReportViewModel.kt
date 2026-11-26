@@ -8,6 +8,7 @@ import com.vamshi.field.domain.repository.PeopleRepository
 import com.vamshi.field.domain.repository.StandardsRepository
 import com.vamshi.field.domain.repository.TestingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -85,7 +86,9 @@ class SessionReportViewModel @Inject constructor(
             SessionReportAction.OnOpenInsight -> _uiState.update { it.copy(isInsightSheetOpen = true) }
             SessionReportAction.OnDismissInsight -> _uiState.update { it.copy(isInsightSheetOpen = false) }
             is SessionReportAction.OnSwitchSession -> {
-                _uiState.update { it.copy(isSwitcherOpen = false, isLoading = true, data = null) }
+                // The selected test belongs to the old session; carried over, it leaves the
+                // leaderboard empty when the new session didn't run that test.
+                _uiState.update { it.copy(isSwitcherOpen = false, isLoading = true, data = null, selectedTestId = null) }
                 load(action.sessionId)
             }
             SessionReportAction.OnExportCsv -> exportResults()
@@ -112,8 +115,13 @@ class SessionReportViewModel @Inject constructor(
         }
     }
 
+    private var loadJob: Job? = null
+
     private fun load(sessionId: String) {
-        viewModelScope.launch {
+        // Without the cancel, the previous session's collector kept running after a switch and
+        // its next emission put the old session back on screen.
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             observeSessionReport(groupId, sessionId)
                 .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoading = false) } }
                 .collect { data ->

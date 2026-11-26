@@ -60,7 +60,9 @@ class ReportsRepositoryImpl @Inject constructor(
         }
 
         // 2. Recent Sessions (in-memory aggregation)
-        val recent = events.take(15).map { e ->
+        // Group events only: both consumers (Event Report tab and its auto-select) drop personal
+        // sessions, so slicing first let fifteen Individual Tests hide every group event.
+        val recent = events.filter { it.groupId != null }.take(15).map { e ->
             val results = allResults.filter { it.eventId == e.id }
             val testCount = results.map { it.testId }.distinct().size
             RecentSessionRow(
@@ -499,13 +501,9 @@ class ReportsRepositoryImpl @Inject constructor(
                 NormBandsForAge(
                     date = r.createdAt,
                     ageYears = ageYears,
-                    superiorMin = findScoreForPercentile(
-                        normBands,
-                        com.vamshi.field.domain.model.reports.PerformanceThresholds.SUPERIOR_MIN,
-                        test.isHigherBetter
-                    ),
-                    healthyMin = findScoreForPercentile(normBands, 35, test.isHigherBetter),
-                    needsMax = findScoreForPercentile(normBands, 34, test.isHigherBetter)
+                    superiorMin = bandEntryScore(normBands, Classification.SUPERIOR, test.isHigherBetter),
+                    healthyMin = bandEntryScore(normBands, Classification.HEALTHY, test.isHigherBetter),
+                    needsMax = bandExitScore(normBands, Classification.NEEDS_IMPROVEMENT, test.isHigherBetter)
                 )
             }
         } catch (_: Exception) {
@@ -533,16 +531,6 @@ class ReportsRepositoryImpl @Inject constructor(
     }
 
     // ───────────────────────── Helpers ─────────────────────────
-
-    private fun findScoreForPercentile(
-        normBands: List<NormReference>,
-        targetPercentile: Int,
-        isHigherBetter: Boolean
-    ): Double? {
-        if (normBands.isEmpty()) return null
-        val bestBand = normBands.minByOrNull { kotlin.math.abs(it.percentile - targetPercentile) } ?: return null
-        return if (isHigherBetter) bestBand.minScore else bestBand.maxScore
-    }
 
     private suspend fun expectedTestsForAthlete(athlete: Individual): List<FitnessTest> {
         val ageYears = athlete.currentAge.toDouble()
@@ -676,7 +664,13 @@ class ReportsRepositoryImpl @Inject constructor(
         test: FitnessTest
     ): List<LeaderboardRow> {
         val athletes = people.getIndividualsInGroup(groupId).first()
-        val results = testing.getEventResults(sessionId).first().filter { it.testId == test.id }
+        // One row per athlete: their latest result, the same rule observeSessionReport uses, so
+        // the Peers sheet and the Event Report never rank an athlete differently. Without this,
+        // every trial or re-entry showed as its own row.
+        val results = testing.getEventResults(sessionId).first()
+            .filter { it.testId == test.id }
+            .groupBy { it.individualId }
+            .map { (_, list) -> list.maxBy { it.createdAt } }
         val rows = results.map { r ->
             LeaderboardRow(
                 rank = 0,
@@ -710,4 +704,28 @@ class ReportsRepositoryImpl @Inject constructor(
             if (isHigherBetter) n else 1f - n
         }
     }
+}
+
+/**
+ * The weakest raw score still graded [zone] — where a coach's athlete crosses *into* that zone.
+ * Null when no band for this athlete's sex/age classifies to [zone].
+ *
+ * Bands are matched by classification, not by nearest percentile. Norm rows store a
+ * representative percentile per band (20 / 60 / 90), and the nearest-percentile lookup this
+ * replaced asked for p35 as "Healthy" — which is nearer 20 than 60, so the Healthy benchmark line
+ * was drawn at the Needs Improvement floor.
+ */
+internal fun bandEntryScore(bands: List<NormReference>, zone: Classification, isHigherBetter: Boolean): Double? {
+    val band = bands.firstOrNull { PerformanceThresholds.classify(it.percentile) == zone } ?: return null
+    val lo = minOf(band.minScore, band.maxScore)
+    val hi = maxOf(band.minScore, band.maxScore)
+    return if (isHigherBetter) lo else hi
+}
+
+/** The strongest raw score still graded [zone] — the edge an athlete leaves it by. */
+internal fun bandExitScore(bands: List<NormReference>, zone: Classification, isHigherBetter: Boolean): Double? {
+    val band = bands.firstOrNull { PerformanceThresholds.classify(it.percentile) == zone } ?: return null
+    val lo = minOf(band.minScore, band.maxScore)
+    val hi = maxOf(band.minScore, band.maxScore)
+    return if (isHigherBetter) hi else lo
 }

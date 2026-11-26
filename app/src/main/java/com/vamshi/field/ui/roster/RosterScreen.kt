@@ -56,6 +56,7 @@ fun RosterScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAthleteReport: (String) -> Unit, // no longer invoked for athlete clicks
     onNavigateToTest: (String, String, String?) -> Unit,
+    onStartQuickTest: (athleteId: String, testIds: List<String>) -> Unit,
     viewModel: RosterViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -122,7 +123,7 @@ fun RosterScreen(
                         contextSessionId = null,
                         onNavigateBack = { scope.launch { navigator.navigateBack() } },
                         onNavigateToTest = onNavigateToTest,
-                        onStartQuickTest = { _, _ -> /* no-op in detail pane or handle if needed */ }
+                        onStartQuickTest = onStartQuickTest
                     )
                 } else {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
