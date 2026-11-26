@@ -1,0 +1,1 @@
+Stopwatch keeps the time on screen after STOP. Rep counts have a keypad and accept zero. Beep and Yo-Yo levels capped at real limits. 1 km Run accepts times over 10 minutes. Fixed Healthy line on history charts, Event Report hiding group events, duplicate names in Peers, Quick Test from Roster, and restore from Settings.

@@ -6,9 +6,9 @@ authors:
   - family-names: Gunda
     given-names: Vamshi
     affiliation: Azim Premji University
-version: 1.0.2
+version: 1.0.3
 doi: 10.5281/zenodo.23208441
-date-released: 2026-10-16
+date-released: 2026-11-26
 license: MIT
 repository-code: "https://github.com/vamshigunda-star/Field"
 abstract: >-

@@ -199,7 +199,7 @@ The catalog source of truth is the CSVs in `app/src/main/assets/`: `test_categor
    `source = 'SEED'`**. It never touches events, results, athletes, groups, or USER tests/norms.
 
 **Whenever a CSV changes:** bump `CATALOG_VERSION` in both `SeedDataManager` and the script, and
-`KEY_SEEDED_VERSION` (currently `v32` / `data_seeded_version_v32`). **Whenever the schema changes:**
+`KEY_SEEDED_VERSION` (currently `v33` / `data_seeded_version_v33`). **Whenever the schema changes:**
 build once to export the JSON, copy its `identityHash` into `ROOM_IDENTITY_HASH` in the script, and
 regenerate — Room refuses an asset whose hash disagrees.
 
