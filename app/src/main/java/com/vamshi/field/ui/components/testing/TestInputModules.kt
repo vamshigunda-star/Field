@@ -103,50 +103,90 @@ private fun NumericInputModule(
     }
 }
 
+/**
+ * Rep / count entry. Coaches use it two ways: tapping +1 while the athlete performs, or typing
+ * the total afterwards. +1 alone made a 60-rep squat test cost 60 taps, so the keypad is the
+ * primary path and the ±1 row stays for live counting and fine correction.
+ */
 @Composable
 private fun IncrementalInputModule(
     value: String,
     onValueChange: (String) -> Unit,
     onSubmit: () -> Unit
 ) {
-    val count = value.toDoubleOrNull()?.toInt() ?: 0
+    // A saved score re-opens as "48.0" (scoreInputText); edit the whole-number form so typing a
+    // digit gives 485, not "48.05".
+    val digits = value.toDoubleOrNull()?.toInt()?.toString() ?: ""
+    val count = digits.toIntOrNull() ?: 0
+    LaunchedEffect(value) {
+        if (value != digits && value.toDoubleOrNull() != null) onValueChange(digits)
+    }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilledTonalIconButton(
+            FilledTonalButton(
                 onClick = { if (count > 0) onValueChange((count - 1).toString()) },
-                modifier = Modifier.size(72.dp),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                enabled = count > 0,
+                modifier = Modifier.weight(1f).height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer
                 )
             ) {
-                Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.Remove, contentDescription = null)
+                Spacer(Modifier.width(4.dp))
+                Text("1", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
-
-            Text(
-                text = count.toString(),
-                style = MaterialTheme.typography.displayLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            FilledIconButton(
-                onClick = { onValueChange((count + 1).toString()) },
-                modifier = Modifier.size(72.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
+            FilledTonalButton(
+                onClick = { if (count < MAX_COUNT) onValueChange((count + 1).toString()) },
+                modifier = Modifier.weight(2f).height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(4.dp))
+                Text("1", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
         }
 
-        val isValid = count > 0
+        val keys = listOf(
+            listOf("7", "8", "9"),
+            listOf("4", "5", "6"),
+            listOf("1", "2", "3"),
+            listOf("C", "0", "BACKSPACE")
+        )
+        keys.forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { key ->
+                    InputButton(
+                        text = key,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            when (key) {
+                                "BACKSPACE" -> onValueChange(digits.dropLast(1))
+                                "C" -> onValueChange("")
+                                else -> {
+                                    // "0" then "5" reads as 5, not 05.
+                                    val next = if (digits == "0") key else digits + key
+                                    if (next.length <= MAX_COUNT.toString().length) onValueChange(next)
+                                }
+                            }
+                        },
+                        isDelete = key == "BACKSPACE"
+                    )
+                }
+            }
+        }
+
+        // 0 is a real result: no pull-ups, or a clean Flamingo/BESS trial with zero falls/errors.
+        val isValid = digits.isNotEmpty()
         Button(
             onClick = onSubmit,
             modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -171,6 +211,9 @@ private fun IncrementalInputModule(
         }
     }
 }
+
+/** Four digits covers any rep or catch count a field test produces and keeps the display on one line. */
+private const val MAX_COUNT = 9999
 
 @Composable
 private fun StageInputModule(

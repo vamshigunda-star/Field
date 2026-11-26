@@ -2,7 +2,7 @@ package com.vamshi.field.domain.model.standards
 
 enum class InputParadigm {
     NUMERIC,      // Basic keypad entry (Distance, Weight)
-    INCREMENTAL,  // +/- Buttons (Pushups, Situps)
+    INCREMENTAL,  // Whole-number counts: keypad + ±1 (Pushups, Situps, catches)
     CHRONO,       // Stopwatch/Timing (Sprints)
     MULTI_STAGE,  // Level/Shuttle (Beep Test)
     SCALE         // 1-10 scores (RPE)
