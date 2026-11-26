@@ -80,7 +80,13 @@ class FakeTestingRepository : TestingRepository {
 
     override suspend fun saveResult(result: TestResult) {
         saveFailure?.let { throw it }
-        results.value = results.value + result
+        // Replace by id, like the real DAO's @Insert(onConflict = REPLACE).
+        val existing = results.value.indexOfFirst { it.id == result.id }
+        results.value = if (existing >= 0) {
+            results.value.toMutableList().also { it[existing] = result }
+        } else {
+            results.value + result
+        }
     }
 
     override fun getHistoryForTest(individualId: String, testId: String): Flow<List<TestResult>> =
@@ -122,7 +128,11 @@ class FakeTestingRepository : TestingRepository {
         it.eventId == eventId && it.individualId == individualId && it.testId == testId
     }
 
+    /** Every id passed to [deleteResultById], in order. */
+    val deletedIds = mutableListOf<String>()
+
     override suspend fun deleteResultById(resultId: String) {
+        deletedIds += resultId
         results.value = results.value.filterNot { it.id == resultId }
     }
 }

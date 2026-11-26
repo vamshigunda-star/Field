@@ -22,7 +22,9 @@ data class StopwatchUiState(
     val absentCount: Int = 0,
     val pendingReviewCount: Int = 0,
     val trialsPerAthlete: Int = 0,
-    val confirmationData: ConfirmationData? = null,
+    // The trial just captured. Stays on the timer panel until the next START, so the coach
+    // actually sees the time they stopped — it used to be reset to 0 in the same frame as STOP.
+    val lastTrial: LastTrial? = null,
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val sessionLoaded: Boolean = false,
@@ -39,7 +41,7 @@ data class StopwatchUiState(
     val hasPendingChanges: Boolean get() = pendingResults.isNotEmpty()
 }
 
-enum class StopwatchPhase { READY, RUNNING, CONFIRMING }
+enum class StopwatchPhase { READY, RUNNING }
 
 enum class AthleteStatus { WAITING, ACTIVE, CAPTURED, COMPLETED, ABSENT }
 
@@ -59,14 +61,33 @@ data class AthleteQueueItem(
 
 data class TrialDisplay(val timeMs: Long, val resultId: String?)
 
-data class ConfirmationData(
+data class LastTrial(
+    val athleteId: String,
     val athleteName: String,
+    val trialNumber: Int,
+    val totalTrials: Int,
     val timeMs: Long,
-    val trialNumber: Int
+    val resultId: String?,          // null when the time was rejected and nothing was saved
+    val outOfRangeMessage: String?  // non-null → not saved; START re-runs the same athlete
 )
+
+/** "4.87" or "1:02.35". Truncates to hundredths like a hand stopwatch. */
+internal fun formatStopwatchTime(ms: Long): String {
+    val minutes = (ms / 60000).toInt()
+    val seconds = ((ms % 60000) / 1000).toInt()
+    val centis = ((ms % 1000) / 10).toInt()
+    return if (minutes > 0) "%d:%02d.%02d".format(minutes, seconds, centis) else "%d.%02d".format(seconds, centis)
+}
+
+/** Seconds → ms, rounded. Truncating showed 4.02 s as 4.01 (4.02 * 1000 = 4019.999…). */
+internal fun Double.secondsToMs(): Long = kotlin.math.round(this * 1000).toLong()
 
 sealed interface StopwatchAction {
     data object OnStartStop : StopwatchAction
+    /** False start: stop the clock without saving anything. */
+    data object OnCancelRun : StopwatchAction
+    /** Delete the trial on the result card and select that athlete again. */
+    data object OnUndoLastTrial : StopwatchAction
     data object OnDismissError : StopwatchAction
     data object OnNavigateBack : StopwatchAction
     data object OnRequestBack : StopwatchAction

@@ -63,7 +63,9 @@ fun StopwatchScreen(
         viewModel.uiEvents.collect { event ->
             when (event) {
                 is StopwatchUiEvent.ScrollToAthlete -> {
-                    val index = uiState.allAthletes.indexOfFirst { it.athleteId == event.athleteId }
+                    // Position in the list as drawn — [header, completed…, header, upcoming…] —
+                    // not in roster order, which pointed at the wrong row once anyone had finished.
+                    val index = lazyIndexOf(uiState, event.athleteId)
                     if (index >= 0) {
                         val alreadyVisible = listState.layoutInfo.visibleItemsInfo.any { it.index == index }
                         if (!alreadyVisible) {
@@ -97,12 +99,8 @@ fun StopwatchScreen(
         }
     )
 
-    // Auto-navigate back when the session is marked complete in the ViewModel.
-    LaunchedEffect(uiState.isSessionComplete) {
-        if (uiState.isSessionComplete) {
-            onNavigateBack()
-        }
-    }
+    // No auto-exit on completion: it popped the screen on the final STOP, so the last time was never
+    // seen. The completion card's Finish Session button is the way out.
 
     if (uiState.showDiscardDialog) {
         DiscardPendingDialog(
@@ -116,6 +114,17 @@ fun StopwatchScreen(
     }
 }
 
+private fun lazyIndexOf(uiState: StopwatchUiState, athleteId: String): Int {
+    val completed = uiState.completedAthletes
+    val upcoming = uiState.upcomingAthletes
+    val completedHeader = if (completed.isNotEmpty()) 1 else 0
+    val inCompleted = completed.indexOfFirst { it.athleteId == athleteId }
+    if (inCompleted >= 0) return completedHeader + inCompleted
+    val inUpcoming = upcoming.indexOfFirst { it.athleteId == athleteId }
+    if (inUpcoming >= 0) return completedHeader + completed.size + 1 + inUpcoming
+    return -1
+}
+
 @Composable
 private fun DiscardPendingDialog(count: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
@@ -123,8 +132,8 @@ private fun DiscardPendingDialog(count: Int, onConfirm: () -> Unit, onDismiss: (
         title = { Text("Discard unsaved times?") },
         text = {
             Text(
-                "$count time${if (count == 1) "" else "s"} ${if (count == 1) "has" else "have"} not been submitted. " +
-                    "Leaving now will discard ${if (count == 1) "it" else "them"}."
+                "${countOf(count, "time")} not submitted. Leaving now will discard " +
+                    "${if (count == 1) "it" else "them"}."
             )
         },
         confirmButton = {
@@ -174,9 +183,15 @@ private fun StopwatchContent(
                 !uiState.sessionLoaded -> ErrorBox(uiState.errorMessage ?: "Something went wrong", onAction, PaddingValues(0.dp))
                 uiState.mode == TimingMode.INDIVIDUAL -> IndividualModeContent(uiState, allAthletes, listState, onAction, PaddingValues(0.dp))
                 uiState.isSessionComplete -> {
-                    // GROUP_START: navigate-back handled by LaunchedEffect in StopwatchScreen
+                    // GROUP_START, all heats run: summary instead of a silent exit.
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        CompletionSummaryCard(
+                            completedCount = uiState.totalCount / uiState.trialsPerAthlete.coerceAtLeast(1) - uiState.pendingReviewCount,
+                            absentCount = uiState.absentCount,
+                            pendingCount = uiState.pendingReviewCount,
+                            totalCount = uiState.totalCount / uiState.trialsPerAthlete.coerceAtLeast(1) + uiState.absentCount,
+                            onFinish = { onAction(StopwatchAction.OnNavigateBack) }
+                        )
                     }
                 }
                 uiState.mode == TimingMode.GROUP_START -> GroupStartModeContent(uiState, onAction, PaddingValues(0.dp))
@@ -185,7 +200,9 @@ private fun StopwatchContent(
     }
 
     if (uiState.editingAthleteId != null) {
-        val athlete = allAthletes.find { it.athleteId == uiState.editingAthleteId }
+        // Group Heats never builds allAthletes, so its edit dialog used to find nobody and not open.
+        val source = if (uiState.mode == TimingMode.GROUP_START) uiState.heatAthletes else allAthletes
+        val athlete = source.find { it.athleteId == uiState.editingAthleteId }
         if (athlete != null) {
             val initialTimeMs = if (uiState.editingResultId != null) {
                 athlete.displayTrials.find { it.resultId == uiState.editingResultId }?.timeMs ?: 0L
@@ -377,7 +394,7 @@ private fun SubmitBar(pendingCount: Int, isSubmitting: Boolean, onSubmit: () -> 
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "$pendingCount unsaved score${if (pendingCount == 1) "" else "s"}",
+                    "${countOf(pendingCount, "unsaved score")}",
                     color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
@@ -432,32 +449,44 @@ private fun IndividualModeContent(
 ) {
     val currentAthlete = allAthletes.find { it.athleteId == uiState.selectedAthleteId }
     val haptic = LocalHapticFeedback.current
+    val isRunning = uiState.stopwatchPhase == StopwatchPhase.RUNNING
+    val lastTrial = uiState.lastTrial.takeIf { !isRunning }
+    val selectedIsDone = currentAthlete?.status == AthleteStatus.COMPLETED
 
     Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-        // Sticky control panel: timer, active athlete, start/stop — compressed and centered.
+        // Sticky control panel: timer, result of the run just stopped, who is next, start/stop.
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             StopwatchDisplay(elapsedMs = uiState.elapsedMs)
 
-            Spacer(Modifier.height(4.dp))
+            if (lastTrial != null) {
+                Spacer(Modifier.height(4.dp))
+                LastTrialCard(trial = lastTrial, onUndo = { onAction(StopwatchAction.OnUndoLastTrial) })
+            }
+
+            Spacer(Modifier.height(6.dp))
 
             if (currentAthlete != null) {
+                // After a save the selection has already moved on, so name them as next.
+                val prefix = if (lastTrial != null) "Up next: " else ""
                 Text(
-                    text = currentAthlete.name,
+                    text = prefix + currentAthlete.name,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "Trial ${currentAthlete.currentTrial} of ${currentAthlete.totalTrials}",
+                    text = if (selectedIsDone) "All ${countOf(currentAthlete.totalTrials, "trial")} recorded · tap a time to edit"
+                    else "Trial ${currentAthlete.currentTrial} of ${currentAthlete.totalTrials}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center
                 )
-            } else {
+            } else if (!uiState.isSessionComplete) {
                 Text(
-                    text = "Select Athlete to Begin",
+                    text = "Select an athlete to begin",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -466,9 +495,8 @@ private fun IndividualModeContent(
 
             Spacer(Modifier.height(8.dp))
 
-            if (uiState.stopwatchPhase != StopwatchPhase.CONFIRMING) {
-                val isRunning = uiState.stopwatchPhase == StopwatchPhase.RUNNING
-                val isEnabled = currentAthlete != null || isRunning
+            if (isRunning || currentAthlete != null) {
+                val isEnabled = isRunning || (!selectedIsDone && !uiState.isSubmitting)
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -496,6 +524,11 @@ private fun IndividualModeContent(
                             color = Color.White
                         )
                     }
+                }
+            }
+            if (isRunning) {
+                TextButton(onClick = { onAction(StopwatchAction.OnCancelRun) }) {
+                    Text("Cancel run (false start), nothing saved")
                 }
             }
         }
@@ -557,6 +590,65 @@ private fun IndividualModeContent(
     }
 }
 
+/** The run just stopped: whose it was, the time, and whether it was saved. Undo deletes it and re-selects them. */
+@Composable
+private fun LastTrialCard(trial: LastTrial, onUndo: () -> Unit) {
+    val isDark = isSystemInDarkTheme()
+    val saved = trial.outOfRangeMessage == null
+    val bg = when {
+        !saved -> MaterialTheme.colorScheme.errorContainer
+        isDark -> PerformanceGreenDark
+        else -> PerformanceGreen.copy(alpha = 0.15f)
+    }
+    val fg = when {
+        !saved -> MaterialTheme.colorScheme.onErrorContainer
+        isDark -> PerformanceGreenTextDark
+        else -> PerformanceGreenText
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = bg,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, fg.copy(alpha = 0.5f))
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "${trial.athleteName} · Trial ${trial.trialNumber} of ${trial.totalTrials}",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = fg,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "${formatStopwatchTime(trial.timeMs)} s",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = fg
+                    )
+                    if (saved) {
+                        Spacer(Modifier.width(8.dp))
+                        Icon(Icons.Default.Check, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
+                        Text("Saved", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = fg)
+                    }
+                }
+                trial.outOfRangeMessage?.let {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = fg)
+                }
+            }
+            TextButton(onClick = onUndo) {
+                Text(if (saved) "Undo" else "Retry", color = fg, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
 @Composable
 private fun AthleteSectionHeader(icon: String, label: String, count: Int, tint: Color) {
     Row(
@@ -590,7 +682,7 @@ private fun CompletionSummaryCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "$completedCount of $totalCount Athletes Completed",
+                "$completedCount of ${countOf(totalCount, "athlete")} completed",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -763,7 +855,7 @@ private fun IndividualAthleteRow(
     val completedColor = if (isDark) PerformanceGreenTextDark else PerformanceGreenText
     val isAbsent = athlete.status == AthleteStatus.ABSENT
     val isCompleted = athlete.status == AthleteStatus.COMPLETED
-    val trials = athlete.displayTrials.take(athlete.totalTrials)
+    val trials = athlete.displayTrials
     val subtitle = when {
         isAbsent -> "Absent"
         !isCompleted && athlete.totalTrials > 1 -> "Trial ${athlete.currentTrial} of ${athlete.totalTrials}"
@@ -776,47 +868,67 @@ private fun IndividualAthleteRow(
         muted = isAbsent,
         subtitle = subtitle,
         onClick = { if (!isAbsent) onClick() },
-        // Edits the most recently captured trial; earlier trials of a multi-trial athlete are edited
-        // from the session/reports detail view, not from this compact row.
-        onLongClick = { if (isCompleted) trials.lastOrNull()?.resultId?.let(onEditTrial) },
+        onLongClick = {},
         trailing = {
-            when {
-                isCompleted && trials.isNotEmpty() -> Text(
-                    if (trials.size == 1) formatTimeDisplay(trials.first().timeMs)
-                    else trials.joinToString(" · ") { formatTimeDisplay(it.timeMs) },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    color = completedColor
-                )
-                athlete.status == AthleteStatus.CAPTURED && athlete.capturedTimeMs != null -> Text(
-                    formatTimeDisplay(athlete.capturedTimeMs),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                isSelected -> Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(6.dp)) {
-                    Text(
-                        "CURRENT",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+            // Times show from the first trial on. They used to appear only once every trial was done,
+            // so on a 3-trial test the coach saw no time for an athlete until their third run.
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                trials.forEach { trial ->
+                    TrialChip(
+                        timeMs = trial.timeMs,
+                        color = if (isCompleted) completedColor else MaterialTheme.colorScheme.onSurface,
+                        onClick = { trial.resultId?.let(onEditTrial) }
                     )
                 }
-                else -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Absent?", style = MaterialTheme.typography.labelSmall)
-                    Spacer(Modifier.width(4.dp))
-                    Switch(
-                        checked = isAbsent,
-                        onCheckedChange = { onToggleAbsent() },
-                        modifier = Modifier.height(20.dp).scale(0.65f)
+                when {
+                    athlete.status == AthleteStatus.CAPTURED && athlete.capturedTimeMs != null -> TrialChip(
+                        timeMs = athlete.capturedTimeMs,
+                        color = MaterialTheme.colorScheme.primary,
+                        onClick = { onEditTrial(null) }
                     )
+                    trials.isNotEmpty() -> Unit
+                    isSelected -> Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(6.dp)) {
+                        Text(
+                            "CURRENT",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                    else -> {
+                        Text("Absent?", style = MaterialTheme.typography.labelSmall)
+                        Spacer(Modifier.width(4.dp))
+                        Switch(
+                            checked = isAbsent,
+                            onCheckedChange = { onToggleAbsent() },
+                            modifier = Modifier.height(20.dp).scale(0.65f)
+                        )
+                    }
                 }
             }
         }
     )
+}
+
+/** One trial's time. Tapping opens the editor for that trial. */
+@Composable
+private fun TrialChip(timeMs: Long, color: Color, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        color = color.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.35f))
+    ) {
+        Text(
+            formatStopwatchTime(timeMs),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.titleSmall,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+    }
 }
 
 @Composable
@@ -847,7 +959,7 @@ private fun GroupAthleteRow(
         trailing = {
             when {
                 isDone -> Text(
-                    formatTimeDisplay(athlete.capturedTimeMs ?: 0L),
+                    formatStopwatchTime(athlete.capturedTimeMs ?: 0L),
                     style = MaterialTheme.typography.titleMedium,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
@@ -877,7 +989,7 @@ private fun EditTimeDialog(
     onSave: (Long) -> Unit,
     onClear: () -> Unit
 ) {
-    var inputString by remember { mutableStateOf(formatTimeDisplay(initialTimeMs).replace(Regex("[^0-9]"), "")) }
+    var inputString by remember { mutableStateOf(formatStopwatchTime(initialTimeMs).replace(Regex("[^0-9]"), "")) }
     val displayMs = inputString.toLongOrNull()?.let { it * 10 } ?: 0L
 
     AlertDialog(
@@ -886,7 +998,7 @@ private fun EditTimeDialog(
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = formatTimeDisplay(displayMs),
+                    text = formatStopwatchTime(displayMs),
                     style = MaterialTheme.typography.displayMedium,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
@@ -933,9 +1045,3 @@ private fun EditTimeDialog(
     )
 }
 
-private fun formatTimeDisplay(ms: Long): String {
-    val minutes = (ms / 60000).toInt()
-    val seconds = ((ms % 60000) / 1000).toInt()
-    val centis = ((ms % 1000) / 10).toInt()
-    return if (minutes > 0) "%d:%02d.%02d".format(minutes, seconds, centis) else "%d.%02d".format(seconds, centis)
-}

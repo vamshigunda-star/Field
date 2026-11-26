@@ -25,7 +25,12 @@ class RecordTestResultUseCase @Inject constructor(
         rawScore: Double,
         ageAtTime: Float,
         sex: BiologicalSex,
-        captureMethod: CaptureMethod = CaptureMethod.MANUAL_ENTRY
+        captureMethod: CaptureMethod = CaptureMethod.MANUAL_ENTRY,
+        // Pass an existing result's id and createdAt to correct it in place: saveResult replaces
+        // by primary key, so the trial keeps its position and the percentile is recomputed.
+        // Deleting and re-recording instead lost the trial when the new score failed validation.
+        resultId: String = UUID.randomUUID().toString(),
+        createdAt: Long = System.currentTimeMillis()
     ): TestResult {
         val test = standardsRepository.getTestById(testId)
         if (test == null) {
@@ -52,7 +57,7 @@ class RecordTestResultUseCase @Inject constructor(
         }
 
         val result = TestResult(
-            id = UUID.randomUUID().toString(),
+            id = resultId,
             eventId = eventId,
             individualId = individualId,
             testId = testId,
@@ -62,7 +67,7 @@ class RecordTestResultUseCase @Inject constructor(
             classification = percentileResult?.classification,
             normVariantUsed = percentileResult?.variant,
             captureMethod = captureMethod,
-            createdAt = System.currentTimeMillis()
+            createdAt = createdAt
         )
         try {
             repository.saveResult(result)
