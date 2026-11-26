@@ -87,6 +87,7 @@ import com.vamshi.field.ui.theme.PerformanceGreenText
 import com.vamshi.field.ui.theme.PerformanceGreenTextDark
 import com.vamshi.field.domain.model.people.BiologicalSex
 import com.vamshi.field.ui.components.AppTopBar
+import com.vamshi.field.ui.components.MedicalAlertStrip
 import com.vamshi.field.ui.components.testing.CategoryAccordionHeader
 import com.vamshi.field.ui.components.testing.TestInputSwitcher
 import com.vamshi.field.ui.components.testing.TestSelectionCard
@@ -641,6 +642,14 @@ private fun EnterScoresStep(
                     )
                 }
             }
+        }
+
+        uiState.selectedAthlete?.let { athlete ->
+            MedicalAlertStrip(
+                medicalAlert = athlete.medicalAlert,
+                isRestricted = athlete.isRestricted,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)
+            )
         }
 
         LazyColumn(

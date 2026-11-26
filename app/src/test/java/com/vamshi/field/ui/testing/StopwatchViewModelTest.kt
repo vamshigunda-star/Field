@@ -66,6 +66,15 @@ class StopwatchViewModelTest {
         interpretationStrategy = InterpretationStrategy.NONE
     )
 
+    // A natively group-start test, so its own heat size (8) must be kept.
+    private val sprint = shuttle.copy(
+        id = SPRINT_ID,
+        name = "Group Sprint",
+        timingMode = TimingMode.GROUP_START,
+        athletesPerHeat = 8,
+        trialsPerAthlete = 1
+    )
+
     private val asha = athlete("ath_a", "Asha")
     private val bilal = athlete("ath_b", "Bilal")
 
@@ -75,10 +84,10 @@ class StopwatchViewModelTest {
         testingRepository = FakeTestingRepository()
         peopleRepository = FakePeopleRepository()
         standardsRepository = FakeStandardsRepository()
-        standardsRepository.givenTests(shuttle)
+        standardsRepository.givenTests(shuttle, sprint)
         testingRepository.givenEvent(
             TestingEvent(id = EVENT_ID, groupId = GROUP_ID, name = "Baseline", date = 1_700_000_000_000L),
-            listOf(shuttle)
+            listOf(shuttle, sprint)
         )
     }
 
@@ -233,9 +242,124 @@ class StopwatchViewModelTest {
         assertEquals(4020L, vm.uiState.value.allAthletes.single().displayTrials.single().timeMs)
     }
 
+    // --- Group Heats (specs/2026-11-26-group-heats-drops-athlete.md) ---
+
+    @Test
+    fun `group heats keeps both athletes of a two-athlete group in one heat`() = runTest(dispatcher) {
+        val vm = viewModel(asha, bilal)
+
+        vm.onAction(StopwatchAction.OnToggleTimingMode(TimingMode.GROUP_START))
+        runCurrent()
+
+        val state = vm.uiState.value
+        assertEquals(listOf(asha.id, bilal.id), state.heatAthletes.map { it.athleteId })
+        assertEquals(1, state.totalHeats)
+        assertEquals("header must count the whole group", 2, state.athleteCount)
+    }
+
+    @Test
+    fun `group heats runs every trial round before completing`() = runTest(dispatcher) {
+        val vm = viewModel(asha, bilal)
+        vm.onAction(StopwatchAction.OnToggleTimingMode(TimingMode.GROUP_START))
+        runCurrent()
+
+        repeat(3) { round ->
+            assertTrue("completed before round ${round + 1}", !vm.uiState.value.isSessionComplete)
+            heat(vm, 4500, asha, bilal)
+        }
+
+        assertEquals(6, testingRepository.storedResults().size)
+        assertTrue(vm.uiState.value.isSessionComplete)
+    }
+
+    @Test
+    fun `an absent athlete does not hold the group heats session open`() = runTest(dispatcher) {
+        val vm = viewModel(asha, bilal)
+        vm.onAction(StopwatchAction.OnToggleTimingMode(TimingMode.GROUP_START))
+        vm.onAction(StopwatchAction.OnToggleAbsent(bilal.id))
+        runCurrent()
+
+        repeat(3) { heat(vm, 4500, asha) }
+
+        assertEquals(3, testingRepository.storedResults().size)
+        assertTrue(vm.uiState.value.isSessionComplete)
+    }
+
+    @Test
+    fun `a group-start test keeps its own heat size`() = runTest(dispatcher) {
+        val roster = (1..10).map { athlete("ath_$it", "Runner$it") }
+        val vm = viewModel(*roster.toTypedArray(), testId = SPRINT_ID)
+
+        val state = vm.uiState.value
+        assertEquals(2, state.totalHeats)
+        assertEquals(8, state.heatAthletes.size)
+    }
+
+    @Test
+    fun `editing a completed athlete in group heats replaces the trial, not adds one`() = runTest(dispatcher) {
+        val roster = (1..2).map { athlete("ath_$it", "Runner$it") }
+        val vm = viewModel(*roster.toTypedArray(), testId = SPRINT_ID)
+        heat(vm, 6000, *roster.toTypedArray())
+        val saved = testingRepository.storedResults().first { it.individualId == roster[0].id }
+
+        // What GroupAthleteRow now sends for a COMPLETED athlete: the saved trial's id.
+        vm.onAction(StopwatchAction.OnOpenEditDialog(roster[0].id, saved.id))
+        vm.onAction(StopwatchAction.OnSaveEditedTime(roster[0].id, newTimeMs = 6500, resultId = saved.id))
+        runCurrent()
+
+        assertEquals(2, testingRepository.storedResults().size)
+        assertEquals(6.5, testingRepository.storedResults().first { it.id == saved.id }.rawScore, 1e-9)
+        assertTrue("an edit must not leave an unsaved extra score", vm.uiState.value.pendingResults.isEmpty())
+    }
+
+    @Test
+    fun `cancelling a group heat discards finish taps already made`() = runTest(dispatcher) {
+        val vm = viewModel(asha, bilal)
+        vm.onAction(StopwatchAction.OnToggleTimingMode(TimingMode.GROUP_START))
+        vm.onAction(StopwatchAction.OnStartStop)
+        runCurrent()
+        nowNanos += 5_000L * 1_000_000
+        vm.onAction(StopwatchAction.OnCaptureTime(asha.id))
+        runCurrent()
+
+        vm.onAction(StopwatchAction.OnCancelRun)
+        runCurrent()
+
+        assertTrue(vm.uiState.value.pendingResults.isEmpty())
+        assertTrue(testingRepository.storedResults().isEmpty())
+    }
+
+    @Test
+    fun `an unsaved time edited out of range is rejected`() = runTest(dispatcher) {
+        val vm = viewModel(asha, bilal)
+        vm.onAction(StopwatchAction.OnToggleTimingMode(TimingMode.GROUP_START))
+        vm.onAction(StopwatchAction.OnStartStop)
+        runCurrent()
+        nowNanos += 5_000L * 1_000_000
+        vm.onAction(StopwatchAction.OnCaptureTime(asha.id))
+        runCurrent()
+
+        vm.onAction(StopwatchAction.OnSaveEditedTime(asha.id, newTimeMs = 2_000, resultId = null))
+        runCurrent()
+
+        assertEquals(5.0, vm.uiState.value.pendingResults.getValue(asha.id), 1e-9)
+        // Stop the ticker: runTest drains the scheduler at the end and would spin on it forever.
+        vm.onAction(StopwatchAction.OnCancelRun)
+        runCurrent()
+    }
+
     // --- Helpers ---
 
-    private fun TestScope.viewModel(vararg roster: Individual): StopwatchViewModel {
+    /** START a heat, let [ms] pass, tap each of [finishers] to finish (auto-submits when all are in). */
+    private fun TestScope.heat(vm: StopwatchViewModel, ms: Long, vararg finishers: Individual) {
+        vm.onAction(StopwatchAction.OnStartStop)
+        runCurrent()
+        nowNanos += ms * 1_000_000
+        finishers.forEach { vm.onAction(StopwatchAction.OnCaptureTime(it.id)) }
+        runCurrent()
+    }
+
+    private fun TestScope.viewModel(vararg roster: Individual, testId: String = TEST_ID): StopwatchViewModel {
         val athletes = roster.toList()
         peopleRepository.givenGroupWithAthletes(
             Group(id = GROUP_ID, name = "Squad", location = "Field", cycle = "2026", category = GroupCategory.TEAM),
@@ -246,7 +370,7 @@ class StopwatchViewModelTest {
             savedStateHandle = SavedStateHandle(
                 mapOf(
                     "eventId" to EVENT_ID,
-                    "fitnessTestId" to TEST_ID,
+                    "fitnessTestId" to testId,
                     "groupId" to GROUP_ID,
                     "athleteId" to athletes.first().id
                 )
@@ -286,5 +410,6 @@ class StopwatchViewModelTest {
         const val EVENT_ID = "evt_shuttle"
         const val GROUP_ID = "grp_squad"
         const val TEST_ID = "test_5_10_5_shuttle_run"
+        const val SPRINT_ID = "test_group_sprint"
     }
 }

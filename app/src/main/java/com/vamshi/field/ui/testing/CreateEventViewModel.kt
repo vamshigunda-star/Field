@@ -38,7 +38,34 @@ data class CreateEventUiState(
     val isLoading: Boolean = true,
     val isCreating: Boolean = false,
     val errorMessage: String? = null,
-    val eventCreated: Pair<String, String>? = null  // eventId to groupId, consumed by screen for nav
+    val eventCreated: Pair<String, String>? = null,  // eventId to groupId, consumed by screen for nav
+    /** Name of the selected group, resolved here so the summary bar never searches during composition. */
+    val selectedGroupName: String? = null,
+    /** First thing stopping Start; drives the hint line above the button. Null = ready. */
+    val missingRequirement: MissingRequirement? = MissingRequirement.GROUP,
+    /** One-shot: the screen scrolls to and focuses this field, then sends JumpConsumed. */
+    val jumpTo: MissingRequirement? = null
+)
+
+/** What still stops Start, in the order the fields appear on screen. */
+enum class MissingRequirement(val hint: String) {
+    GROUP("Select an athlete group"),
+    EVENT_NAME("Enter an event name"),
+    TESTS("Select at least one test")
+}
+
+internal fun missingRequirement(groupId: String?, eventName: String, testIds: Set<String>): MissingRequirement? =
+    when {
+        groupId == null -> MissingRequirement.GROUP
+        eventName.isBlank() -> MissingRequirement.EVENT_NAME
+        testIds.isEmpty() -> MissingRequirement.TESTS
+        else -> null
+    }
+
+/** Re-derives everything computed from the coach's choices. Applied on every update that changes them. */
+internal fun CreateEventUiState.withDerived(): CreateEventUiState = copy(
+    missingRequirement = missingRequirement(selectedGroupId, eventName, selectedTestIds),
+    selectedGroupName = groups.firstOrNull { it.id == selectedGroupId }?.name
 )
 
 sealed interface CreateEventAction {
@@ -57,6 +84,9 @@ sealed interface CreateEventAction {
     data object ClearError : CreateEventAction
     data object NavigationConsumed : CreateEventAction
     data object NavigateBack : CreateEventAction
+    /** Tapping the collapsed summary bar: close the open category so the full fields return. */
+    data object CollapseCategories : CreateEventAction
+    data object JumpConsumed : CreateEventAction
 }
 
 @HiltViewModel
@@ -80,7 +110,7 @@ class CreateEventViewModel @Inject constructor(
             combine(peopleRepository.getAllGroups(), peopleRepository.getGroupAthleteCounts()) { groups, counts ->
                 groups to counts
             }.collect { (groups, counts) ->
-                _uiState.update { it.copy(groups = groups, groupAthleteCounts = counts, isLoading = false) }
+                _uiState.update { it.copy(groups = groups, groupAthleteCounts = counts, isLoading = false).withDerived() }
             }
         }
         viewModelScope.launch {
@@ -117,7 +147,7 @@ class CreateEventViewModel @Inject constructor(
                         if (toSelect.isNotEmpty()) {
                             recommendationApplied = true
                             android.util.Log.d("CreateEventViewModel", "Successfully auto-selected ${toSelect.size} recommended tests for category $recommendationId")
-                            _uiState.update { it.copy(selectedTestIds = toSelect) }
+                            _uiState.update { it.copy(selectedTestIds = toSelect).withDerived() }
                         }
                     }
                 }
@@ -127,8 +157,8 @@ class CreateEventViewModel @Inject constructor(
 
     fun onAction(action: CreateEventAction) {
         when (action) {
-            is CreateEventAction.SetEventName -> _uiState.update { it.copy(eventName = action.name) }
-            is CreateEventAction.SelectGroup -> _uiState.update { it.copy(selectedGroupId = action.groupId) }
+            is CreateEventAction.SetEventName -> _uiState.update { it.copy(eventName = action.name).withDerived() }
+            is CreateEventAction.SelectGroup -> _uiState.update { it.copy(selectedGroupId = action.groupId).withDerived() }
             is CreateEventAction.ToggleCategoryExpanded -> {
                 _uiState.update {
                     it.copy(expandedCategoryId = if (it.expandedCategoryId == action.categoryId) null else action.categoryId)
@@ -138,11 +168,12 @@ class CreateEventViewModel @Inject constructor(
                 val current = _uiState.value.selectedTestIds
                 _uiState.update {
                     it.copy(selectedTestIds = if (action.testId in current) current - action.testId else current + action.testId)
+                        .withDerived()
                 }
             }
             is CreateEventAction.ToggleCategorySelection -> _uiState.update { state ->
                 val categoryTestIds = state.testsByCategory[action.categoryId].orEmpty().map { it.id }.toSet()
-                state.copy(selectedTestIds = toggleCategory(state.selectedTestIds, categoryTestIds))
+                state.copy(selectedTestIds = toggleCategory(state.selectedTestIds, categoryTestIds)).withDerived()
             }
             is CreateEventAction.ApplyPreset -> applyPreset(action.presetId)
             is CreateEventAction.DeletePreset -> deletePreset(action.presetId)
@@ -156,6 +187,8 @@ class CreateEventViewModel @Inject constructor(
             CreateEventAction.ClearError -> _uiState.update { it.copy(errorMessage = null) }
             CreateEventAction.NavigationConsumed -> _uiState.update { it.copy(eventCreated = null) }
             CreateEventAction.NavigateBack -> Unit
+            CreateEventAction.CollapseCategories -> _uiState.update { it.copy(expandedCategoryId = null) }
+            CreateEventAction.JumpConsumed -> _uiState.update { it.copy(jumpTo = null) }
         }
     }
 
@@ -171,7 +204,7 @@ class CreateEventViewModel @Inject constructor(
         val preset = _uiState.value.presets.find { it.id == presetId } ?: return
         val currentlyApplied = _uiState.value.selectedTestIds == preset.testIds.toSet()
         _uiState.update {
-            it.copy(selectedTestIds = if (currentlyApplied) emptySet() else preset.testIds.toSet())
+            it.copy(selectedTestIds = if (currentlyApplied) emptySet() else preset.testIds.toSet()).withDerived()
         }
     }
 
@@ -214,18 +247,19 @@ class CreateEventViewModel @Inject constructor(
 
     private fun createEvent() {
         val state = _uiState.value
-        val groupId = state.selectedGroupId ?: run {
-            _uiState.update { it.copy(errorMessage = "Please select a group") }
+        // Something missing: send the coach to it instead of a snackbar. The hint line above Start
+        // already says what; this takes them there. The group and name live above the categories,
+        // so an open category is closed to bring them back.
+        missingRequirement(state.selectedGroupId, state.eventName, state.selectedTestIds)?.let { missing ->
+            _uiState.update {
+                it.copy(
+                    jumpTo = missing,
+                    expandedCategoryId = if (missing == MissingRequirement.TESTS) it.expandedCategoryId else null
+                )
+            }
             return
         }
-        if (state.eventName.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Please enter an event name") }
-            return
-        }
-        if (state.selectedTestIds.isEmpty()) {
-            _uiState.update { it.copy(errorMessage = "Please select at least one test") }
-            return
-        }
+        val groupId = state.selectedGroupId ?: return
 
         _uiState.update { it.copy(isCreating = true) }
         viewModelScope.launch {

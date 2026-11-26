@@ -7,6 +7,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -82,9 +92,7 @@ fun CreateEventContent(
             )
         },
         bottomBar = {
-            val isReady = uiState.eventName.isNotBlank() &&
-                    uiState.selectedGroupId != null &&
-                    uiState.selectedTestIds.isNotEmpty()
+            val isReady = uiState.missingRequirement == null
 
             val gradientBrush = if (isReady && !uiState.isCreating) {
                 Brush.horizontalGradient(
@@ -104,12 +112,22 @@ fun CreateEventContent(
                 shadowElevation = 0.dp,
                 color = MaterialTheme.colorScheme.surface
             ) {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
                         .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
                 ) {
+                    // What still stops Start. The button used to sit greyed out with no reason, and the
+                    // empty field was often scrolled far off screen above the categories.
+                    uiState.missingRequirement?.let { missing ->
+                        Text(
+                            text = missing.hint,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+                    }
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -127,7 +145,9 @@ fun CreateEventContent(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(gradientBrush),
-                            enabled = isReady && !uiState.isCreating,
+                            // Tappable even when something is missing: the ViewModel then sends the
+                            // coach to that field. It still looks grey until everything is filled.
+                            enabled = !uiState.isCreating,
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color.Transparent,
@@ -292,16 +312,66 @@ private fun CreateEventBody(
     padding: PaddingValues
 ) {
     var groupDropdownExpanded by remember { mutableStateOf(false) }
-    val selectedGroup = uiState.groups.find { it.id == uiState.selectedGroupId }
+    val listState = rememberLazyListState()
+    val eventNameFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val detailsCollapsed = uiState.expandedCategoryId != null
+
+    // Item positions as laid out: [event details (only while no category is open)],
+    // [Select Tests header], categories. Computed in effects, never during composition.
+    fun headerIndex() = if (detailsCollapsed) 0 else 1
+    fun categoryIndex(id: String) = headerIndex() + 1 + uiState.categories.indexOfFirst { it.id == id }
+
+    // An opened category scrolls up under the summary bar, so its tests start on screen even for a
+    // category near the bottom. Closing every category returns to the top, where the fields are.
+    LaunchedEffect(uiState.expandedCategoryId) {
+        val id = uiState.expandedCategoryId
+        if (id == null) {
+            listState.animateScrollToItem(0)
+        } else if (uiState.categories.any { it.id == id }) {
+            listState.animateScrollToItem(categoryIndex(id))
+        }
+    }
+
+    // Start tapped with something missing: go to it.
+    LaunchedEffect(uiState.jumpTo) {
+        when (uiState.jumpTo) {
+            MissingRequirement.GROUP -> {
+                listState.animateScrollToItem(0)
+                groupDropdownExpanded = true
+            }
+            MissingRequirement.EVENT_NAME -> {
+                listState.animateScrollToItem(0)
+                runCatching { eventNameFocus.requestFocus() }
+                keyboard?.show()
+            }
+            MissingRequirement.TESTS -> listState.animateScrollToItem(headerIndex())
+            null -> return@LaunchedEffect
+        }
+        onAction(CreateEventAction.JumpConsumed)
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
+        if (detailsCollapsed) {
+            CompactEventDetailsBar(
+                groupName = uiState.selectedGroupName,
+                eventName = uiState.eventName,
+                onClick = { onAction(CreateEventAction.CollapseCategories) }
+            )
+        }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .weight(1f)
             .padding(horizontal = 16.dp),
-        contentPadding = padding,
+        contentPadding = PaddingValues(bottom = padding.calculateBottomPadding()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
+        // The full fields only while every category is closed; an open category shows the pinned
+        // summary bar instead, so the coach never scrolls back up past the tests to fix them.
+        if (!detailsCollapsed) item(key = "event_details") {
             Spacer(modifier = Modifier.height(4.dp))
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -312,9 +382,9 @@ private fun CreateEventBody(
                     onExpandedChange = { groupDropdownExpanded = !groupDropdownExpanded },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    val groupText = selectedGroup?.let {
-                        val count = uiState.groupAthleteCounts[it.id] ?: 0
-                        "${it.name} • ${countOf(count, "athlete")}"
+                    val groupText = uiState.selectedGroupName?.let { name ->
+                        val count = uiState.groupAthleteCounts[uiState.selectedGroupId] ?: 0
+                        "$name • ${countOf(count, "athlete")}"
                     } ?: ""
                     
                     OutlinedTextField(
@@ -405,7 +475,7 @@ private fun CreateEventBody(
                     },
                     textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     placeholder = { Text("e.g. Spring Fitness Assessment") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(eventNameFocus),
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -420,7 +490,7 @@ private fun CreateEventBody(
         }
 
         if (uiState.categories.isNotEmpty()) {
-            item {
+            item(key = "select_tests_header") {
                 Spacer(modifier = Modifier.height(2.dp))
                 Surface(
                     shape = RoundedCornerShape(16.dp),
@@ -615,6 +685,63 @@ private fun CreateEventBody(
         }
 
         item { Spacer(modifier = Modifier.height(4.dp)) }
+    }
+    }
+}
+
+/**
+ * The athlete group and event name, collapsed to one pinned line while a category is open. A blank
+ * value reads in the error colour so a missing name is obvious mid-selection. Tapping it closes the
+ * category and brings the full fields back.
+ */
+@Composable
+private fun CompactEventDetailsBar(groupName: String?, eventName: String, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .semantics { contentDescription = "Edit athlete group and event name" }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Groups,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(8.dp))
+            val missing = MaterialTheme.colorScheme.error
+            val filled = MaterialTheme.colorScheme.onSurface
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = if (groupName == null) missing else filled)) {
+                        append(groupName ?: "No group")
+                    }
+                    append("  ·  ")
+                    withStyle(SpanStyle(color = if (eventName.isBlank()) missing else filled)) {
+                        append(eventName.ifBlank { "No event name" })
+                    }
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                Icons.Default.Edit,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

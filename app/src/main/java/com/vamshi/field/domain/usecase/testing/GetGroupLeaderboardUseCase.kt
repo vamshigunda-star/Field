@@ -60,6 +60,12 @@ class GetGroupLeaderboardUseCase @Inject constructor(
                 .getEventResults(eventId)
                 .first()
                 .filter { it.testId == testId && it.individualId in groupAthleteIds }
+                // One entry per athlete: their best trial. Every trial used to become a row, and the
+                // screen keys rows by athlete id, so a multi-trial test crashed the leaderboard.
+                .groupBy { it.individualId }
+                .map { (_, trials) ->
+                    if (test.isHigherBetter) trials.maxBy { it.rawScore } else trials.minBy { it.rawScore }
+                }
         } else {
             // "All Time" mode: Get latest result per athlete for this test
             val allLatestResults = mutableListOf<TestResult>()
@@ -80,7 +86,8 @@ class GetGroupLeaderboardUseCase @Inject constructor(
 
             // Find the result immediately before this event's result
             val previousResult = history
-                .filter { it.createdAt < result.createdAt }
+                // Earlier events only: another trial from this same event isn't "last time".
+                .filter { it.eventId != result.eventId && it.createdAt < result.createdAt }
                 .maxByOrNull { it.createdAt }
 
             val isImproved = previousResult?.let {

@@ -32,7 +32,10 @@ class StopwatchSessionUseCase @Inject constructor(
             athlete.id to testingRepository.getTrialCountForAthlete(eventId, athlete.id, fitnessTestId)
         }
 
-        val perHeat = test.athletesPerHeat ?: 6
+        // athletesPerHeat = 1 in the catalog means "timed one at a time" (5-10-5, sprints). As a Group
+        // Heats size it split a 2-athlete group into two heats of one, so the second athlete looked
+        // gone. Only a real multi-athlete heat size is honoured; anything else uses the default.
+        val perHeat = test.athletesPerHeat?.takeIf { it > 1 } ?: DEFAULT_HEAT_SIZE
         val heats = if (athletes.isNotEmpty()) athletes.chunked(perHeat) else emptyList()
 
         return StopwatchSession(
@@ -42,5 +45,9 @@ class StopwatchSessionUseCase @Inject constructor(
             trialsPerAthlete = test.trialsPerAthlete,
             trialCounts = trialCounts
         )
+    }
+
+    private companion object {
+        const val DEFAULT_HEAT_SIZE = 6
     }
 }

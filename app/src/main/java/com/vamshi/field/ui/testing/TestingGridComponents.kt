@@ -314,10 +314,15 @@ fun LiveEntryPhase(
                     isFailed = isFailed,
                     onCellClick = { testToLog ->
                         Log.d("TestingGridComponents", "Cell clicked for athlete ${athlete.id}, test ${testToLog.id}")
-                        if (savedResult != null) {
+                        val trialsLeft = testToLog.canUseStopwatch &&
+                            (gridData.trialCount[athlete.id to testToLog.id] ?: 0) < testToLog.trialsPerAthlete
+                        if (savedResult != null && !trialsLeft) {
                             // Tapping a saved result directly opens the score editor
                             onAction(TestingGridAction.OnStartEditing(athlete, testToLog))
                         } else {
+                            // A timed test with trials still to run goes back to the stopwatch; after
+                            // trial 1 it used to open the keypad, so trials 2 and 3 couldn't be timed
+                            // from this row. Long-press still edits the saved score.
                             handleCellAction(testToLog, athlete, eventId, groupId, uiState, onAction)
                         }
                     },

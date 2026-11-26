@@ -19,6 +19,7 @@ data class StopwatchUiState(
     val totalHeats: Int = 1,
     val completedCount: Int = 0,
     val totalCount: Int = 0,
+    val athleteCount: Int = 0, // whole group, both modes — the header counted only the current heat
     val absentCount: Int = 0,
     val pendingReviewCount: Int = 0,
     val trialsPerAthlete: Int = 0,
@@ -52,6 +53,9 @@ data class AthleteQueueItem(
     val totalTrials: Int,
     val status: AthleteStatus = AthleteStatus.WAITING,
     val capturedTimeMs: Long? = null,
+    // Safety: shown on the timer panel and heat rows before the athlete runs.
+    val medicalAlert: String? = null,
+    val isRestricted: Boolean = false,
     // Union of DB-confirmed trials (historicalResults) and trials recorded this session, deduped by
     // resultId and sorted by capture order. Session-recorded entries always carry a real resultId
     // (RecordTestResultUseCase returns the persisted TestResult directly), so display never depends on
@@ -78,6 +82,19 @@ internal fun formatStopwatchTime(ms: Long): String {
     val centis = ((ms % 1000) / 10).toInt()
     return if (minutes > 0) "%d:%02d.%02d".format(minutes, seconds, centis) else "%d.%02d".format(seconds, centis)
 }
+
+/**
+ * The edit keypad types digits right-to-left as centiseconds (like a cash register), so its text is
+ * the time in centiseconds. It used to be seeded from the *formatted* time with punctuation
+ * stripped — "1:02.35" became "10235", read back as 102.35 s — so every edit of a time over a
+ * minute added 40 s per minute, even when the coach changed nothing.
+ */
+internal fun editSeed(ms: Long): String = if (ms <= 0L) "" else (ms / 10).toString()
+
+internal fun parseEditCentis(text: String): Long = (text.toLongOrNull() ?: 0L) * 10
+
+/** Seven digits: up to 9999.99 s, which covers the 1.5-mile run's 2400 s ceiling. */
+internal const val EDIT_MAX_DIGITS = 7
 
 /** Seconds → ms, rounded. Truncating showed 4.02 s as 4.01 (4.02 * 1000 = 4019.999…). */
 internal fun Double.secondsToMs(): Long = kotlin.math.round(this * 1000).toLong()

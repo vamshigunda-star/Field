@@ -24,6 +24,10 @@ data class TestingGridData(
             if (key !in this) put(key, result)
         }
     }
+
+    /** Trials recorded per (athlete id, test id), built once so the grid never counts during composition. */
+    val trialCount: Map<Pair<String, String>, Int> =
+        results.groupingBy { it.individualId to it.testId }.eachCount()
 }
 
 class GetTestingGridDataUseCase @Inject constructor(

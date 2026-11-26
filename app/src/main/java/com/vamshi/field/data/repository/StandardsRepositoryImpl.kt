@@ -58,10 +58,11 @@ class StandardsRepositoryImpl @Inject constructor(
             if (direct.isNotEmpty()) {
                 direct
             } else {
-                dao.getNormBandsClosestToAge(testId, sex.name, years).map { it.toDomain() }
+                nearestNormBracket(dao.getNormBandsClosestToAge(testId, sex.name, years).map { it.toDomain() }, years)
             }
         }
     }
+
 
     /**
      * Norm brackets are whole years (5–12, 13–19, …) and adjacent rows leave a gap between
@@ -126,4 +127,29 @@ class StandardsRepositoryImpl @Inject constructor(
         normBandsCache.clear()
         dao.deleteUserTest(testId)
     }
+}
+
+/**
+ * Fallback when no bracket contains the athlete's age.
+ *
+ * The closest-age query returns every bracket for the test, and the caller then picked the first
+ * band containing the score from any of them. Worse, an athlete younger than the test's youngest
+ * bracket was graded against adult norms: a 10-year-old's push-ups against the 20–29 bands, where
+ * the documented behaviour (and the only defensible one) is no norm at all.
+ *
+ * Now: younger than every bracket → no bands (grey). Otherwise only the single nearest bracket —
+ * the oldest one for an athlete past the top, or the neighbour across a gap in the data.
+ */
+internal fun nearestNormBracket(rows: List<NormReference>, years: Double): List<NormReference> {
+    if (rows.isEmpty()) return rows
+    if (years < rows.minOf { it.ageMin }) return emptyList()
+    val brackets = rows.groupBy { it.ageMin to it.ageMax }
+    val nearest = brackets.keys.minBy { (min, max) ->
+        when {
+            years < min -> min - years
+            years > max -> years - max
+            else -> 0.0
+        }
+    }
+    return brackets.getValue(nearest)
 }

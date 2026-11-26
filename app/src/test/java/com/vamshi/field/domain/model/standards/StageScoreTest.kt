@@ -50,6 +50,19 @@ class StageScoreTest {
     }
 
     @Test
+    fun `stopwatch times keep hundredths`() {
+        // "%.1f" showed a 4.87 s sprint as 4.9 outside the stopwatch screen.
+        val previous = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(java.util.Locale.US)
+        try {
+            assertEquals("4.87", formatScore(4.87, InputParadigm.CHRONO))
+            assertEquals("12.00", formatScore(12.0, InputParadigm.CHRONO))
+        } finally {
+            java.util.Locale.setDefault(previous)
+        }
+    }
+
+    @Test
     fun `picker caps match each test's validMax in tests csv`() {
         // A Yo-Yo cap above 8 would let 15.20 encode past 16.08 and lift the athlete a band.
         val beep = StageLimits.forTest("test_beep")!!

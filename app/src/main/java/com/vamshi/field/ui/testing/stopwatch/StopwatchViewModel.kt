@@ -75,6 +75,8 @@ class StopwatchViewModel @Inject constructor(
     // For GROUP_START mode
     private var heats: List<List<Individual>> = emptyList()
     private var currentHeatIndex: Int = 0
+    // Set once no heat has a present athlete with trials left (or the coach left the rest as pending).
+    private var heatsDone = false
     private var totalTrialsPerAthlete: Int = 0
 
     init {
@@ -186,12 +188,19 @@ class StopwatchViewModel @Inject constructor(
         recomputeSummaryCounts()
     }
 
-    private fun findFirstIncompleteHeatIndex(): Int {
-        for (i in heats.indices) {
-            val hasIncomplete = heats[i].any { (completionState[it.id] ?: 0) < totalTrialsPerAthlete }
+    private fun findFirstIncompleteHeatIndex(): Int = nextIncompleteHeatIndex(from = 0) ?: 0
+
+    /** First heat at or after [from], wrapping round, with a present athlete who still has trials left. */
+    private fun nextIncompleteHeatIndex(from: Int): Int? {
+        if (heats.isEmpty()) return null
+        for (offset in heats.indices) {
+            val i = (from + offset) % heats.size
+            val hasIncomplete = heats[i].any {
+                !absentAthletes.contains(it.id) && (completionState[it.id] ?: 0) < totalTrialsPerAthlete
+            }
             if (hasIncomplete) return i
         }
-        return 0
+        return null
     }
 
     private fun buildHeatAthletesList(): List<AthleteQueueItem> {
@@ -219,7 +228,9 @@ class StopwatchViewModel @Inject constructor(
                 status = status,
                 // A completed athlete shows their latest trial; it was always 0:00.00 before.
                 capturedTimeMs = pendingScore?.secondsToMs() ?: trials.lastOrNull()?.timeMs,
-                displayTrials = trials
+                displayTrials = trials,
+                medicalAlert = athlete.medicalAlert,
+                isRestricted = athlete.isRestricted
             )
         }
     }
@@ -297,6 +308,7 @@ class StopwatchViewModel @Inject constructor(
             recomputeSummaryCounts()
         } else if (newMode == TimingMode.GROUP_START) {
             currentHeatIndex = findFirstIncompleteHeatIndex()
+            heatsDone = false
             _uiState.update {
                 it.copy(
                     mode = TimingMode.GROUP_START,
@@ -349,8 +361,11 @@ class StopwatchViewModel @Inject constructor(
     private fun handleCancelRun() {
         if (_uiState.value.stopwatchPhase != StopwatchPhase.RUNNING) return
         tickerJob?.cancel()
-        _uiState.update { it.copy(stopwatchPhase = StopwatchPhase.READY, elapsedMs = 0L) }
+        // Group Heats holds this run's finish taps as pending; a cancelled run must not save them.
+        _uiState.update { it.copy(stopwatchPhase = StopwatchPhase.READY, elapsedMs = 0L, pendingResults = emptyMap()) }
+        refreshAllAthletesIfIndividual()
         refreshHeatAthletes()
+        recomputeSummaryCounts()
     }
 
     private fun refreshHeatAthletes() {
@@ -487,8 +502,9 @@ class StopwatchViewModel @Inject constructor(
             }
             // Group Heats is also complete once the last heat has been run, even with athletes
             // left as pending through the Missing Entries dialog.
-            val heatsExhausted = state.mode == TimingMode.GROUP_START && heats.isNotEmpty() && currentHeatIndex >= heats.size
+            val heatsExhausted = state.mode == TimingMode.GROUP_START && heatsDone
             state.copy(
+                athleteCount = athletes.size,
                 totalCount = newTotalCount,
                 completedCount = completedTrials,
                 absentCount = absentAthletes.size,
@@ -541,7 +557,12 @@ class StopwatchViewModel @Inject constructor(
         val rawScore = newTimeMs / 1000.0
 
         if (resultId == null) {
-            // Edit a score that hasn't been saved yet (Group Heats capture, or a failed save).
+            // Edit a score that hasn't been saved yet (Group Heats capture, or a failed save). Checked
+            // now: it used to be accepted and fail later in submit with an unclear "Save failed".
+            outOfRangeMessage(rawScore, newTimeMs)?.let { message ->
+                viewModelScope.launch { _uiEvents.send(StopwatchUiEvent.ShowSnackbar(message)) }
+                return
+            }
             _uiState.update { s -> s.copy(pendingResults = s.pendingResults + (athleteId to rawScore)) }
             refreshAllAthletesIfIndividual()
             refreshHeatAthletes()
@@ -660,10 +681,14 @@ class StopwatchViewModel @Inject constructor(
     }
 
     private fun advanceToNextHeat() {
-        currentHeatIndex++
-        if (currentHeatIndex >= heats.size) {
+        // Next heat with trials left, wrapping back to heat 1 for the next round. It used to stop after
+        // the last heat, so a 3-trial test in Group Heats ran one trial per athlete and called it done.
+        val next = nextIncompleteHeatIndex(from = currentHeatIndex + 1)
+        if (next == null) {
+            heatsDone = true
             _uiState.update { state -> state.copy(isSessionComplete = true) }
         } else {
+            currentHeatIndex = next
             _uiState.update { state ->
                 state.copy(
                     stopwatchPhase = StopwatchPhase.READY,
@@ -738,7 +763,9 @@ class StopwatchViewModel @Inject constructor(
                 totalTrials = totalTrialsPerAthlete,
                 status = status,
                 capturedTimeMs = pendingScore?.secondsToMs(),
-                displayTrials = buildDisplayTrials(athlete.id)
+                displayTrials = buildDisplayTrials(athlete.id),
+                medicalAlert = athlete.medicalAlert,
+                isRestricted = athlete.isRestricted
             )
         }
     }

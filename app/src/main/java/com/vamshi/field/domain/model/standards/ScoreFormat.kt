@@ -65,9 +65,12 @@ data class StageLimits(val maxLevel: Int, val maxShuttle: Int) {
     }
 }
 
-/** Display text for a score: "8.10" for stage tests, else "12" or "12.5". */
+/** Display text for a score: "8.10" for stage tests, "4.87" for timed tests, else "12" or "12.5". */
 fun formatScore(raw: Double, paradigm: InputParadigm?): String = when {
     paradigm == InputParadigm.MULTI_STAGE -> StageScore.format(raw)
+    // Stopwatch times keep hundredths: "%.1f" showed a 4.87 s sprint as 4.9 everywhere outside the
+    // stopwatch screen, which on a 5 m sprint is most of the gap between athletes.
+    paradigm == InputParadigm.CHRONO -> String.format(Locale.getDefault(), "%.2f", raw)
     raw % 1.0 == 0.0 -> raw.toInt().toString()
     else -> String.format(Locale.getDefault(), "%.1f", raw)
 }

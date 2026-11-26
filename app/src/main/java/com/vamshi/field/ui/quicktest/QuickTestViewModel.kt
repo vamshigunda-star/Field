@@ -92,7 +92,8 @@ class QuickTestViewModel @Inject constructor(
     private val createEventUseCase: CreateEventUseCase,
     private val recordResult: RecordTestResultUseCase,
     private val calculatePercentile: CalculatePercentileUseCase,
-    private val testingRepository: com.vamshi.field.domain.repository.TestingRepository
+    private val testingRepository: com.vamshi.field.domain.repository.TestingRepository,
+    private val discardEmptyEvent: com.vamshi.field.domain.usecase.testing.DiscardEmptyEventUseCase
 ) : ViewModel() {
 
     private val athleteId: String? = savedStateHandle["athleteId"]
@@ -241,10 +242,15 @@ class QuickTestViewModel @Inject constructor(
         _uiState.update { it.copy(isDeleting = true, showDeleteConfirmation = false) }
         viewModelScope.launch {
             try {
-                val results = testingRepository.getEventResults(eventId).first()
-                for (res in results) {
-                    testingRepository.deleteResultById(res.id)
+                // Only the scores recorded on this screen. Deleting every result of the event wiped
+                // earlier sessions' scores when the screen was opened to resume an existing event.
+                _uiState.value.recordedResults.mapNotNull { it.id }.forEach { id ->
+                    testingRepository.deleteResultById(id)
                 }
+                // An event this screen created and that is now empty goes too; it used to linger in
+                // Reports with no results.
+                if (eventCreatedHere) discardEmptyEvent(eventId)
+                eventCreatedHere = false
                 _uiState.update {
                     it.copy(
                         isDeleting = false,
@@ -282,15 +288,30 @@ class QuickTestViewModel @Inject constructor(
                     val athlete = state.selectedAthlete
                     val eventId = ensureEventExists()
                     val ageYears = athlete.currentAge.toFloat()
+                    // Re-entering a score replaces the saved row (same id); a fresh id used to leave
+                    // the old score in Room and in every report.
+                    val existingId = state.recordedResults.find { it.testId == testId }?.id
 
-                    val result = recordResult(
-                        eventId = eventId,
-                        individualId = athlete.id,
-                        testId = test.id,
-                        rawScore = rawScore,
-                        ageAtTime = ageYears,
-                        sex = athlete.sex
-                    )
+                    val result = if (existingId != null) {
+                        recordResult(
+                            eventId = eventId,
+                            individualId = athlete.id,
+                            testId = test.id,
+                            rawScore = rawScore,
+                            ageAtTime = ageYears,
+                            sex = athlete.sex,
+                            resultId = existingId
+                        )
+                    } else {
+                        recordResult(
+                            eventId = eventId,
+                            individualId = athlete.id,
+                            testId = test.id,
+                            rawScore = rawScore,
+                            ageAtTime = ageYears,
+                            sex = athlete.sex
+                        )
+                    }
                     RecordedTestResult(
                         id = result.id,
                         testId = test.id,
@@ -346,6 +367,8 @@ class QuickTestViewModel @Inject constructor(
     }
 
     private var createdEventId: String? = savedStateHandle.get<String>("eventId")
+    // True only when ensureEventExists() made the event, so deleting never removes a resumed one.
+    private var eventCreatedHere = false
 
     private suspend fun ensureEventExists(): String {
         createdEventId?.let { return it }
@@ -365,6 +388,7 @@ class QuickTestViewModel @Inject constructor(
 
         val event = result.getOrThrow()
         createdEventId = event.id
+        eventCreatedHere = true
         return event.id
     }
 }

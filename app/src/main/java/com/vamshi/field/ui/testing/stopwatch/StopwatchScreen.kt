@@ -32,6 +32,8 @@ import com.vamshi.field.domain.model.standards.TimingMode
 import com.vamshi.field.ui.components.AppTopBar
 import com.vamshi.field.ui.components.AppTopBarSubtitleColor
 import com.vamshi.field.ui.components.InlineErrorBanner
+import com.vamshi.field.ui.components.MedicalAlertStrip
+import com.vamshi.field.ui.components.medicalAlertText
 import com.vamshi.field.ui.theme.*
 
 import androidx.activity.compose.BackHandler
@@ -334,8 +336,8 @@ private fun ModeTabButton(
 }
 
 private fun buildSessionContextLine(uiState: StopwatchUiState): String {
-    val athleteCount = if (uiState.mode == TimingMode.INDIVIDUAL) uiState.allAthletes.size else uiState.heatAthletes.size
-    val base = "${countOf(athleteCount, "Athlete")} • ${countOf(uiState.trialsPerAthlete, "Trial")}"
+    // Whole group in both modes. Counting the current heat made a heat split read as a lost athlete.
+    val base = "${countOf(uiState.athleteCount, "Athlete")} • ${countOf(uiState.trialsPerAthlete, "Trial")}"
     return if (!uiState.groupName.isNullOrBlank()) "${uiState.groupName} • $base" else base
 }
 
@@ -484,6 +486,10 @@ private fun IndividualModeContent(
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center
                 )
+                if (medicalAlertText(currentAthlete.medicalAlert, currentAthlete.isRestricted) != null) {
+                    Spacer(Modifier.height(6.dp))
+                    MedicalAlertStrip(currentAthlete.medicalAlert, currentAthlete.isRestricted)
+                }
             } else if (!uiState.isSessionComplete) {
                 Text(
                     text = "Select an athlete to begin",
@@ -732,6 +738,11 @@ private fun GroupStartModeContent(uiState: StopwatchUiState, onAction: (Stopwatc
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = if (isSystemInDarkTheme()) PerformanceGreenDark else PerformanceGreenText)
             ) { Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) { Text("START SESSION", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White) } }
+        } else {
+            // A false start in a heat had no way out: START disappeared and nothing replaced it.
+            TextButton(onClick = { onAction(StopwatchAction.OnCancelRun) }) {
+                Text("Cancel run (false start), nothing saved")
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -745,7 +756,7 @@ private fun GroupStartModeContent(uiState: StopwatchUiState, onAction: (Stopwatc
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onAction(StopwatchAction.OnCaptureTime(athlete.athleteId))
                     },
-                    onEdit = { onAction(StopwatchAction.OnOpenEditDialog(athlete.athleteId)) }
+                    onEdit = { resultId -> onAction(StopwatchAction.OnOpenEditDialog(athlete.athleteId, resultId)) }
                 )
             }
         }
@@ -802,6 +813,7 @@ private fun AthleteTimingRow(
     subtitle: String?,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    subtitleIsWarning: Boolean = false,
     trailing: @Composable () -> Unit
 ) {
     val borderColor = if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
@@ -833,7 +845,8 @@ private fun AthleteTimingRow(
                     Text(
                         subtitle,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (muted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (muted || subtitleIsWarning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (subtitleIsWarning) FontWeight.Bold else null
                     )
                 }
             }
@@ -856,10 +869,12 @@ private fun IndividualAthleteRow(
     val isAbsent = athlete.status == AthleteStatus.ABSENT
     val isCompleted = athlete.status == AthleteStatus.COMPLETED
     val trials = athlete.displayTrials
+    val alert = medicalAlertText(athlete.medicalAlert, athlete.isRestricted)
+    val trialLine = if (!isCompleted && athlete.totalTrials > 1) "Trial ${athlete.currentTrial} of ${athlete.totalTrials}" else null
     val subtitle = when {
         isAbsent -> "Absent"
-        !isCompleted && athlete.totalTrials > 1 -> "Trial ${athlete.currentTrial} of ${athlete.totalTrials}"
-        else -> null
+        alert != null -> listOfNotNull("⚠ $alert", trialLine).joinToString(" · ")
+        else -> trialLine
     }
 
     AthleteTimingRow(
@@ -867,6 +882,7 @@ private fun IndividualAthleteRow(
         highlighted = isSelected,
         muted = isAbsent,
         subtitle = subtitle,
+        subtitleIsWarning = !isAbsent && alert != null,
         onClick = { if (!isAbsent) onClick() },
         onLongClick = {},
         trailing = {
@@ -937,7 +953,7 @@ private fun GroupAthleteRow(
     isRunning: Boolean,
     onToggleAbsent: () -> Unit,
     onCapture: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: (resultId: String?) -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
     val completedColor = if (isDark) PerformanceGreenTextDark else PerformanceGreenText
@@ -948,10 +964,14 @@ private fun GroupAthleteRow(
         name = athlete.name,
         highlighted = false,
         muted = isAbsent,
-        subtitle = if (isAbsent) "Absent" else null,
+        subtitle = if (isAbsent) "Absent" else medicalAlertText(athlete.medicalAlert, athlete.isRestricted)?.let { "⚠ $it" },
+        subtitleIsWarning = !isAbsent && medicalAlertText(athlete.medicalAlert, athlete.isRestricted) != null,
         onClick = {
             when {
-                isDone -> onEdit()
+                // An unsaved capture is edited as pending (no id). A completed athlete edits their latest
+                // saved trial by id; editing it as pending used to submit an extra trial instead.
+                athlete.status == AthleteStatus.CAPTURED -> onEdit(null)
+                athlete.status == AthleteStatus.COMPLETED -> onEdit(athlete.displayTrials.lastOrNull()?.resultId)
                 isRunning && !isAbsent -> onCapture()
             }
         },
@@ -989,8 +1009,8 @@ private fun EditTimeDialog(
     onSave: (Long) -> Unit,
     onClear: () -> Unit
 ) {
-    var inputString by remember { mutableStateOf(formatStopwatchTime(initialTimeMs).replace(Regex("[^0-9]"), "")) }
-    val displayMs = inputString.toLongOrNull()?.let { it * 10 } ?: 0L
+    var inputString by remember { mutableStateOf(editSeed(initialTimeMs)) }
+    val displayMs = parseEditCentis(inputString)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1019,7 +1039,7 @@ private fun EditTimeDialog(
                                     if (key == "DEL") {
                                         if (inputString.isNotEmpty()) inputString = inputString.dropLast(1)
                                     } else {
-                                        if (inputString.length < 6) inputString += key
+                                        if ((inputString + key).trimStart('0').length <= EDIT_MAX_DIGITS) inputString += key
                                     }
                                 },
                                 modifier = Modifier.size(64.dp),
